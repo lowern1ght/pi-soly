@@ -14,7 +14,7 @@
       },
     },
     "packages/pi-ask": {
-      "name": "pi-ask",
+      "name": "@lowern1ght/pi-ask",
       "version": "0.1.0",
       "devDependencies": {
         "@earendil-works/pi-coding-agent": "0.78.1",
@@ -30,7 +30,7 @@
       },
     },
     "packages/pi-switch": {
-      "name": "pi-switch",
+      "name": "@lowern1ght/pi-switch",
       "version": "0.1.0",
       "devDependencies": {
         "@earendil-works/pi-coding-agent": "0.78.1",
@@ -46,7 +46,7 @@
       },
     },
     "packages/pi-todo": {
-      "name": "pi-todo",
+      "name": "@lowern1ght/pi-todo",
       "version": "0.1.0",
       "devDependencies": {
         "@earendil-works/pi-coding-agent": "0.78.1",
@@ -62,8 +62,8 @@
       },
     },
     "packages/soly": {
-      "name": "soly",
-      "version": "0.2.0",
+      "name": "@lowern1ght/pi-soly",
+      "version": "0.2.1",
       "devDependencies": {
         "@earendil-works/pi-ai": "0.78.1",
         "@earendil-works/pi-coding-agent": "0.78.1",
@@ -142,6 +142,14 @@
     "@earendil-works/pi-tui": ["@earendil-works/pi-tui@0.78.1", "", { "dependencies": { "get-east-asian-width": "1.6.0", "marked": "15.0.12" } }, "sha512-07GVQo/38a0yvIPlWDr3RJn1B8gk3ZuIX9h2oIQ+Biyu3JN0KppWmgWHfaWRydQgse5JtC++KDw5MWaIRnV0mw=="],
 
     "@google/genai": ["@google/genai@1.52.0", "", { "dependencies": { "google-auth-library": "^10.3.0", "p-retry": "^4.6.2", "protobufjs": "^7.5.4", "ws": "^8.18.0" }, "peerDependencies": { "@modelcontextprotocol/sdk": "^1.25.2" }, "optionalPeers": ["@modelcontextprotocol/sdk"] }, "sha512-gwSvbpiN/17O9TbsqSsE/OzZcpv5Fo4RQjdngGgogtuB9RsyJ8ZHhX5KjHj1bp5N9snN2eK8LDGXSaWW2hof8Q=="],
+
+    "@lowern1ght/pi-ask": ["@lowern1ght/pi-ask@workspace:packages/pi-ask"],
+
+    "@lowern1ght/pi-soly": ["@lowern1ght/pi-soly@workspace:packages/soly"],
+
+    "@lowern1ght/pi-switch": ["@lowern1ght/pi-switch@workspace:packages/pi-switch"],
+
+    "@lowern1ght/pi-todo": ["@lowern1ght/pi-todo@workspace:packages/pi-todo"],
 
     "@mariozechner/clipboard": ["@mariozechner/clipboard@0.3.9", "", { "optionalDependencies": { "@mariozechner/clipboard-darwin-arm64": "0.3.9", "@mariozechner/clipboard-darwin-universal": "0.3.9", "@mariozechner/clipboard-darwin-x64": "0.3.9", "@mariozechner/clipboard-linux-arm64-gnu": "0.3.9", "@mariozechner/clipboard-linux-arm64-musl": "0.3.9", "@mariozechner/clipboard-linux-riscv64-gnu": "0.3.9", "@mariozechner/clipboard-linux-x64-gnu": "0.3.9", "@mariozechner/clipboard-linux-x64-musl": "0.3.9", "@mariozechner/clipboard-win32-arm64-msvc": "0.3.9", "@mariozechner/clipboard-win32-x64-msvc": "0.3.9" } }, "sha512-ABnA53mdfkGZwOFUdZNv2S0CWGO/EIuPj8Vv9xmBFmSYg/qFc7ihO6q5FcQjvoE67kZpWkEc4AhD6B/os04yuA=="],
 
@@ -315,12 +323,6 @@
 
     "path-scurry": ["path-scurry@2.0.2", "", { "dependencies": { "lru-cache": "^11.0.0", "minipass": "^7.1.2" } }, "sha512-3O/iVVsJAPsOnpwWIeD+d6z/7PmqApyQePUtCndjatj/9I5LylHvt5qluFaBT3I5h3r1ejfR056c+FCv+NnNXg=="],
 
-    "pi-ask": ["pi-ask@workspace:packages/pi-ask"],
-
-    "pi-switch": ["pi-switch@workspace:packages/pi-switch"],
-
-    "pi-todo": ["pi-todo@workspace:packages/pi-todo"],
-
     "proper-lockfile": ["proper-lockfile@4.1.2", "", { "dependencies": { "graceful-fs": "^4.2.4", "retry": "^0.12.0", "signal-exit": "^3.0.2" } }, "sha512-TjNPblN4BwAWMXU8s9AEz4JmQxnD1NNL7bNOY/AKUzyamc379FWASUhc/K1pL2noVb+XmZKLL68cjzLsiOAMaA=="],
 
     "protobufjs": ["protobufjs@7.6.4", "", { "dependencies": { "@protobufjs/aspromise": "^1.1.2", "@protobufjs/base64": "^1.1.2", "@protobufjs/codegen": "^2.0.5", "@protobufjs/eventemitter": "^1.1.1", "@protobufjs/fetch": "^1.1.1", "@protobufjs/float": "^1.0.2", "@protobufjs/path": "^1.1.2", "@protobufjs/pool": "^1.1.0", "@protobufjs/utf8": "^1.1.1", "@types/node": ">=13.7.0", "long": "^5.3.2" } }, "sha512-RJJPTTpvFfHcWLkIa2JFWK4XvtSzS0yEWDmunqHXli1h3JlkbcQZXDZdcWxv+JK3Xsl5/UFDPZ0iGm7DAengYw=="],
@@ -334,8 +336,6 @@
     "shebang-regex": ["shebang-regex@3.0.0", "", {}, "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A=="],
 
     "signal-exit": ["signal-exit@3.0.7", "", {}, "sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ=="],
-
-    "soly": ["soly@workspace:packages/soly"],
 
     "strnum": ["strnum@2.4.0", "", { "dependencies": { "anynum": "^1.0.0" } }, "sha512-sHrVyWWdq28RbhjuJdZsA1SnGRJV6NiXbk6AXBxDOsgAcA+lmpUZCYjOdLBxkXMwis6RRe7dlZt4VlIWFVzkmg=="],
 
