@@ -54,12 +54,19 @@ jobs:
           cd "packages/${{ steps.detect.outputs.package }}"
           REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
           REGISTRY_PATH=$(echo "$REGISTRY" | sed 's|http://||' | sed 's|/$||')
+          # Strip whitespace from token in case of accidental spaces/newlines
+          TOKEN=$(echo -n "$PUBLISH_TOKEN" | tr -d '[:space:]')
+          if [ -z "$TOKEN" ]; then
+            echo "::error::PUBLISH_TOKEN secret is empty or not set!"
+            exit 1
+          fi
           # Use printf; write to monorepo root. Note: use $VAR (no braces) for shell
           # vars — GitHub Actions treats ${VAR} as a workflow expression.
           cd ../..
-          printf "registry=%s\n//%s/:_authToken=%s\n" "$REGISTRY" "$REGISTRY_PATH" "$PUBLISH_TOKEN" > .npmrc
-          echo "--- .npmrc ---"
-          cat .npmrc
+          printf "registry=%s\n//%s/:_authToken=%s\n" "$REGISTRY" "$REGISTRY_PATH" "$TOKEN" > .npmrc
+          chmod 600 .npmrc
+          echo "--- .npmrc (token masked) ---"
+          sed 's/_authToken=.*/_authToken=***MASKED***/' .npmrc
 
       - name: Publish to forgejo packages
         env:
