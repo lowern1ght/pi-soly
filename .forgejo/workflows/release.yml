@@ -60,6 +60,21 @@ jobs:
             echo "::error::PUBLISH_TOKEN secret is empty or not set!"
             exit 1
           fi
+          # Debug: test the token via direct API call
+          echo "--- testing token via API ---"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $TOKEN" "http://git.local.stbl/api/v1/user")
+          echo "  GET /api/v1/user with token → HTTP $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Token rejected by /api/v1/user (HTTP $HTTP_CODE). Check scope and expiry."
+            # Also try Basic auth variant (some forgejo versions expect different format)
+            HTTP_CODE2=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "http://git.local.stbl/api/v1/user")
+            echo "  GET /api/v1/user with Bearer → HTTP $HTTP_CODE2"
+            exit 1
+          fi
+          # Test write:packages scope via PUT to a fake package
+          echo "--- testing publish endpoint ---"
+          HTTP_PUB=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $TOKEN" -X PUT "http://git.local.stbl/api/packages/lowern1ght/npm/.test-$$" --data-binary "{\"name\":\"x\",\"version\":\"0.0.0\"}")
+          echo "  PUT /api/packages/.../npm/.test → HTTP $HTTP_PUB"
           # Use printf; write to monorepo root. Note: use $VAR (no braces) for shell
           # vars — GitHub Actions treats ${VAR} as a workflow expression.
           cd ../..
