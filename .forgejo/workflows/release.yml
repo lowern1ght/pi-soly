@@ -39,30 +39,27 @@ jobs:
           fi
 
       # Auth: use PUBLISH_TOKEN (Personal Access Token from forgejo secrets).
-      # Required scope: write:packages, read:user, write:repository
-      # Set in: forgejo → repo Settings → Secrets → PUBLISH_TOKEN
-      - name: Configure npm auth
+      # We use `npm config set` (writes to user-level ~/.npmrc) instead of a
+      # workspace-level .npmrc, which npm ignores in workspace packages.
+      - name: Configure npm auth (user-level)
         env:
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
         run: |
           cd "packages/${{ steps.detect.outputs.package }}"
           REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
           REGISTRY_PATH=$(echo "$REGISTRY" | sed 's|http://||' | sed 's|/$||')
-          # Use printf to avoid shell-escape issues in heredocs
-          printf "registry=%s\n" "${REGISTRY}" > .npmrc
-          printf "//%s/:_authToken=%s\n" "${REGISTRY_PATH}" "${PUBLISH_TOKEN}" >> .npmrc
-          echo "--- .npmrc ---"
-          cat .npmrc
+          npm config set registry "${REGISTRY}"
+          npm config set "//${REGISTRY_PATH}/:_authToken" "${PUBLISH_TOKEN}"
+          echo "--- npm config ---"
+          npm config get registry
+          echo "(token hidden)"
 
       - name: Publish to forgejo packages
         env:
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
         run: |
           cd "packages/${{ steps.detect.outputs.package }}"
+          REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
           echo "Publishing ${{ steps.detect.outputs.package }}@${{ steps.detect.outputs.version }}"
-          npm publish --access public
+          npm publish --registry="${REGISTRY}" --access public
           echo "✓ published"
-
-      - name: Cleanup .npmrc
-        if: always()
-        run: rm -f "packages/${{ steps.detect.outputs.package }}/.npmrc"
