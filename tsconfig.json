@@ -1,7 +1,7 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/soly" },
+    { "path": "./packages/pi-soly" },
     { "path": "./packages/pi-ask" },
     { "path": "./packages/pi-todo" },
     { "path": "./packages/pi-switch" }
