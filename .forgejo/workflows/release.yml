@@ -47,12 +47,12 @@ jobs:
         run: |
           cd "packages/${{ steps.detect.outputs.package }}"
           REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
-          # Forgejo npm registry expects _authToken in .npmrc
-          cat > .npmrc << EOF
-          registry=${REGISTRY}
-          //$(echo $REGISTRY | sed 's|http://||' | sed 's|/$||')/:_authToken=\${PUBLISH_TOKEN}
-          EOF
-          echo ".npmrc created for ${REGISTRY}"
+          REGISTRY_PATH=$(echo "$REGISTRY" | sed 's|http://||' | sed 's|/$||')
+          # Use printf to avoid shell-escape issues in heredocs
+          printf "registry=%s\n" "${REGISTRY}" > .npmrc
+          printf "//%s/:_authToken=%s\n" "${REGISTRY_PATH}" "${PUBLISH_TOKEN}" >> .npmrc
+          echo "--- .npmrc ---"
+          cat .npmrc
 
       - name: Publish to forgejo packages
         env:
@@ -60,8 +60,9 @@ jobs:
         run: |
           cd "packages/${{ steps.detect.outputs.package }}"
           echo "Publishing ${{ steps.detect.outputs.package }}@${{ steps.detect.outputs.version }}"
-          npm publish --registry="http://git.local.stbl/api/packages/lowern1ght/npm/" --access public
+          npm publish --access public
           echo "✓ published"
 
       - name: Cleanup .npmrc
+        if: always()
         run: rm -f "packages/${{ steps.detect.outputs.package }}/.npmrc"
