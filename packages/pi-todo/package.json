@@ -1,5 +1,5 @@
 {
-  "name": "@lowern1ght/pi-todo",
+  "name": "@synaptix/pi-todo",
   "version": "0.1.0",
   "description": "Live, user-visible task list for pi. LLM tracks multi-step work via todo_update, users see real-time progress in the footer.",
   "type": "module",

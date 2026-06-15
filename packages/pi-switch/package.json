@@ -1,5 +1,5 @@
 {
-  "name": "@lowern1ght/pi-switch",
+  "name": "@synaptix/pi-switch",
   "version": "0.1.0",
   "description": "Generic subagent switcher for pi. Header bar above chat, Ctrl+Shift+S to cycle, /agent slash command. Works with any agent in ~/.pi/agent/agents/.",
   "type": "module",
