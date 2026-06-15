@@ -25,7 +25,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { atomicWriteFileSync, readIfExists } from "./core.js";
+import { atomicWriteFileSync, readIfExists } from "./core.ts";
 
 export type IterationKind = "exec" | "plan" | "discuss" | "pause";
 

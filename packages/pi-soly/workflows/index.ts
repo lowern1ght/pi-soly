@@ -16,13 +16,13 @@
 // =============================================================================
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { parseSolyCommand, type SolyCommand } from "./parser.js";
-import { buildExecuteTransform } from "./execute.js";
-import { buildPauseTransform } from "./pause.js";
-import { buildResumeTransform } from "./resume.js";
-import { showStatus, showLog, showDiff } from "./quick.js";
-import { showDoctor, showIterations, showDiffIterations, showPhaseDelete, showTodos } from "./inspect.js";
-import { buildPlanTransform, buildDiscussTransform } from "./planning.js";
+import { parseSolyCommand, type SolyCommand } from "./parser.ts";
+import { buildExecuteTransform } from "./execute.ts";
+import { buildPauseTransform } from "./pause.ts";
+import { buildResumeTransform } from "./resume.ts";
+import { showStatus, showLog, showDiff } from "./quick.ts";
+import { showDoctor, showIterations, showDiffIterations, showPhaseDelete, showTodos } from "./inspect.ts";
+import { buildPlanTransform, buildDiscussTransform } from "./planning.ts";
 import type { SolyState } from "../core.js";
 import type { SolyConfig } from "../config.js";
 

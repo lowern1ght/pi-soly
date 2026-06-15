@@ -19,7 +19,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describeExecuteTarget, type SolyCommand } from "./parser.js";
+import { describeExecuteTarget, type SolyCommand } from "./parser.ts";
 import type { SolyState } from "../core.js";
 import {
 	extractPlanSummary,

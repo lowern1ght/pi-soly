@@ -29,8 +29,8 @@ import {
 	getAgentMeta,
 	loadAgent,
 	saveAgent,
-} from "./core.js";
-import { buildPiSwitchSection, recommendAgent } from "./prompt.js";
+} from "./core.ts";
+import { buildPiSwitchSection, recommendAgent } from "./prompt.ts";
 
 const GLOBAL_KEY = "__PI_SWITCH_AGENT__";
 

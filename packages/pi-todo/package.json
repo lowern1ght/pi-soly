@@ -1,6 +1,6 @@
 {
   "name": "pi-todo-list",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Live, user-visible task list for pi. LLM tracks multi-step work via todo_update, users see real-time progress in the footer.",
   "type": "module",
   "main": "index.ts",

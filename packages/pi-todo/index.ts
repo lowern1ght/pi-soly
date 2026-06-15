@@ -32,8 +32,8 @@ import {
 	loadTodos,
 	MAX_TODOS,
 	type TodoState,
-} from "./todo-store.js";
-import { buildTodoSection } from "./prompt.js";
+} from "./todo-store.ts";
+import { buildTodoSection } from "./prompt.ts";
 
 const STATUS_ID = "pi-todo";
 

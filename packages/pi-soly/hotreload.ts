@@ -25,7 +25,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { SourceSpec } from "./core.js";
+import type { SourceSpec } from "./core.ts";
 
 export interface HotReloadOptions {
 	/** Called when any watched file changes (debounced). The `reason` argument

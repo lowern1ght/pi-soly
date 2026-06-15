@@ -16,7 +16,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { readIfExists, buildProgressBar, type SolyState } from "../core.js";
 import type { SolyConfig } from "../config.js";
-import type { SolyCommand } from "./parser.js";
+import type { SolyCommand } from "./parser.ts";
 
 const execFileAsync = promisify(execFile);
 

@@ -17,12 +17,12 @@ import { promisify } from "node:util";
 import { Type } from "typebox";
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { readIfExists, splitFrontmatter, atomicWriteFileSync, type SolyState } from "./core.js";
-import { detectEnv, type EnvSummary } from "./env.js";
-import type { SolyConfig } from "./config.js";
-import { buildDocIndex, searchDocs, readSnippet, stripHtml } from "./docs.js";
-import { buildScratchpad, SCRATCHPAD_LIMITS } from "./scratchpad.js";
-import { loadIntentDocs, buildIntentSection, type IntentDoc } from "./intent.js";
+import { readIfExists, splitFrontmatter, atomicWriteFileSync, type SolyState } from "./core.ts";
+import { detectEnv, type EnvSummary } from "./env.ts";
+import type { SolyConfig } from "./config.ts";
+import { buildDocIndex, searchDocs, readSnippet, stripHtml } from "./docs.ts";
+import { buildScratchpad, SCRATCHPAD_LIMITS } from "./scratchpad.ts";
+import { loadIntentDocs, buildIntentSection, type IntentDoc } from "./intent.ts";
 
 const execFileAsync = promisify(execFile);
 

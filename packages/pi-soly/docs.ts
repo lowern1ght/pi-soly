@@ -10,8 +10,8 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { estimateTokens, findMarkdownFiles, readIfExists } from "./core.js";
-import { extractTitleAndPreview, stripHtml } from "./html.js";
+import { estimateTokens, findMarkdownFiles, readIfExists } from "./core.ts";
+import { extractTitleAndPreview, stripHtml } from "./html.ts";
 
 // Re-export the stripHtml helper so existing imports of `stripHtml from
 // "./docs.js"` (used by tools.ts) continue to work without churn.

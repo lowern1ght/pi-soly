@@ -28,8 +28,8 @@ import {
 	readIfExists,
 	type RuleFile,
 	type SolyState,
-} from "./core.js";
-import type { SolyConfig } from "./config.js";
+} from "./core.ts";
+import type { SolyConfig } from "./config.ts";
 
 /** Minimum ui surface the command handlers actually need. */
 export interface CommandUI {

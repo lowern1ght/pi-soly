@@ -11,7 +11,7 @@
 // This is what the picker would look like inside pi's interactive TUI.
 // =============================================================================
 
-import { AskProComponent, type AskQuestion, type AskProTheme } from "./picker.js";
+import { AskProComponent, type AskQuestion, type AskProTheme } from "./picker.ts";
 import type { KeybindingsManager } from "@earendil-works/pi-tui";
 
 // ANSI-colored theme for visual output. Matches pi-coding-agent's color

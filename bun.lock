@@ -15,7 +15,7 @@
     },
     "packages/pi-ask": {
       "name": "pi-asked",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "devDependencies": {
         "@earendil-works/pi-coding-agent": "0.78.1",
         "@earendil-works/pi-tui": "0.78.1",
@@ -31,7 +31,7 @@
     },
     "packages/pi-soly": {
       "name": "pi-soly",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "devDependencies": {
         "@earendil-works/pi-ai": "0.78.1",
         "@earendil-works/pi-coding-agent": "0.78.1",
@@ -47,7 +47,7 @@
     },
     "packages/pi-switch": {
       "name": "pi-agented",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "devDependencies": {
         "@earendil-works/pi-coding-agent": "0.78.1",
         "@earendil-works/pi-tui": "0.78.1",
@@ -63,7 +63,7 @@
     },
     "packages/pi-todo": {
       "name": "pi-todo-list",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "devDependencies": {
         "@earendil-works/pi-coding-agent": "0.78.1",
         "@earendil-works/pi-tui": "0.78.1",

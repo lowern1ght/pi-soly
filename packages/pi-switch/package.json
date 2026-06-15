@@ -1,6 +1,6 @@
 {
   "name": "pi-agented",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Generic subagent switcher for pi. Header bar above chat, Ctrl+Shift+S to cycle, /agent slash command. Works with any agent in ~/.pi/agent/agents/.",
   "type": "module",
   "main": "index.ts",

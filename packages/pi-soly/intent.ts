@@ -22,8 +22,8 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { formatTok, resolveImports } from "./core.js";
-import { extractTitleAndPreview, stripHtml } from "./html.js";
+import { formatTok, resolveImports } from "./core.ts";
+import { extractTitleAndPreview, stripHtml } from "./html.ts";
 
 const DOC_EXTS = new Set([".md", ".html", ".htm"]);
 

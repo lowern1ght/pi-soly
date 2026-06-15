@@ -22,8 +22,8 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { AskProComponent, type AskProResult } from "./picker.js";
-import { buildAskProSection } from "./prompt.js";
+import { AskProComponent, type AskProResult } from "./picker.ts";
+import { buildAskProSection } from "./prompt.ts";
 
 export default function piAskExtension(pi: ExtensionAPI) {
 	// Inject a "when to use ask_pro" section into the system prompt so the

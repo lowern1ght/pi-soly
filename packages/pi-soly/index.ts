@@ -43,24 +43,24 @@ import {
 	type RuleFile,
 	type SolyState,
 	type SourceSpec,
-} from "./core.js";
-import { buildIntegrationsSection } from "./integrations.js";
-import { installSolyAgents } from "./agents-install.js";
+} from "./core.ts";
+import { buildIntegrationsSection } from "./integrations.ts";
+import { installSolyAgents } from "./agents-install.ts";
 import {
 	DEFAULT_CONFIG,
 	loadConfig,
 	pruneOldIterations,
 	type SolyConfig,
-} from "./config.js";
-import { classifyTaskHeuristics, buildNudgeSection } from "./nudge.js";
-import { registerCommands, type CommandUI } from "./commands.js";
-import { registerTools } from "./tools.js";
-import { registerWorkflows } from "./workflows/index.js";
-import { readGitContext, buildGitSection, type GitContext } from "./git.js";
-import { startHotReload, type HotReloadHandle } from "./hotreload.js";
-import { detectEnv, buildEnvSection, type EnvSummary } from "./env.js";
-import { buildCodeMap, buildCodeMapSection, type CodeMap } from "./codemap.js";
-import { loadIntentDocs, buildIntentSection, loadInlineIntentBodies, type IntentDoc } from "./intent.js";
+} from "./config.ts";
+import { classifyTaskHeuristics, buildNudgeSection } from "./nudge.ts";
+import { registerCommands, type CommandUI } from "./commands.ts";
+import { registerTools } from "./tools.ts";
+import { registerWorkflows } from "./workflows/index.ts";
+import { readGitContext, buildGitSection, type GitContext } from "./git.ts";
+import { startHotReload, type HotReloadHandle } from "./hotreload.ts";
+import { detectEnv, buildEnvSection, type EnvSummary } from "./env.ts";
+import { buildCodeMap, buildCodeMapSection, type CodeMap } from "./codemap.ts";
+import { loadIntentDocs, buildIntentSection, loadInlineIntentBodies, type IntentDoc } from "./intent.ts";
 
 export default function solyExtension(pi: ExtensionAPI) {
 	// ============================================================================
