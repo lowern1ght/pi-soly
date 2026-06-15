@@ -1,0 +1,26 @@
+# build artifacts / deps
+node_modules/
+dist/
+build/
+coverage/
+*.log
+
+# editor noise
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# os noise
+.DS_Store
+desktop.ini
+
+# bun
+.bun/
+
+# soly local (per project)
+.soly/
+.soly-rule-mtimes.json
+rule-mtimes.json

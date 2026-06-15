@@ -1,0 +1,23 @@
+{
+  "name": "pi-extensions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo for pi extensions: soly, pi-ask, pi-todo, pi-switch",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "ci": "bun run test && bun run typecheck"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.78.1",
+    "@earendil-works/pi-tui": "0.78.1",
+    "@types/node": "^25.9.1",
+    "bun-types": "^1.3.14",
+    "typebox": "1.1.38",
+    "typescript": "^6.0.3"
+  }
+}
