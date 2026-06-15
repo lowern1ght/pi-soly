@@ -49,5 +49,5 @@ git tag "${PKG}-v${VER}"
 
 echo ""
 echo "✓ Tagged ${PKG}-v${VER}"
-echo "  Run \`git push origin main && git push origin ${PKG}-v${VER}\` to publish"
+echo "  Run \`git push origin master && git push origin ${PKG}-v${VER}\` to publish"
 echo "  (or: \`git push origin --follow-tags\` to push both at once)"

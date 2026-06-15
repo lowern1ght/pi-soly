@@ -24,13 +24,13 @@ Each extension can be installed independently:
 
 ```bash
 # Install all four (one time)
-pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/main/packages/soly
-pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/main/packages/pi-ask
-pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/main/packages/pi-todo
-pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/main/packages/pi-switch
+pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/master/packages/soly
+pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/master/packages/pi-ask
+pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/master/packages/pi-todo
+pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/master/packages/pi-switch
 
 # Or just the ones you need
-pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/main/packages/pi-switch
+pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/master/packages/pi-switch
 ```
 
 (Replace `<org>` with your forgejo org/user. If your forgejo exposes a

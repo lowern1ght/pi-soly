@@ -10,7 +10,7 @@ bun install
 
 ## Workflow
 
-1. Create a feature branch from `main`
+1. Create a feature branch from `master`
 2. Make changes
 3. Run tests + typecheck locally: `bun run ci`
 4. Push branch: `git push origin feature/my-change`
