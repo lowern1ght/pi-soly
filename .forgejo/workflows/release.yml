@@ -38,59 +38,41 @@ jobs:
             exit 1
           fi
 
-      # Auth: use PUBLISH_TOKEN (Personal Access Token from forgejo secrets).
-      # Required scope: write:packages, read:user, write:repository
+      # Auth for npmjs.com via PUBLISH_TOKEN (npm access token).
       # Set in: forgejo → repo Settings → Secrets → PUBLISH_TOKEN
-      #
-      # We write a .npmrc at the MONOREPO ROOT (not in a workspace package)
-      # because:
-      #  - npm ignores .npmrc inside workspace packages ("ignoring workspace config")
-      #  - `npm config set` refuses to run inside a workspace ("ENOWORKSPACES")
-      # The root .npmrc is honored by npm from any subdirectory.
-      - name: Configure npm auth (root .npmrc)
+      # Token type: "Automation" or "Publish" (NOT legacy "Read and Publish")
+      # Get one at: https://www.npmjs.com/settings/~/tokens
+      - name: Configure npm auth
         env:
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
         run: |
           cd "packages/${{ steps.detect.outputs.package }}"
           REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
-          REGISTRY_PATH=$(echo "$REGISTRY" | sed 's|http://||' | sed 's|/$||')
-          # Strip whitespace from token in case of accidental spaces/newlines
+          REGISTRY_HOST=$(echo "$REGISTRY" | sed -E 's|^https?://||' | sed 's|/$||')
+          # Strip whitespace from token
           TOKEN=$(echo -n "$PUBLISH_TOKEN" | tr -d '[:space:]')
           if [ -z "$TOKEN" ]; then
             echo "::error::PUBLISH_TOKEN secret is empty or not set!"
             exit 1
           fi
-          # Debug: test the token via direct API call
-          echo "--- testing token via API ---"
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $TOKEN" "http://git.local.stbl/api/v1/user")
-          echo "  GET /api/v1/user with token → HTTP $HTTP_CODE"
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "::error::Token rejected by /api/v1/user (HTTP $HTTP_CODE). Check scope and expiry."
-            # Also try Basic auth variant (some forgejo versions expect different format)
-            HTTP_CODE2=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "http://git.local.stbl/api/v1/user")
-            echo "  GET /api/v1/user with Bearer → HTTP $HTTP_CODE2"
-            exit 1
-          fi
-          # Test write:packages scope via PUT to a fake package
-          echo "--- testing publish endpoint ---"
-          HTTP_PUB=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $TOKEN" -X PUT "http://git.local.stbl/api/packages/lowern1ght/npm/.test-$$" --data-binary "{\"name\":\"x\",\"version\":\"0.0.0\"}")
-          echo "  PUT /api/packages/.../npm/.test → HTTP $HTTP_PUB"
-          # Use printf; write to monorepo root. Note: use $VAR (no braces) for shell
-          # vars — GitHub Actions treats ${VAR} as a workflow expression.
+          # Quick connectivity check (HEAD on the registry root)
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://$REGISTRY_HOST")
+          echo "  HEAD $REGISTRY_HOST → HTTP $HTTP_CODE"
+          # Write .npmrc at monorepo root (workspaces block package-level config)
           cd ../..
-          printf "registry=%s\n//%s/:_authToken=%s\n" "$REGISTRY" "$REGISTRY_PATH" "$TOKEN" > .npmrc
+          printf "registry=%s\n//%s/:_authToken=%s\n" "$REGISTRY" "$REGISTRY_HOST" "$TOKEN" > .npmrc
           chmod 600 .npmrc
           echo "--- .npmrc (token masked) ---"
           sed 's/_authToken=.*/_authToken=***MASKED***/' .npmrc
 
-      - name: Publish to forgejo packages
+      - name: Publish to npmjs.com
         env:
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
         run: |
           cd "packages/${{ steps.detect.outputs.package }}"
           REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
-          echo "Publishing ${{ steps.detect.outputs.package }}@${{ steps.detect.outputs.version }}"
-          npm publish --registry="$REGISTRY" --access public
+          echo "Publishing ${{ steps.detect.outputs.package }}@${{ steps.detect.outputs.version }} → $REGISTRY"
+          npm publish --access public
           echo "✓ published"
 
       - name: Cleanup .npmrc
