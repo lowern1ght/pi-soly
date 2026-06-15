@@ -1,0 +1,16 @@
+name: test
+on:
+  push:
+    branches: [master]
+
+jobs:
+  hello:
+    runs-on: docker
+    steps:
+      - name: hello
+        run: |
+          echo "Hello from forgejo-runner"
+          echo "uname:" && uname -a
+          echo "node:" && node --version
+          echo "working dir:" && pwd
+          echo "ls /workspace:" && ls /workspace
