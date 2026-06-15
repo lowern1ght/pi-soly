@@ -68,7 +68,7 @@ jobs:
           cd "packages/${{ steps.detect.outputs.package }}"
           REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
           echo "Publishing ${{ steps.detect.outputs.package }}@${{ steps.detect.outputs.version }}"
-          npm publish --registry="${REGISTRY}" --access public
+          npm publish --registry="$REGISTRY" --access public
           echo "✓ published"
 
       - name: Cleanup .npmrc
