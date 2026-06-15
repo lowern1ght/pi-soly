@@ -24,18 +24,18 @@ Each extension can be installed independently:
 
 ```bash
 # Install all four (one time)
-pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/master/packages/soly
-pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/master/packages/pi-ask
-pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/master/packages/pi-todo
-pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/master/packages/pi-switch
+pi install http://git.local.stbl/lowern1ght/pi-soly.framework/raw/branch/master/packages/soly
+pi install http://git.local.stbl/lowern1ght/pi-soly.framework/raw/branch/master/packages/pi-ask
+pi install http://git.local.stbl/lowern1ght/pi-soly.framework/raw/branch/master/packages/pi-todo
+pi install http://git.local.stbl/lowern1ght/pi-soly.framework/raw/branch/master/packages/pi-switch
 
 # Or just the ones you need
-pi install http://git.local.stbl/<org>/pi-soly.framework/raw/branch/master/packages/pi-switch
+pi install http://git.local.stbl/lowern1ght/pi-soly.framework/raw/branch/master/packages/pi-switch
 ```
 
-(Replace `<org>` with your forgejo org/user. If your forgejo exposes a
+(Replace `lowern1ght` with your forgejo org/user. If your forgejo exposes a
 download endpoint via `pip`-style `/raw/...`, the URL above works. If it
-uses a different layout — e.g. `/api/v1/repos/<org>/<repo>/raw/...` —
+uses a different layout — e.g. `/api/v1/repos/lowern1ght/<repo>/raw/...` —
 adjust accordingly.)
 
 ## Cross-extension compatibility

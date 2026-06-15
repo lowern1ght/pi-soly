@@ -3,8 +3,6 @@ on:
   push:
     tags:
       # Pattern: soly-v0.2.0, pi-ask-v0.1.0, etc. — one tag per package version.
-      # Bump the package version in package.json, commit, then tag.
-      # The workflow only publishes the package whose name matches the tag prefix.
       - "*-v*"
 
 jobs:
@@ -20,42 +18,50 @@ jobs:
       - name: Run tests before publish
         run: bun test
 
-      # Publish each package whose version matches the tag.
-      # We use the existing "npm-publisher" runner/agent the user has set up
-      # in their forgejo runner. Adjust the call below to match its actual
-      # name/inputs (e.g. a custom action or a script invoked via `uses: ./`).
+      # Tag-based publish: e.g. tag "soly-v0.2.1" → publish packages/soly
       - name: Determine package from tag
         id: detect
         run: |
-          # Tag like "soly-v0.2.0" → package=soly, version=v0.2.0
           TAG="${GITHUB_REF_NAME}"
           PKG="${TAG%%-v*}"
           VER="${TAG##*-v}"
           echo "package=${PKG}" >> "$GITHUB_OUTPUT"
-          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          echo "version=${VER#v}" >> "$GITHUB_OUTPUT"
       - name: Verify package version matches tag
         run: |
           PKG="${{ steps.detect.outputs.package }}"
           VER="${{ steps.detect.outputs.version }}"
-          PKG_VER=$(node -p "require('./packages/${PKG}/package.json').version")
-          if [ "${PKG_VER}" != "${VER#v}" ]; then
-            echo "::error::package.json version (${PKG_VER}) doesn't match tag (${VER#v})"
+          cd "packages/${PKG}"
+          PKG_VER=$(node -p "require('./package.json').version")
+          if [ "${PKG_VER}" != "${VER}" ]; then
+            echo "::error::package.json version (${PKG_VER}) doesn't match tag (${VER})"
             exit 1
           fi
-      # ↓↓↓ replace this step with your npm-publisher agent / action call
-      # e.g. a custom action:
-      #   - uses: your-org/npm-publisher-action@v1
-      #     with:
-      #       package: packages/${{ steps.detect.outputs.package }}
-      #       registry: ${{ vars.NPM_REGISTRY }}
-      #       token: ${{ secrets.PUBLISH_TOKEN }}
-      # OR a script:
-      #   - run: ./scripts/publish.sh ${{ steps.detect.outputs.package }}
-      - name: Publish to npm (via your agent)
+
+      # Auth: use PUBLISH_TOKEN (Personal Access Token from forgejo secrets).
+      # Required scope: write:packages, read:user, write:repository
+      # Set in: forgejo → repo Settings → Secrets → PUBLISH_TOKEN
+      - name: Configure npm auth
         env:
-          PACKAGE: ${{ steps.detect.outputs.package }}
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
         run: |
-          echo "Would publish packages/${PACKAGE}/ to http://git.local.stbl/api/packages/<org>/npm/"
-          echo "Replace this step with your npm-publisher agent call."
-          # Example (if your agent is a script):
-          #   ./agents/npm-publisher/run.sh packages/${PACKAGE}
+          cd "packages/${{ steps.detect.outputs.package }}"
+          REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
+          # Forgejo npm registry expects _authToken in .npmrc
+          cat > .npmrc << EOF
+          registry=${REGISTRY}
+          //$(echo $REGISTRY | sed 's|http://||' | sed 's|/$||')/:_authToken=\${PUBLISH_TOKEN}
+          EOF
+          echo ".npmrc created for ${REGISTRY}"
+
+      - name: Publish to forgejo packages
+        env:
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+        run: |
+          cd "packages/${{ steps.detect.outputs.package }}"
+          echo "Publishing ${{ steps.detect.outputs.package }}@${{ steps.detect.outputs.version }}"
+          npm publish --registry="http://git.local.stbl/api/packages/lowern1ght/npm/" --access public
+          echo "✓ published"
+
+      - name: Cleanup .npmrc
+        run: rm -f "packages/${{ steps.detect.outputs.package }}/.npmrc"

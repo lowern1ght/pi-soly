@@ -36,11 +36,11 @@
   ],
   "license": "MIT",
   "publishConfig": {
-    "registry": "http://git.local.stbl/api/packages/<org>/npm/"
+    "registry": "http://git.local.stbl/api/packages/lowern1ght/npm/"
   },
   "repository": {
     "type": "git",
-    "url": "http://git.local.stbl/<org>/pi-soly.framework.git",
+    "url": "http://git.local.stbl/lowern1ght/pi-soly.framework.git",
     "directory": "packages/pi-switch"
   }
 }
