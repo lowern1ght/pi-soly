@@ -10,3 +10,9 @@ coverage/
 .turbo/
 .bun/
 *.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
