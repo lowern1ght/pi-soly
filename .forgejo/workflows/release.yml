@@ -54,10 +54,10 @@ jobs:
           cd "packages/${{ steps.detect.outputs.package }}"
           REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
           REGISTRY_PATH=$(echo "$REGISTRY" | sed 's|http://||' | sed 's|/$||')
-          # Use printf to avoid heredoc escape issues; write to monorepo root
+          # Use printf; write to monorepo root. Note: use $VAR (no braces) for shell
+          # vars — GitHub Actions treats ${VAR} as a workflow expression.
           cd ../..
-          printf "registry=%s\n" "${REGISTRY}" > .npmrc
-          printf "//%s/:_authToken=%s\n" "${REGISTRY_PATH}" "${PUBLISH_TOKEN}" >> .npmrc
+          printf "registry=%s\n//%s/:_authToken=%s\n" "$REGISTRY" "$REGISTRY_PATH" "$PUBLISH_TOKEN" > .npmrc
           echo "--- .npmrc ---"
           cat .npmrc
 
