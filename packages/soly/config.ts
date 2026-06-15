@@ -158,12 +158,15 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 }
 
 /** Load soly config. Per-project overrides global overrides defaults.
- *  Returns merged config + warnings about any issues. */
-export function loadConfig(cwd: string): LoadConfigResult {
+ *  Returns merged config + warnings about any issues.
+ *  Optional `homeDir` overrides `os.homedir()` — used by tests; production
+ *  callers leave it unset. */
+export function loadConfig(cwd: string, homeDir?: string): LoadConfigResult {
 	const warnings: string[] = [];
 	const sources = { global: null as string | null, project: null as string | null };
 
-	const globalPath = path.join(os.homedir(), ".soly", "config.json");
+	const home = homeDir ?? os.homedir();
+	const globalPath = path.join(home, ".soly", "config.json");
 	const globalRaw = readJsonIfExists(globalPath);
 	if (globalRaw) {
 		sources.global = globalPath;

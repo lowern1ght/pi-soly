@@ -49,13 +49,13 @@ afterAll(() => {
 
 describe("loadConfig — defaults", () => {
 	test("no files → returns DEFAULT_CONFIG", () => {
-		const r = loadConfig(tmpRoot);
+		const r = loadConfig(tmpRoot, fakeHome);
 		expect(r.config).toEqual(DEFAULT_CONFIG);
 		expect(r.warnings).toEqual([]);
 	});
 
 	test("sources report null when no config files", () => {
-		const r = loadConfig(tmpRoot);
+		const r = loadConfig(tmpRoot, fakeHome);
 		expect(r.sources.global).toBeNull();
 		expect(r.sources.project).toBeNull();
 	});
@@ -71,7 +71,7 @@ describe("loadConfig — global only", () => {
 				hotReload: { pollMs: 5000 },
 			}),
 		);
-		const r = loadConfig(tmpRoot);
+		const r = loadConfig(tmpRoot, fakeHome);
 		expect(r.config.iteration.retentionDays).toBe(7);
 		expect(r.config.hotReload.pollMs).toBe(5000);
 		// Untouched fields keep defaults
@@ -87,21 +87,21 @@ describe("loadConfig — global only", () => {
 			path.join(cwd, ".soly", "config.json"),
 			JSON.stringify({ version: 1, agent: { useSolyWorkerSubagents: true } }),
 		);
-		const r = loadConfig(cwd);
+		const r = loadConfig(cwd, fakeHome);
 		expect(r.config.agent.useSolyWorkerSubagents).toBe(true);
 		fs.rmSync(cwd, { recursive: true, force: true });
 	});
 
 	test("global file path is reported in sources", () => {
 		fs.writeFileSync(globalConfigPath, JSON.stringify({ version: SOLY_CONFIG_VERSION }));
-		const r = loadConfig(tmpRoot);
+		const r = loadConfig(tmpRoot, fakeHome);
 		expect(r.sources.global).toBe(globalConfigPath);
 		expect(r.sources.project).toBeNull();
 	});
 
 	test("malformed JSON is silently ignored, defaults used", () => {
 		fs.writeFileSync(globalConfigPath, "{ this is not valid json");
-		const r = loadConfig(tmpRoot);
+		const r = loadConfig(tmpRoot, fakeHome);
 		expect(r.config).toEqual(DEFAULT_CONFIG);
 	});
 
@@ -110,7 +110,7 @@ describe("loadConfig — global only", () => {
 			globalConfigPath,
 			JSON.stringify({ version: 99, iteration: { retentionDays: 30 } }),
 		);
-		const r = loadConfig(tmpRoot);
+		const r = loadConfig(tmpRoot, fakeHome);
 		expect(r.warnings.length).toBe(1);
 		expect(r.warnings[0]).toContain("version 99");
 		// But the parseable fields are still applied
@@ -128,7 +128,7 @@ describe("loadConfig — project overrides global", () => {
 			path.join(projectSolyDir, "config.json"),
 			JSON.stringify({ version: SOLY_CONFIG_VERSION, iteration: { retentionDays: 30 } }),
 		);
-		const r = loadConfig(tmpRoot);
+		const r = loadConfig(tmpRoot, fakeHome);
 		expect(r.config.iteration.retentionDays).toBe(30);
 		expect(r.sources.global).toBe(globalConfigPath);
 		expect(r.sources.project).toBe(path.join(projectSolyDir, "config.json"));
@@ -142,7 +142,7 @@ describe("loadConfig — project overrides global", () => {
 				editor: { command: "cursor" },
 			}),
 		);
-		const r = loadConfig(tmpRoot);
+		const r = loadConfig(tmpRoot, fakeHome);
 		expect(r.config.editor.command).toBe("cursor");
 		expect(r.warnings).toEqual([]);
 	});
@@ -158,7 +158,7 @@ describe("loadConfig — type safety", () => {
 				agent: { preferAskPro: "true" }, // wrong type
 			}),
 		);
-		const r = loadConfig(tmpRoot);
+		const r = loadConfig(tmpRoot, fakeHome);
 		// Defaults kept
 		expect(r.config.iteration.retentionDays).toBe(0);
 		expect(r.config.agent.preferAskPro).toBe(true);
