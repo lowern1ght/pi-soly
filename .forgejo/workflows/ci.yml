@@ -2,8 +2,7 @@ name: ci
 on:
   push:
     branches: [master]
-  pull_request:
-    branches: [master]
+    tags: ["*-v*"]
 
 jobs:
   test:
@@ -13,9 +12,89 @@ jobs:
       - uses: https://code.forgejo.org/oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - name: Install workspace deps
+      - name: Install
         run: bun install --frozen-lockfile
       - name: Run tests
         run: bun test
       - name: Typecheck
         run: bun run typecheck
+
+  publish:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: docker
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+      - uses: https://code.forgejo.org/oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Run tests before publish
+        run: bun test
+
+      # Tag-based publish: e.g. tag "pi-soly-v0.2.1" → publish packages/pi-soly
+      - name: Determine package from tag
+        id: detect
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PKG="${TAG%%-v*}"
+          VER="${TAG##*-v}"
+          echo "package=${PKG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VER#v}" >> "$GITHUB_OUTPUT"
+      - name: Verify package version matches tag
+        run: |
+          PKG="${{ steps.detect.outputs.package }}"
+          VER="${{ steps.detect.outputs.version }}"
+          cd "packages/${PKG}"
+          PKG_VER=$(node -p "require('./package.json').version")
+          if [ "${PKG_VER}" != "${VER}" ]; then
+            echo "::error::package.json version (${PKG_VER}) doesn't match tag (${VER})"
+            exit 1
+          fi
+
+      # Auth: use NPM_TOKEN (npmjs.com access token).
+      # Required scope: Automation (preferred) or Publish.
+      # Set in: forgejo → repo Settings → Secrets → NPM_TOKEN
+      # Get one at: https://www.npmjs.com/settings/~/tokens
+      #
+      # We write a .npmrc at the MONOREPO ROOT (not in a workspace package)
+      # because npm ignores .npmrc inside workspace packages ("ignoring
+      # workspace config") and refuses `npm config set` in workspaces
+      # ("ENOWORKSPACES").
+      - name: Configure npm auth (root .npmrc)
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd "packages/${{ steps.detect.outputs.package }}"
+          REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
+          REGISTRY_HOST=$(echo "$REGISTRY" | sed -E 's|^https?://||' | sed 's|/$||')
+          # Strip whitespace from token
+          TOKEN=$(echo -n "$NPM_TOKEN" | tr -d '[:space:]')
+          if [ -z "$TOKEN" ]; then
+            echo "::error::NPM_TOKEN secret is empty or not set!"
+            exit 1
+          fi
+          # Quick connectivity check
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://$REGISTRY_HOST")
+          echo "  HEAD $REGISTRY_HOST → HTTP $HTTP_CODE"
+          # Write .npmrc at monorepo root
+          cd ../..
+          printf "registry=%s\n//%s/:_authToken=%s\n" "$REGISTRY" "$REGISTRY_HOST" "$TOKEN" > .npmrc
+          chmod 600 .npmrc
+          echo "--- .npmrc (token masked) ---"
+          sed 's/_authToken=.*/_authToken=***MASKED***/' .npmrc
+
+      - name: Publish to npmjs.com
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd "packages/${{ steps.detect.outputs.package }}"
+          REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
+          echo "Publishing ${{ steps.detect.outputs.package }}@${{ steps.detect.outputs.version }} → $REGISTRY"
+          npm publish --access public
+          echo "✓ published"
+
+      - name: Cleanup .npmrc
+        if: always()
+        run: rm -f .npmrc
