@@ -39,20 +39,27 @@ jobs:
           fi
 
       # Auth: use PUBLISH_TOKEN (Personal Access Token from forgejo secrets).
-      # We use `npm config set` (writes to user-level ~/.npmrc) instead of a
-      # workspace-level .npmrc, which npm ignores in workspace packages.
-      - name: Configure npm auth (user-level)
+      # Required scope: write:packages, read:user, write:repository
+      # Set in: forgejo → repo Settings → Secrets → PUBLISH_TOKEN
+      #
+      # We write a .npmrc at the MONOREPO ROOT (not in a workspace package)
+      # because:
+      #  - npm ignores .npmrc inside workspace packages ("ignoring workspace config")
+      #  - `npm config set` refuses to run inside a workspace ("ENOWORKSPACES")
+      # The root .npmrc is honored by npm from any subdirectory.
+      - name: Configure npm auth (root .npmrc)
         env:
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
         run: |
           cd "packages/${{ steps.detect.outputs.package }}"
           REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
           REGISTRY_PATH=$(echo "$REGISTRY" | sed 's|http://||' | sed 's|/$||')
-          npm config set registry "${REGISTRY}"
-          npm config set "//${REGISTRY_PATH}/:_authToken" "${PUBLISH_TOKEN}"
-          echo "--- npm config ---"
-          npm config get registry
-          echo "(token hidden)"
+          # Use printf to avoid heredoc escape issues; write to monorepo root
+          cd ../..
+          printf "registry=%s\n" "${REGISTRY}" > .npmrc
+          printf "//%s/:_authToken=%s\n" "${REGISTRY_PATH}" "${PUBLISH_TOKEN}" >> .npmrc
+          echo "--- .npmrc ---"
+          cat .npmrc
 
       - name: Publish to forgejo packages
         env:
@@ -63,3 +70,7 @@ jobs:
           echo "Publishing ${{ steps.detect.outputs.package }}@${{ steps.detect.outputs.version }}"
           npm publish --registry="${REGISTRY}" --access public
           echo "✓ published"
+
+      - name: Cleanup .npmrc
+        if: always()
+        run: rm -f .npmrc
