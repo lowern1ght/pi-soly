@@ -1,5 +1,5 @@
 {
-  "name": "pi-ask",
+  "name": "@lowern1ght/pi-ask",
   "version": "0.1.0",
   "description": "Claude Code-style multi-question picker for pi. Tabbed picker with recommended answers, multi-select, and Other… text input.",
   "type": "module",
