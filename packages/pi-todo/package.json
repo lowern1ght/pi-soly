@@ -1,5 +1,5 @@
 {
-  "name": "@lowern1ght/pi-todo",
+  "name": "pi-todo-list",
   "version": "0.1.0",
   "description": "Live, user-visible task list for pi. LLM tracks multi-step work via todo_update, users see real-time progress in the footer.",
   "type": "module",
@@ -29,11 +29,17 @@
   "keywords": [
     "pi",
     "pi-extension",
+    "pi-package",
     "todo",
     "task-list",
     "live-progress"
   ],
   "license": "MIT",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },

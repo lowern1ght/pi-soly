@@ -1,5 +1,5 @@
 {
-  "name": "@lowern1ght/pi-ask",
+  "name": "pi-ask",
   "version": "0.1.0",
   "description": "Claude Code-style multi-question picker for pi. Tabbed picker with recommended answers, multi-select, and Other… text input.",
   "type": "module",
@@ -29,11 +29,17 @@
   "keywords": [
     "pi",
     "pi-extension",
+    "pi-package",
     "ask-user",
     "multi-question",
     "picker"
   ],
   "license": "MIT",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },

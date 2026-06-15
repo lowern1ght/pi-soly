@@ -1,5 +1,5 @@
 {
-  "name": "@lowern1ght/pi-soly",
+  "name": "pi-soly",
   "version": "0.2.1",
   "description": "Project management for pi — plans, state, subagent-driven execution. Inspired by GSD.",
   "type": "module",
@@ -44,11 +44,17 @@
   "keywords": [
     "pi",
     "pi-extension",
+    "pi-package",
     "project-management",
     "planning",
     "subagents"
   ],
   "license": "MIT",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
