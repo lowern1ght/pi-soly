@@ -76,7 +76,7 @@ for pkg in packages/*/; do
 done
 ```
 
-Now edits in `~/code/pi-extensions/packages/soly/` are immediately picked up by pi.
+Now edits in `~/source/stbl/pi-soly.framework/packages/soly/` are immediately picked up by pi.
 
 ## Versioning
 

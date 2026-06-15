@@ -40,7 +40,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "http://git.local.stbl/<org>/pi-extensions.git",
+    "url": "http://git.local.stbl/<org>/pi-soly.framework.git",
     "directory": "packages/pi-switch"
   }
 }

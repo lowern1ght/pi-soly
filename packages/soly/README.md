@@ -227,7 +227,7 @@ breakdown (per-file sizes, %-of-context, missing descriptions, duplicates).
 
 ## Cross-extension integrations (soly as a platform)
 
-soly composes with sibling pi-extensions when they're loaded. The registry
+soly composes with sibling pi-soly.framework when they're loaded. The registry
 lives in `integrations.ts` — add a new entry there to make soly aware of
 another extension's tool.
 
