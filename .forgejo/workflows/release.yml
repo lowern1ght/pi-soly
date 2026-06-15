@@ -32,49 +32,34 @@ jobs:
           PKG="${{ steps.detect.outputs.package }}"
           VER="${{ steps.detect.outputs.version }}"
           cd "packages/${PKG}"
-          PKG_VER=$(node -p "require('./package.json').version")
-          if [ "${PKG_VER}" != "${VER}" ]; then
-            echo "::error::package.json version (${PKG_VER}) doesn't match tag (${VER})"
+          # Compare against both package.json and jsr.json (in case of drift)
+          PKG_VER_PKG=$(node -p "require('./package.json').version")
+          PKG_VER_JSR=$(node -p "require('./jsr.json').version" 2>/dev/null || echo "$PKG_VER_PKG")
+          if [ "${PKG_VER_PKG}" != "${VER}" ] || [ "${PKG_VER_JSR}" != "${VER}" ]; then
+            echo "::error::version mismatch: tag=${VER} package.json=${PKG_VER_PKG} jsr.json=${PKG_VER_JSR}"
             exit 1
           fi
 
-      # Auth for npmjs.com via PUBLISH_TOKEN (npm access token).
-      # Set in: forgejo → repo Settings → Secrets → PUBLISH_TOKEN
-      # Token type: "Automation" or "Publish" (NOT legacy "Read and Publish")
-      # Get one at: https://www.npmjs.com/settings/~/tokens
-      - name: Configure npm auth
+      # Publish to JSR.io (https://jsr.io)
+      # Free, no Pro plan needed, supports any GitHub user/org as scope.
+      # Set in: forgejo → repo Settings → Secrets → JSR_TOKEN
+      # Token type: "publish" with scope for the packages you want.
+      # Get one at: https://jsr.io/settings/access-tokens
+      - name: Publish to JSR
         env:
-          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
         run: |
           cd "packages/${{ steps.detect.outputs.package }}"
-          REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
-          REGISTRY_HOST=$(echo "$REGISTRY" | sed -E 's|^https?://||' | sed 's|/$||')
-          # Strip whitespace from token
-          TOKEN=$(echo -n "$PUBLISH_TOKEN" | tr -d '[:space:]')
-          if [ -z "$TOKEN" ]; then
-            echo "::error::PUBLISH_TOKEN secret is empty or not set!"
+          if [ -z "$JSR_TOKEN" ]; then
+            echo "::error::JSR_TOKEN secret is empty or not set!"
             exit 1
           fi
-          # Quick connectivity check (HEAD on the registry root)
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://$REGISTRY_HOST")
-          echo "  HEAD $REGISTRY_HOST → HTTP $HTTP_CODE"
-          # Write .npmrc at monorepo root (workspaces block package-level config)
-          cd ../..
-          printf "registry=%s\n//%s/:_authToken=%s\n" "$REGISTRY" "$REGISTRY_HOST" "$TOKEN" > .npmrc
-          chmod 600 .npmrc
-          echo "--- .npmrc (token masked) ---"
-          sed 's/_authToken=.*/_authToken=***MASKED***/' .npmrc
-
-      - name: Publish to npmjs.com
-        env:
-          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-        run: |
-          cd "packages/${{ steps.detect.outputs.package }}"
-          REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
-          echo "Publishing ${{ steps.detect.outputs.package }}@${{ steps.detect.outputs.version }} → $REGISTRY"
-          npm publish --access public
+          # Quick connectivity check
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://jsr.io/")
+          echo "  HEAD jsr.io → HTTP $HTTP_CODE"
+          echo "--- jsr.json ---"
+          cat jsr.json
+          echo "--- publishing ---"
+          # JSR CLI: npx --yes jsr publish --token <token>
+          npx --yes jsr@latest publish --token "$JSR_TOKEN"
           echo "✓ published"
-
-      - name: Cleanup .npmrc
-        if: always()
-        run: rm -f .npmrc

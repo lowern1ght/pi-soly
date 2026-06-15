@@ -1,5 +1,5 @@
 {
-  "name": "@synaptix/pi-soly",
+  "name": "@lowern1ght/pi-soly",
   "version": "0.2.1",
   "description": "Project management for pi — plans, state, subagent-driven execution. Inspired by GSD.",
   "type": "module",

@@ -1,5 +1,5 @@
 {
-  "name": "synaptix.pi-soly.framework",
+  "name": "pi-soly.framework",
   "version": "0.1.0",
   "private": true,
   "description": "Monorepo for pi extensions: soly, pi-ask, pi-todo, pi-switch",

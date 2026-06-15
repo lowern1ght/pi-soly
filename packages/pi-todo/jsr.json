@@ -1,0 +1,18 @@
+{
+  "name": "@lowern1ght/pi-todo",
+  "version": "0.1.0",
+  "description": "Live, user-visible task list for pi. LLM tracks multi-step work via todo_update, users see real-time progress in the footer.",
+  "license": "MIT",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.md"
+  ],
+  "exclude": [
+    "tests/**",
+    "node_modules/**",
+    "**/*.test.ts"
+  ]
+}
