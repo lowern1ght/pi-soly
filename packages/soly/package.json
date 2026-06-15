@@ -1,6 +1,6 @@
 {
   "name": "soly",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Project management for pi — plans, state, subagent-driven execution. Inspired by GSD.",
   "type": "module",
   "main": "index.ts",
