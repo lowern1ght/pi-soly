@@ -13,6 +13,9 @@ jobs:
     # added by ./config.sh. Bun + node are pre-installed.
     runs-on: self-hosted
     timeout-minutes: 5
+    # Node 20 actions are deprecated; force Node 24 for all JS actions.
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - uses: actions/checkout@v4
       - name: Verify tools
@@ -35,6 +38,9 @@ jobs:
     # exposed to this job only. Add NPM_TOKEN in
     # Settings → Environments → npm-publish → Secrets.
     environment: npm-publish
+    # Node 20 actions are deprecated; force Node 24 for all JS actions.
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - uses: actions/checkout@v4
       - name: Verify tools
