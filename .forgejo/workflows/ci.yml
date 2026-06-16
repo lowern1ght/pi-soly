@@ -9,9 +9,10 @@ jobs:
     runs-on: docker
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
-      - uses: https://code.forgejo.org/oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+      # bun is pre-installed on the runner host at /usr/local/bin/bun (PATH).
+      # This avoids the slow download of bun.sh/install on every CI run.
+      - name: Verify bun
+        run: bun --version
       - name: Install
         run: bun install --frozen-lockfile
       - name: Run tests
@@ -25,9 +26,8 @@ jobs:
     runs-on: docker
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
-      - uses: https://code.forgejo.org/oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+      - name: Verify bun
+        run: bun --version
       - name: Install
         run: bun install --frozen-lockfile
       - name: Run tests before publish
