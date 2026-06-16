@@ -3,9 +3,10 @@
 // =============================================================================
 //
 // Wires the agent switcher into pi as a compact footer pill:
-//   - Footer status pill: "⚡ worker" (or hidden if default)
+//   - Footer status pill: "▶ ⚡ worker" (or "· ⚡ worker" for the default)
 //   - Click pill or `/agent` → open full picker modal (SelectList)
-//   - Ctrl+Shift+S → cycle to next agent (no popup, hot switch)
+//   - Ctrl+Tab → cycle to next agent (no popup, hot switch)
+//   - F2 → same, fallback if your terminal doesn't pass Ctrl+Tab through
 //   - Persists current agent to .soly/agent or ~/.pi-switch/agent
 //   - Exposes `globalThis.__PI_SWITCH_AGENT__` for other extensions
 //   - Injects a short system-prompt section so the LLM knows the current
@@ -102,14 +103,21 @@ export default function piSwitchExtension(pi: ExtensionAPI) {
 		};
 	});
 
-	// ----- Ctrl+Shift+S: hot cycle (no popup, no confirmation) -----
-	pi.registerShortcut("f2", {
+	// ----- Hot cycle (no popup, no confirmation) -----
+	// Ctrl+Tab is the primary shortcut (most terminals support it).
+	// F2 is kept as a backup for terminals that don't pass Ctrl+Tab through.
+	const cycleShortcut = (sctx: { ui: ExtensionUIContext }): void => {
+		lastUi = sctx.ui;
+		refreshCycle();
+		setAgent(nextAgent(currentAgent, cycle));
+	};
+	pi.registerShortcut("ctrl+tab", {
 		description: "Cycle to next agent (worker → oracle → scout → …)",
-		handler: (sctx) => {
-			lastUi = sctx.ui;
-			refreshCycle();
-			setAgent(nextAgent(currentAgent, cycle));
-		},
+		handler: (sctx) => cycleShortcut(sctx),
+	});
+	pi.registerShortcut("f2", {
+		description: "Cycle to next agent (F2 fallback if Ctrl+Tab isn't passed by your terminal)",
+		handler: (sctx) => cycleShortcut(sctx),
 	});
 
 	// ----- /agent: open picker, or subcommands (create / doctor / recommend / set) -----
