@@ -66,11 +66,13 @@ export function isValidAgentName(name: string): boolean {
 
 /** Discover agent `.md` files in user dir. */
 /** User agent home directories, in priority order. First existing one
- *  wins for new agent creation; all are read and merged in the cycle. */
+ *  wins for new agent creation; all are read and merged in the cycle.
+ *  Honors $HOME / $USERPROFILE so tests can redirect to a tmp dir. */
 export function userAgentDirs(): string[] {
+	const home = process.env.HOME || process.env.USERPROFILE || os.homedir();
 	return [
-		path.join(os.homedir(), ".agents"),                          // vendor-neutral (preferred)
-		path.join(os.homedir(), ".pi", "agent", "agents"),           // pi's native
+		path.join(home, ".agents"),                          // vendor-neutral (preferred)
+		path.join(home, ".pi", "agent", "agents"),           // pi's native
 	];
 }
 
