@@ -81,11 +81,13 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 │       └── data-scientist.md
 ```
 
-**Two parallel conventions:** `.soly/` is soly-specific state (phases, plans). `.agents/` is vendor-neutral agent config (works with any AI tool that follows the AGENTS.md standard). The two coexist:
+**Two parallel conventions (migration in progress):** `.soly/` is the legacy soly state. `.agents/` is the new vendor-neutral home. The two work side-by-side:
 
-- Use `.soly/` for soly workflow artifacts (PLAN.md, SUMMARY.md, etc.)
-- Use `.agents/` for things other AI tools should also see (rules, skills, agents)
-- Use `AGENTS.md` for top-level project-wide agent conventions
+- **Use `.agents/`** for new projects (recommended)
+- **Use `.soly/`** for legacy projects (still works, will show a deprecation warning)
+- **Use `AGENTS.md`** for top-level project-wide agent conventions
+
+To migrate: `mv .soly .agents` — soly picks up the new location automatically. No data loss.
 
 ## Frontmatter conventions
 

@@ -1521,12 +1521,27 @@ export function buildStatusLine(
 // Soly dir helper
 // ============================================================================
 
-/** Default soly dir relative to cwd. */
-export const SOLY_DIRNAME = ".soly";
+/** Preferred soly dir name (vendor-neutral). */
+export const SOLY_DIRNAME = ".agents";
 
-/** Build the .soly dir path for a given cwd. */
+/** Legacy soly dir name. Kept for backward compat with existing projects. */
+export const LEGACY_SOLY_DIRNAME = ".soly";
+
+/** Which project subdir name is currently in use. Returns the first
+ *  one that exists, preferring `.agents/`. Falls back to `.soly/` if
+ *  no `.agents/` exists. If neither exists, returns `.agents/` (so
+ *  new writes go to the new location). */
 export function solyDirFor(cwd: string): string {
-  return path.join(cwd, SOLY_DIRNAME);
+	if (fs.existsSync(path.join(cwd, SOLY_DIRNAME))) return path.join(cwd, SOLY_DIRNAME);
+	if (fs.existsSync(path.join(cwd, LEGACY_SOLY_DIRNAME))) return path.join(cwd, LEGACY_SOLY_DIRNAME);
+	return path.join(cwd, SOLY_DIRNAME); // default to new for new projects
+}
+
+/** True if the legacy `.soly/` dir is in active use (and `.agents/` isn't). */
+export function isLegacySolyDir(cwd: string): boolean {
+	const newPath = path.join(cwd, SOLY_DIRNAME);
+	const oldPath = path.join(cwd, LEGACY_SOLY_DIRNAME);
+	return !fs.existsSync(newPath) && fs.existsSync(oldPath);
 }
 
 // ============================================================================

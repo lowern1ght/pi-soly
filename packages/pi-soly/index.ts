@@ -38,6 +38,7 @@ import {
 	loadProjectState,
 	STATUS_ID,
 	solyDirFor,
+	isLegacySolyDir,
 	buildNextHint,
 	buildDriftReminder,
 	type RuleFile,
@@ -53,6 +54,7 @@ import {
 	type SolyConfig,
 } from "./config.ts";
 import { classifyTaskHeuristics, buildNudgeSection } from "./nudge.ts";
+import { notifyNudge, notifyDeprecation } from "./notification.ts";
 import { registerCommands, type CommandUI } from "./commands.ts";
 import { registerTools } from "./tools.ts";
 import { registerWorkflows } from "./workflows/index.ts";
@@ -350,6 +352,17 @@ export default function solyExtension(pi: ExtensionAPI) {
 	// ============================================================================
 
 	pi.on("session_start", async (event, ctx) => {
+		// Deprecation warning: if the project still uses `.soly/`, nudge the
+		// user toward `.agents/`. One-time per session.
+		if (isLegacySolyDir(ctx.cwd)) {
+			notifyDeprecation(
+				ctx.ui,
+				`.soly/ (legacy)`,
+				`.agents/ (vendor-neutral)`,
+				`Run \`mv .soly .agents\` to migrate. Both names work for now.`,
+			);
+		}
+
 		// Rules sources (priority order, higher wins on relPath collision).
 		// Project rules always beat global rules. .soly/rules.local/ is
 		// gitignored — for personal overrides on top of the project's rules.
@@ -663,11 +676,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 		const angle =
 			heuristics.suggestedAngles[0] ?? "want me to confirm assumptions before I start?";
 
-		const label = heuristics.researchHeavy
-			? "soly: research-heavy prompt — clarifying question?"
-			: "soly: non-trivial prompt — clarifying question?";
-
-		ctx.ui.notify(`${label} ${angle}`, "info");
+		notifyNudge(ctx.ui, heuristics.researchHeavy ? "research" : "nonTrivial", angle);
 		nudgeActiveForTask = true;
 		lastNudgePromptKey = text.slice(0, 200);
 

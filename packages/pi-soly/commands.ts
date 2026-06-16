@@ -26,6 +26,7 @@ import {
 	formatAnalyticsFull,
 	formatTok,
 	readIfExists,
+	solyDirFor,
 	type RuleFile,
 	type SolyState,
 } from "./core.ts";
@@ -204,7 +205,7 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 			}
 			const cat = categories[choice];
 			if (!cat) return;
-			const dir = path.join(cwd, ".soly", "rules", cat.name);
+			const dir = path.join(solyDirFor(cwd), "rules", cat.name);
 			try {
 				fs.mkdirSync(dir, { recursive: true });
 			} catch {}
@@ -296,7 +297,7 @@ What must the LLM do?
 				const lastSeg = parsed.pathname.split("/").filter(Boolean).pop() ?? "rule.md";
 				const safeName = lastSeg.replace(/[^A-Za-z0-9._-]/g, "_");
 				const fileName = safeName.endsWith(".md") ? safeName : `${safeName}.md`;
-				const rulesRoot = path.join(process.cwd(), ".soly", "rules");
+				const rulesRoot = path.join(solyDirFor(process.cwd()), "rules");
 				fs.mkdirSync(rulesRoot, { recursive: true });
 				const targetFile = path.join(rulesRoot, fileName);
 				// Refuse to overwrite without warning
