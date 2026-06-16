@@ -3,16 +3,18 @@ on:
   push:
     branches: [master]
     tags: ["*-v*"]
+  pull_request:
+    branches: [master]
 
 jobs:
   test:
-    runs-on: linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: https://code.forgejo.org/actions/checkout@v4
-      # bun is pre-installed on the runner host at /usr/local/bin/bun (PATH).
-      # No setup-bun action needed — saves the slow bun.sh download.
-      - name: Verify bun
-        run: bun --version
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
       - name: Install
         run: bun install --frozen-lockfile
       - name: Run tests
@@ -23,11 +25,13 @@ jobs:
   publish:
     needs: test
     if: startsWith(github.ref, 'refs/tags/')
-    runs-on: linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: https://code.forgejo.org/actions/checkout@v4
-      - name: Verify bun
-        run: bun --version
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
       - name: Install
         run: bun install --frozen-lockfile
       - name: Run tests before publish
@@ -54,14 +58,10 @@ jobs:
           fi
 
       # Auth: use NPM_TOKEN (npmjs.com access token).
-      # Required scope: Automation (preferred) or Publish.
-      # Set in: forgejo → repo Settings → Secrets → NPM_TOKEN
-      # Get one at: https://www.npmjs.com/settings/~/tokens
-      #
-      # We write a .npmrc at the MONOREPO ROOT (not in a workspace package)
-      # because npm ignores .npmrc inside workspace packages ("ignoring
-      # workspace config") and refuses `npm config set` in workspaces
-      # ("ENOWORKSPACES").
+      # Required scope: Automation or Publish. Set in repo Settings → Secrets.
+      # We write .npmrc at the monorepo root because:
+      #  - npm ignores .npmrc inside workspace packages
+      #  - `npm config set` refuses to run inside workspaces
       - name: Configure npm auth (root .npmrc)
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -69,16 +69,11 @@ jobs:
           cd "packages/${{ steps.detect.outputs.package }}"
           REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
           REGISTRY_HOST=$(echo "$REGISTRY" | sed -E 's|^https?://||' | sed 's|/$||')
-          # Strip whitespace from token
           TOKEN=$(echo -n "$NPM_TOKEN" | tr -d '[:space:]')
           if [ -z "$TOKEN" ]; then
             echo "::error::NPM_TOKEN secret is empty or not set!"
             exit 1
           fi
-          # Quick connectivity check
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://$REGISTRY_HOST")
-          echo "  HEAD $REGISTRY_HOST → HTTP $HTTP_CODE"
-          # Write .npmrc at monorepo root
           cd ../..
           printf "registry=%s\n//%s/:_authToken=%s\n" "$REGISTRY" "$REGISTRY_HOST" "$TOKEN" > .npmrc
           chmod 600 .npmrc
