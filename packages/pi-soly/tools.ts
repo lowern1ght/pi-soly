@@ -36,6 +36,33 @@ export interface ToolsDeps {
 export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	const { getState, refreshState, getConfig } = deps;
 
+	// Simple in-memory cache for file reads (soly_read, soly_snippet).
+	// Key: absolute path. Value: { content, mtimeMs }.
+	// Invalidated when file mtime changes (cheap stat) or after 30s TTL.
+	const readCache = new Map<string, { content: string; mtimeMs: number; ts: number }>();
+	const CACHE_TTL_MS = 30_000;
+
+	function readWithCache(absPath: string): string | null {
+		const now = Date.now();
+		let mtimeMs = 0;
+		try {
+			mtimeMs = fs.statSync(absPath).mtimeMs;
+		} catch {
+			return null;
+		}
+		const cached = readCache.get(absPath);
+		if (cached && cached.mtimeMs === mtimeMs && now - cached.ts < CACHE_TTL_MS) {
+			return cached.content;
+		}
+		try {
+			const content = fs.readFileSync(absPath, "utf-8");
+			readCache.set(absPath, { content, mtimeMs, ts: now });
+			return content;
+		} catch {
+			return null;
+		}
+	}
+
 	pi.registerTool({
 		name: "soly_read",
 		label: "soly read",
@@ -145,7 +172,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 				abs = path.join(state.solyDir, rel);
 			}
 
-			const content = readIfExists(abs);
+			const content = readWithCache(abs);
 			if (!content) {
 				return {
 					content: [{ type: "text", text: `soly: file not found: ${rel}` }],

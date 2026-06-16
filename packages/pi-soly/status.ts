@@ -111,23 +111,30 @@ function readDecisions(solyDir: string, limit: number): string[] {
 		return [];
 	}
 
-	// Find the Decisions section
+	// Guard: file is empty or too short to have a Decisions section
+	if (raw.trim().length < 20) return [];
+
+	// Find the Decisions section (graceful: missing → empty, not crash)
 	const m = raw.match(/## Decisions\s*\n([\s\S]*?)(?=\n## |\n*$)/);
 	if (!m || !m[1]) return [];
 
-	const lines = m[1].split("\n").filter((l) => l.startsWith("|") && !l.includes("---"));
-	if (lines.length === 0) return [];
+	try {
+		const lines = m[1].split("\n").filter((l) => l.startsWith("|") && !l.includes("---"));
+		if (lines.length === 0) return [];
 
-	// Skip header row, take last N
-	const rows = lines.slice(1);
-	const tail = rows.slice(-limit);
+		// Skip header row, take last N
+		const rows = lines.slice(1);
+		const tail = rows.slice(-limit);
 
-	return tail.map((row) => {
-		const cells = row.split("|").map((c) => c.trim()).filter((c) => c.length > 0);
-		if (cells.length < 2) return row;
-		const date = (cells[0] ?? "").slice(0, 10);
-		const decision = (cells[1] ?? "").slice(0, 50);
-		const why = (cells[2] ?? "").slice(0, 40);
-		return `${date}  ${decision.padEnd(50)}  ${why}`;
-	});
+		return tail.map((row) => {
+			const cells = row.split("|").map((c) => c.trim()).filter((c) => c.length > 0);
+			if (cells.length < 2) return row;
+			const date = (cells[0] ?? "").slice(0, 10);
+			const decision = (cells[1] ?? "").slice(0, 50);
+			const why = (cells[2] ?? "").slice(0, 40);
+			return `${date}  ${decision.padEnd(50)}  ${why}`;
+		});
+	} catch {
+		return [];
+	}
 }
