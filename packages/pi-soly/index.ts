@@ -62,6 +62,10 @@ import { detectEnv, buildEnvSection, type EnvSummary } from "./env.ts";
 import { buildCodeMap, buildCodeMapSection, type CodeMap } from "./codemap.ts";
 import { loadIntentDocs, buildIntentSection, loadInlineIntentBodies, type IntentDoc } from "./intent.ts";
 
+// Built-in sub-features (merged from former pi-asked, pi-agented packages):
+import piAskExtension from "./ask/index.ts";
+import piSwitchExtension from "./switch/index.ts";
+
 export default function solyExtension(pi: ExtensionAPI) {
 	// ============================================================================
 	// State (module-local, lives for the duration of one extension instance)
@@ -715,4 +719,8 @@ export default function solyExtension(pi: ExtensionAPI) {
 			updateStatus(ctx);
 		}
 	});
+
+	// Mount built-in sub-features
+	piAskExtension(pi);
+	piSwitchExtension(pi);
 }

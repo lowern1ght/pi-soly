@@ -1,6 +1,6 @@
 {
   "name": "pi-soly",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Project management for pi — plans, state, subagent-driven execution. Inspired by GSD.",
   "type": "module",
   "main": "index.ts",
@@ -38,6 +38,8 @@
     "tools.ts",
     "agents-install.ts",
     "agents",
+    "ask",
+    "switch",
     "workflows",
     "workflows-data"
   ],
@@ -47,7 +49,9 @@
     "pi-package",
     "project-management",
     "planning",
-    "subagents"
+    "subagents",
+    "multi-question",
+    "agent-switcher"
   ],
   "license": "MIT",
   "pi": {

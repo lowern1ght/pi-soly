@@ -1,33 +1,27 @@
 # Changelog
 
-All notable changes to the **pi-soly.framework** monorepo are documented here.
-Per-package changes are also documented in each `packages/*/CHANGELOG.md`.
+All notable changes to the monorepo are documented here.
 
-## [0.2.0] — 2026-XX-XX
-
-### Added
-- **soly**: agent switcher moved to separate `pi-switch` extension
-- **soly**: integration with `pi-todo` (auto-seeds todos from `<task>` blocks)
-- **soly**: integration with `pi-ask` (prefers `ask_pro` over `soly_ask_user`)
-- **soly**: 5 new soly-augmented agents shipped (soly-debugger, soly-tester,
-  soly-refactor, soly-reviewer, soly-documenter)
-- **pi-switch**: header bar above chat, Ctrl+Shift+S cycle, `/agent` slash
-- **pi-switch**: task→agent recommendation engine (English + Russian)
-- **pi-switch**: `/agent create <name>` scaffolds new user agents
-- **pi-switch**: `/agent doctor` diagnostics
-- **pi-switch**: `/agent recommend <task>` suggests the right agent
-- **pi-ask**: Space=toggle, Enter=confirm in multi-select (Claude Code-style)
-- **pi-todo**: persistent footer status line for todo progress
+## [0.4.0] — 2026-XX-XX
 
 ### Changed
-- **soly**: `soly agent` subcommand removed (use `/agent` from pi-switch)
-- **soly**: `soly-` agents no longer in the cycle by default (opt-in via
-  `useSolyWorkerSubagents: true`)
+- **Monorepo consolidated to a single package**: `pi-soly` now bundles all
+  features (project management + multi-question picker + agent switcher)
+  as built-in sub-features.
+- `pi-ask` files merged into `packages/pi-soly/ask/` (multi-question picker
+  is now a built-in feature of `pi-soly`).
+- `pi-switch` files merged into `packages/pi-soly/switch/` (agent switcher
+  is now a built-in feature of `pi-soly`).
+- `pi-todo` package removed entirely.
 
-### Fixed
-- **pi-switch**: `/agent <name>` now correctly sets agent (was: fell through
-  to "show list" because the parser only checked the second token)
+### Removed
+- `pi-todo` — live task list (feature not wanted).
 
-## [0.1.0] — initial
+### Deprecated on npmjs.com
+- `pi-asked`, `pi-agented`, `pi-todo-list` — superseded by `pi-soly` v0.4.0.
+  Install with `pi install npm:pi-soly` instead.
 
-- First monorepo structure. Each extension lives in its own package.
+## [0.3.0] — earlier
+
+Initial multi-package release (pi-soly, pi-asked, pi-todo-list, pi-agented).
+See git history for full commit details.
