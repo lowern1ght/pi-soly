@@ -45,7 +45,7 @@ import {
 	type SourceSpec,
 } from "./core.ts";
 import { buildIntegrationsSection } from "./integrations.ts";
-import { installSolyAgents } from "./agents-install.ts";
+import { installSolyAssets } from "./agents-install.ts";
 import {
 	DEFAULT_CONFIG,
 	loadConfig,
@@ -388,21 +388,22 @@ export default function solyExtension(pi: ExtensionAPI) {
 			}
 		}
 
-		// Auto-install soly-manager subagent config to ~/.pi/agent/agents/
-		// on first run. Opt-in via config `agent.useSolyWorkerSubagents`
-		// (default false). Idempotent — respects any existing user-
-		// customized copies.
+		// Auto-install soly user-scope assets (soly-manager agent + soly-framework
+		// skill) to ~/.pi/agent/ on first run. Opt-in via config
+		// `agent.useSolyWorkerSubagents` (default false). Idempotent — respects
+		// any existing user-customized copies.
 		if (activeConfig.agent.useSolyWorkerSubagents) {
 			const extRoot = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
-			const installResult = installSolyAgents(extRoot);
-			if (installResult.installed.length > 0) {
+			const assets = installSolyAssets(extRoot);
+			const installed = [...assets.agents.installed, ...assets.skills.installed.map((s) => `skill:${s}`)];
+			if (installed.length > 0) {
 				ctx.ui.notify(
-					`soly: installed subagent config (${installResult.installed.join(", ")}) — run \`/subagents-doctor\` to verify`,
+					`soly: installed (${installed.join(", ")}) — run \`/subagents-doctor\` to verify`,
 					"info",
 				);
 			}
-			for (const e of installResult.errors) {
-				ctx.ui.notify(`soly: agent install error — ${e}`, "warning");
+			for (const e of [...assets.agents.errors, ...assets.skills.errors]) {
+				ctx.ui.notify(`soly: install error — ${e}`, "warning");
 			}
 		}
 

@@ -1,14 +1,18 @@
 // =============================================================================
-// agents-install.ts — Idempotent install of soly-aware subagent configs
+// assets-install.ts — Idempotent install of soly-managed user assets
 // =============================================================================
 //
-// Soly ships ONE subagent: `soly-manager`. It's a workflow executor that
-// switches modes (worker / debugger / tester / reviewer / refactor /
-// documenter / oracle / planner) based on the task brief the parent passes.
-// One agent, one system prompt, all roles.
+// Soly ships two kinds of user-scope assets:
 //
-// pi-subagents discovers agents from `~/.pi/agent/agents/`, so on first
-// session_start we copy our `soly-manager.md` there.
+//   1. Subagent configs → `~/.pi/agent/agents/`
+//      The single `soly-manager` subagent (mode-switching executor).
+//
+//   2. Skills → `~/.pi/agent/skills/<name>/`
+//      The `soly-framework` skill — framework documentation the LLM
+//      loads on demand via the read tool.
+//
+// pi discovers both from `~/.pi/agent/`, so on first session_start we
+// copy our shipped files there.
 //
 // IDEMPOTENT: if the target file already exists (user may have customized
 // it), we do NOT overwrite. This is one-way "first install wins".
@@ -23,16 +27,33 @@ const SHIPPED_AGENTS = [
 	"soly-manager.md",
 ] as const;
 
-/** Where pi-subagents looks for user agents. Respects HOME/USERPROFILE
- *  for testability (otherwise we'd always write to the real user home). */
+/** soly skills bundled with the extension. Each entry is a directory
+ *  under `skills/` containing a SKILL.md. */
+const SHIPPED_SKILLS = [
+	"soly-framework",
+] as const;
+
+/** Where pi looks for user agents. Respects HOME/USERPROFILE for
+ *  testability (otherwise we'd always write to the real user home). */
 function userAgentsDir(): string {
 	const home = process.env.HOME || process.env.USERPROFILE || os.homedir();
 	return path.join(home, ".pi", "agent", "agents");
 }
 
+/** Where pi looks for user skills. */
+function userSkillsDir(): string {
+	const home = process.env.HOME || process.env.USERPROFILE || os.homedir();
+	return path.join(home, ".pi", "agent", "skills");
+}
+
 /** Where this soly extension's `agents/` directory lives. */
-function shippedDir(extensionRoot: string): string {
+function shippedAgentsDir(extensionRoot: string): string {
 	return path.join(extensionRoot, "agents");
+}
+
+/** Where this soly extension's `skills/` directory lives. */
+function shippedSkillsDir(extensionRoot: string): string {
+	return path.join(extensionRoot, "skills");
 }
 
 export interface InstallResult {
@@ -41,16 +62,38 @@ export interface InstallResult {
 	errors: string[];
 }
 
+/** Copy a single file if destination doesn't exist. Idempotent. */
+function copyIfMissing(from: string, to: string): "installed" | "skipped" | "error" {
+	if (!fs.existsSync(from)) return "error";
+	if (fs.existsSync(to)) return "skipped";
+	try {
+		fs.copyFileSync(from, to);
+		return "installed";
+	} catch {
+		return "error";
+	}
+}
+
+/** Recursively copy a directory tree if destination doesn't exist. Idempotent. */
+function copyDirIfMissing(from: string, to: string): "installed" | "skipped" | "error" {
+	if (!fs.existsSync(from)) return "error";
+	if (fs.existsSync(to)) return "skipped";
+	try {
+		fs.mkdirSync(path.dirname(to), { recursive: true });
+		fs.cpSync(from, to, { recursive: true });
+		return "installed";
+	} catch {
+		return "error";
+	}
+}
+
 /** Install shipped soly agents to `~/.pi/agent/agents/`. Idempotent. */
 export function installSolyAgents(extensionRoot: string): InstallResult {
 	const result: InstallResult = { installed: [], skipped: [], errors: [] };
-	const src = shippedDir(extensionRoot);
+	const src = shippedAgentsDir(extensionRoot);
 	const dst = userAgentsDir();
 
-	if (!fs.existsSync(src)) {
-		// Development mode or partial install — silently no-op
-		return result;
-	}
+	if (!fs.existsSync(src)) return result; // dev mode no-op
 
 	try {
 		fs.mkdirSync(dst, { recursive: true });
@@ -62,24 +105,44 @@ export function installSolyAgents(extensionRoot: string): InstallResult {
 	for (const name of SHIPPED_AGENTS) {
 		const from = path.join(src, name);
 		const to = path.join(dst, name);
-		if (!fs.existsSync(from)) {
-			result.errors.push(`missing source: ${from}`);
-			continue;
-		}
-		if (fs.existsSync(to)) {
-			// User already has this file (possibly customized) — respect it
-			result.skipped.push(name);
-			continue;
-		}
-		try {
-			fs.copyFileSync(from, to);
-			result.installed.push(name);
-		} catch (err) {
-			result.errors.push(`copy ${name}: ${(err as Error).message}`);
-		}
+		const r = copyIfMissing(from, to);
+		if (r === "installed") result.installed.push(name);
+		else if (r === "skipped") result.skipped.push(name);
+		else result.errors.push(`missing source: ${from}`);
 	}
 
 	return result;
+}
+
+/** Install shipped soly skills to `~/.pi/agent/skills/`. Idempotent. */
+export function installSolySkills(extensionRoot: string): InstallResult {
+	const result: InstallResult = { installed: [], skipped: [], errors: [] };
+	const src = shippedSkillsDir(extensionRoot);
+	const dst = userSkillsDir();
+
+	if (!fs.existsSync(src)) return result; // dev mode no-op
+
+	for (const name of SHIPPED_SKILLS) {
+		const from = path.join(src, name);
+		const to = path.join(dst, name);
+		const r = copyDirIfMissing(from, to);
+		if (r === "installed") result.installed.push(name);
+		else if (r === "skipped") result.skipped.push(name);
+		else result.errors.push(`missing source: ${from}`);
+	}
+
+	return result;
+}
+
+/** Install all soly assets (agents + skills). Combined for convenience. */
+export function installSolyAssets(extensionRoot: string): {
+	agents: InstallResult;
+	skills: InstallResult;
+} {
+	return {
+		agents: installSolyAgents(extensionRoot),
+		skills: installSolySkills(extensionRoot),
+	};
 }
 
 /** Check which shipped soly agents are present in the user dir. Used by doctor. */
@@ -92,6 +155,24 @@ export function checkSolyAgentsInstalled(extensionRoot: string): {
 	const missing: string[] = [];
 	for (const name of SHIPPED_AGENTS) {
 		if (fs.existsSync(path.join(dst, name))) {
+			installed.push(name);
+		} else {
+			missing.push(name);
+		}
+	}
+	return { installed, missing };
+}
+
+/** Check which shipped soly skills are present in the user dir. */
+export function checkSolySkillsInstalled(extensionRoot: string): {
+	installed: string[];
+	missing: string[];
+} {
+	const dst = userSkillsDir();
+	const installed: string[] = [];
+	const missing: string[] = [];
+	for (const name of SHIPPED_SKILLS) {
+		if (fs.existsSync(path.join(dst, name, "SKILL.md"))) {
 			installed.push(name);
 		} else {
 			missing.push(name);
