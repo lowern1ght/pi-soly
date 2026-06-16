@@ -35,10 +35,11 @@ export interface SolyConfig {
 		preferAskPro: boolean;
 		/** When soly pause is invoked, also auto-save HANDOFF.json (currently always true; knob for future). */
 		autoCheckpointOnPause: boolean;
-		/** Opt-in: install soly-worker / soly-oracle agent configs to
-		 *  ~/.pi/agent/agents/ on session_start, and use soly-worker in
-		 *  soly execute workflows. Off by default — most users don't need
-		 *  soly-specialized subagents since the workflow template already
+		/** Opt-in: install soly-manager agent config to
+		 *  ~/.pi/agent/agents/ on session_start. The single soly subagent
+		 *  is mode-switching (worker/debugger/tester/reviewer/etc. based on
+		 *  the task brief). Off by default — most users don't need a soly-
+		 *  specialized subagent since the workflow template already
 		 *  contains soly instructions. */
 		useSolyWorkerSubagents: boolean;
 	};

@@ -2,11 +2,13 @@
 // agents-install.ts — Idempotent install of soly-aware subagent configs
 // =============================================================================
 //
-// Soly ships its own variants of pi-subagents' worker and oracle, with
-// soly-specific system prompts (path discipline, plan structure, todo
-// integration). pi-subagents discovers agents from `~/.pi/agent/agents/`
-// (and a few other paths), so on first session_start we copy our agent
-// `.md` files there.
+// Soly ships ONE subagent: `soly-manager`. It's a workflow executor that
+// switches modes (worker / debugger / tester / reviewer / refactor /
+// documenter / oracle / planner) based on the task brief the parent passes.
+// One agent, one system prompt, all roles.
+//
+// pi-subagents discovers agents from `~/.pi/agent/agents/`, so on first
+// session_start we copy our `soly-manager.md` there.
 //
 // IDEMPOTENT: if the target file already exists (user may have customized
 // it), we do NOT overwrite. This is one-way "first install wins".
@@ -18,13 +20,7 @@ import * as path from "node:path";
 
 /** soly agent files bundled with the extension. */
 const SHIPPED_AGENTS = [
-	"soly-worker.md",
-	"soly-debugger.md",
-	"soly-tester.md",
-	"soly-refactor.md",
-	"soly-oracle.md",
-	"soly-reviewer.md",
-	"soly-documenter.md",
+	"soly-manager.md",
 ] as const;
 
 /** Where pi-subagents looks for user agents. Respects HOME/USERPROFILE

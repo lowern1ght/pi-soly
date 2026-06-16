@@ -7,8 +7,9 @@
 // agent). Generic — works with pi-subagents' built-ins (worker, oracle,
 // scout, ...) AND any user-defined agent in `~/.pi/agent/agents/`.
 //
-// Cycle order (Shift+Tab in pi is taken by thinking-level, so we use
-// Ctrl+Shift+S — mnemonic for "S"witch).
+// Cycle order (Shift+Tab in pi is taken by thinking-level; we use Ctrl+Tab
+// as the primary shortcut, with F2 as fallback for terminals that don't
+// pass Ctrl+Tab through).
 //
 // Communication with other extensions:
 // - Writes `globalThis.__PI_SWITCH_AGENT__` (in-process)
@@ -29,11 +30,7 @@ export const BUILTIN_AGENTS: readonly string[] = [
 	"worker",
 	"oracle",
 	"scout",
-	"researcher",
-	"planner",
-	"context-builder",
 	"reviewer",
-	"delegate",
 ] as const;
 
 /** Visual metadata for every known agent. Used by the rich status badge,
@@ -49,11 +46,7 @@ export const AGENT_META: Record<string, AgentMeta> = {
 	worker: { emoji: "\u26a1", shortLabel: "worker", description: "generic implementation, all tools", writesFiles: true },
 	oracle: { emoji: "\ud83d\udd2e", shortLabel: "oracle", description: "decision-consistency, no file edits", writesFiles: false },
 	scout: { emoji: "\ud83d\udd0d", shortLabel: "scout", description: "codebase recon, read-only", writesFiles: false },
-	researcher: { emoji: "\ud83d\udcda", shortLabel: "researcher", description: "external docs / libraries", writesFiles: false },
-	planner: { emoji: "\ud83d\udccb", shortLabel: "planner", description: "planning + ordering, no code", writesFiles: false },
-	"context-builder": { emoji: "\ud83c\udfd7", shortLabel: "ctx-builder", description: "context handoff for other agents", writesFiles: true },
 	reviewer: { emoji: "\ud83d\udc40", shortLabel: "reviewer", description: "adversarial code review", writesFiles: false },
-	delegate: { emoji: "\ud83e\udd1d", shortLabel: "delegate", description: "pure orchestration, dispatches others", writesFiles: false },
 };
 
 /** Get metadata for an agent. Falls back to a neutral entry for unknown. */
@@ -160,7 +153,7 @@ export function groupedAvailableAgents(userDir?: string): Array<{ header: string
 export function formatHeaderLine(agent: string): string {
 	const meta = getAgentMeta(agent);
 	const writeTag = meta.writesFiles ? "" : " \u00b7 read-only";
-	return `${meta.emoji} ${agent}  \u00b7  ${meta.description}${writeTag}    [Ctrl+Shift+S to cycle]`;
+	return `${meta.emoji} ${agent}  \u00b7  ${meta.description}${writeTag}    [Ctrl+Tab to cycle]`;
 }
 
 // ---------------------------------------------------------------------------

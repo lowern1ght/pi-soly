@@ -105,7 +105,7 @@ describe("formatHeaderLine", () => {
 	test("always non-empty (even for default)", () => {
 		const h = formatHeaderLine("worker");
 		expect(h).toContain("worker");
-		expect(h).toContain("Ctrl+Shift+S");
+		expect(h).toContain("Ctrl+Tab");
 	});
 	test("includes read-only tag when applicable", () => {
 		const h = formatHeaderLine("oracle");

@@ -15,7 +15,7 @@
 // UI philosophy:
 //   - Header is for content, not for tool chrome. Move agents to footer.
 //   - Click to explore, hotkey to power-use, no DOM clutter in between.
-//   - Visual change is the pill text + a one-line toast on switch.
+//   - Visual change is the pill text only. Chat stays clean.
 // =============================================================================
 
 import type { ExtensionAPI, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
@@ -242,7 +242,7 @@ function createAgent(
 		const description = desc?.trim() || `custom agent (${name})`;
 		fs.writeFileSync(file, agentTemplate(name, description), "utf-8");
 		ui.notify(
-			`pi-switch: created ${file}\n  → next Ctrl+Shift+S to see it in the cycle\n  → edit the system prompt to specialize`,
+			`pi-switch: created ${file}\n  → next Ctrl+Tab to see it in the cycle\n  → edit the system prompt to specialize`,
 			"info",
 		);
 	});

@@ -13,9 +13,10 @@ import { availableAgents } from "../core.js";
 describe("/agent handler parse logic (regression for `/agent researcher` bug)", () => {
 	// The original bug: `/agent researcher` was interpreted as "show list"
 	// instead of "set agent to researcher" because the parser only checked
-	// the SECOND token, not the first.
+	// the SECOND token, not the first. (After cycle reduction, `researcher`
+	// is no longer a built-in, so we use `oracle` as the example agent.)
 	test("single-arg '/agent <name>' is a set, not a list", () => {
-		const input = "researcher";
+		const input = "oracle";
 		const parts = input.trim().split(/\s+/);
 		const subcommand = parts[0]?.toLowerCase();
 		const cycle = availableAgents();

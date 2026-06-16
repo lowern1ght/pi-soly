@@ -85,9 +85,9 @@ export default function solyExtension(pi: ExtensionAPI) {
 
 	// ============================================================================
 	// Agent switcher: REMOVED. The agent cycler is now owned by the
-	// separate `pi-switch` extension (header bar + Ctrl+Shift+S + /agent slash).
-	// Soly still owns the soly-specific agent files (soly-worker.md etc.) and
-	// the auto-install on opt-in. Workflows read the current agent from
+	// separate `pi-switch` extension (footer pill + Ctrl+Tab + /agent slash).
+	// Soly owns a single subagent (soly-manager.md) and the auto-install on
+	// opt-in. Workflows read the current agent from
 	// globalThis.__PI_SWITCH_AGENT__ (set by pi-switch).
 	// ============================================================================
 
@@ -328,7 +328,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 	// and mnemonic for "A"gent.)
 	// ============================================================================
 	// Agent switcher REMOVED — moved to the separate `pi-switch` extension.
-	// Soly no longer owns Ctrl+Shift+S, the header bar, or /agent slash.
+	// Soly no longer owns Ctrl+Tab, the footer pill, or /agent slash.
 	// The current agent is read by soly workflows from
 	// globalThis.__PI_SWITCH_AGENT__ (set by pi-switch), with a fallback
 	// to "worker" if pi-switch isn't installed.
@@ -388,16 +388,16 @@ export default function solyExtension(pi: ExtensionAPI) {
 			}
 		}
 
-		// Auto-install soly-aware subagent configs (soly-worker, soly-oracle)
-		// to ~/.pi/agent/agents/ on first run. Opt-in via
-		// config `agent.useSolyWorkerSubagents` (default false). Idempotent —
-		// respects any existing user-customized copies.
+		// Auto-install soly-manager subagent config to ~/.pi/agent/agents/
+		// on first run. Opt-in via config `agent.useSolyWorkerSubagents`
+		// (default false). Idempotent — respects any existing user-
+		// customized copies.
 		if (activeConfig.agent.useSolyWorkerSubagents) {
 			const extRoot = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
 			const installResult = installSolyAgents(extRoot);
 			if (installResult.installed.length > 0) {
 				ctx.ui.notify(
-					`soly: installed subagent configs (${installResult.installed.join(", ")}) — run \`/subagents-doctor\` to verify`,
+					`soly: installed subagent config (${installResult.installed.join(", ")}) — run \`/subagents-doctor\` to verify`,
 					"info",
 				);
 			}

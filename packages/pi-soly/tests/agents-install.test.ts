@@ -1,5 +1,5 @@
 // =============================================================================
-// tests/agents-install.test.ts — Tests for soly subagent install
+// tests/agents-install.test.ts — Tests for soly-manager install
 // =============================================================================
 
 /// <reference types="bun-types" />
@@ -19,20 +19,9 @@ beforeAll(() => {
 	tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "soly-agents-"));
 	fakeExt = path.join(tmpRoot, "soly-ext");
 	fakeHome = path.join(tmpRoot, "home");
-	// Fake extension structure: agents/ with the shipped files (all 7)
+	// Fake extension structure: agents/ with the single shipped file
 	fs.mkdirSync(path.join(fakeExt, "agents"), { recursive: true });
-	const shippedNames = [
-		"soly-worker",
-		"soly-debugger",
-		"soly-tester",
-		"soly-refactor",
-		"soly-oracle",
-		"soly-reviewer",
-		"soly-documenter",
-	];
-	for (const n of shippedNames) {
-		fs.writeFileSync(path.join(fakeExt, "agents", `${n}.md`), `# ${n} (test fixture)\n`);
-	}
+	fs.writeFileSync(path.join(fakeExt, "agents", "soly-manager.md"), "# soly-manager (test fixture)\n");
 	// Fake $HOME
 	fs.mkdirSync(fakeHome, { recursive: true });
 	// Ensure the user agents dir doesn't have leftovers from prior test runs
@@ -51,43 +40,33 @@ afterAll(() => {
 });
 
 describe("installSolyAgents", () => {
-	test("copies shipped agents to ~/.pi/agent/agents/ on first run", () => {
+	test("copies soly-manager to ~/.pi/agent/agents/ on first run", () => {
 		const result = installSolyAgents(fakeExt);
-		expect(result.installed.length).toBe(7);
-		expect(result.installed).toContain("soly-worker.md");
-		expect(result.installed).toContain("soly-debugger.md");
-		expect(result.installed).toContain("soly-tester.md");
-		expect(result.installed).toContain("soly-refactor.md");
-		expect(result.installed).toContain("soly-oracle.md");
-		expect(result.installed).toContain("soly-reviewer.md");
-		expect(result.installed).toContain("soly-documenter.md");
+		expect(result.installed.length).toBe(1);
+		expect(result.installed).toContain("soly-manager.md");
 		expect(result.skipped).toEqual([]);
 		expect(result.errors).toEqual([]);
-		// Files now exist in fake home
+		// File now exists in fake home
 		const userDir = path.join(fakeHome, ".pi", "agent", "agents");
-		expect(fs.existsSync(path.join(userDir, "soly-worker.md"))).toBe(true);
-		expect(fs.existsSync(path.join(userDir, "soly-oracle.md"))).toBe(true);
+		expect(fs.existsSync(path.join(userDir, "soly-manager.md"))).toBe(true);
 	});
 
 	test("second call is a no-op (idempotent)", () => {
 		const result = installSolyAgents(fakeExt);
 		expect(result.installed).toEqual([]);
-		expect(result.skipped.length).toBe(7);
-		expect(result.skipped).toContain("soly-worker.md");
-		expect(result.skipped).toContain("soly-debugger.md");
-		expect(result.skipped).toContain("soly-oracle.md");
-		expect(result.skipped).toContain("soly-documenter.md");
+		expect(result.skipped.length).toBe(1);
+		expect(result.skipped).toContain("soly-manager.md");
 	});
 
-	test("does NOT overwrite user-customized agent files", () => {
-		// User customizes soly-worker.md in their agents dir
+	test("does NOT overwrite user-customized soly-manager.md", () => {
+		// User customizes soly-manager.md in their agents dir
 		const userDir = path.join(fakeHome, ".pi", "agent", "agents");
-		const customPath = path.join(userDir, "soly-worker.md");
-		fs.writeFileSync(customPath, "# USER CUSTOMIZED soly-worker\n");
+		const customPath = path.join(userDir, "soly-manager.md");
+		fs.writeFileSync(customPath, "# USER CUSTOMIZED soly-manager\n");
 
 		const result = installSolyAgents(fakeExt);
 		expect(result.installed).toEqual([]);
-		expect(result.skipped).toContain("soly-worker.md");
+		expect(result.skipped).toContain("soly-manager.md");
 
 		// User's content preserved
 		const content = fs.readFileSync(customPath, "utf-8");
@@ -110,16 +89,14 @@ describe("installSolyAgents", () => {
 		process.env.HOME = freshHome;
 
 		try {
-			// Fresh fake ext with only one of seven agents
+			// Fresh fake ext with NO agents dir contents
 			const partialExt = path.join(tmpRoot, "partial-ext-" + Date.now());
 			fs.mkdirSync(path.join(partialExt, "agents"), { recursive: true });
-			fs.writeFileSync(path.join(partialExt, "agents", "soly-worker.md"), "# worker\n");
-			// 6 others deliberately missing
+			// soly-manager.md deliberately missing
 			const result = installSolyAgents(partialExt);
-			expect(result.installed).toContain("soly-worker.md");
-			expect(result.errors.length).toBe(6);
-			expect(result.errors.some((e) => e.includes("soly-oracle.md"))).toBe(true);
-			expect(result.errors.some((e) => e.includes("soly-debugger.md"))).toBe(true);
+			expect(result.installed).toEqual([]);
+			expect(result.errors.length).toBe(1);
+			expect(result.errors.some((e) => e.includes("soly-manager.md"))).toBe(true);
 		} finally {
 			process.env.HOME = prevHome;
 		}
@@ -127,15 +104,14 @@ describe("installSolyAgents", () => {
 });
 
 describe("checkSolyAgentsInstalled", () => {
-	test("reports which shipped agents are present", () => {
-		// soly-worker is user-customized from previous test; soly-oracle is installed
+	test("reports soly-manager as present", () => {
+		// soly-manager is user-customized from previous test; still "installed"
 		const result = checkSolyAgentsInstalled(fakeExt);
-		expect(result.installed).toContain("soly-worker.md"); // user-customized but still "installed"
-		expect(result.installed).toContain("soly-oracle.md");
+		expect(result.installed).toContain("soly-manager.md");
 		expect(result.missing).toEqual([]);
 	});
 
-	test("reports missing agents when none are installed", () => {
+	test("reports missing when soly-manager is not installed", () => {
 		// Temporarily point HOME to an empty dir
 		const emptyHome = path.join(tmpRoot, "empty-home-" + Date.now());
 		fs.mkdirSync(emptyHome, { recursive: true });
@@ -143,11 +119,8 @@ describe("checkSolyAgentsInstalled", () => {
 		process.env.HOME = emptyHome;
 		try {
 			const result = checkSolyAgentsInstalled(fakeExt);
-			expect(result.missing.length).toBe(7);
-			expect(result.missing).toContain("soly-worker.md");
-			expect(result.missing).toContain("soly-debugger.md");
-			expect(result.missing).toContain("soly-oracle.md");
-			expect(result.missing).toContain("soly-documenter.md");
+			expect(result.missing.length).toBe(1);
+			expect(result.missing).toContain("soly-manager.md");
 			expect(result.installed).toEqual([]);
 		} finally {
 			process.env.HOME = prevHome;
