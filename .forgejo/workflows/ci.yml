@@ -6,11 +6,11 @@ on:
 
 jobs:
   test:
-    runs-on: docker
+    runs-on: linux
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
       # bun is pre-installed on the runner host at /usr/local/bin/bun (PATH).
-      # This avoids the slow download of bun.sh/install on every CI run.
+      # No setup-bun action needed — saves the slow bun.sh download.
       - name: Verify bun
         run: bun --version
       - name: Install
@@ -23,7 +23,7 @@ jobs:
   publish:
     needs: test
     if: startsWith(github.ref, 'refs/tags/')
-    runs-on: docker
+    runs-on: linux
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
       - name: Verify bun
