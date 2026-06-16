@@ -34,6 +34,7 @@ import type { SolyConfig } from "./config.ts";
 import { migrateSolyDir } from "./migrate.js";
 import { initSolyProject } from "./init.js";
 import { readNotifications, formatNotifications } from "./notifications-log.js";
+import { formatStatus } from "./status.js";
 
 /** Minimum ui surface the command handlers actually need. */
 export interface CommandUI {
