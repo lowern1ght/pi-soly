@@ -28,6 +28,7 @@
 
 import { Box, Spacer, Text } from "@earendil-works/pi-tui";
 import type { ExtensionUIContext, Theme, TUI } from "@earendil-works/pi-coding-agent";
+import { appendNotification } from "./notifications-log.ts";
 
 /** Theme background color names (subset of ThemeBg). */
 export type NotifBg =
@@ -116,6 +117,7 @@ export function notifyNudge(
 	ui: ExtensionUIContext,
 	variant: "nonTrivial" | "research",
 	angle: string,
+	cwd?: string,
 ): void {
 	const title = variant === "research" ? "soly · research-heavy" : "soly · non-trivial";
 	const body = variant === "research"
@@ -132,6 +134,9 @@ export function notifyNudge(
 		bg: "customMessageBg",
 		autoClearMs: 4000, // nudge is transient — clears before next user input
 	});
+	if (cwd) {
+		appendNotification(cwd, { kind: "nudge", title, body, meta: { variant } });
+	}
 }
 
 /** Deprecation: warn when an old path/convention is used. */
@@ -140,6 +145,7 @@ export function notifyDeprecation(
 	oldThing: string,
 	newThing: string,
 	hint?: string,
+	cwd?: string,
 ): void {
 	const body: string[] = [
 		`Using:     ${oldThing}`,
@@ -151,6 +157,13 @@ export function notifyDeprecation(
 		bg: "toolPendingBg", // warning yellow tint
 		autoClearMs: 12000,  // stays longer — user needs to see it
 	});
+	if (cwd) {
+		appendNotification(cwd, {
+			kind: "deprecation",
+			title: "soly · deprecation",
+			body,
+		});
+	}
 }
 
 // ---------------------------------------------------------------------------
