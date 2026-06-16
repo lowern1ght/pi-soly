@@ -106,7 +106,16 @@ export default function piSwitchExtension(pi: ExtensionAPI) {
 	// ----- Hot cycle (no popup, no confirmation) -----
 	// Ctrl+Tab is the primary shortcut (most terminals support it).
 	// F2 is kept as a backup for terminals that don't pass Ctrl+Tab through.
+	// Debounced: 180ms — terminal key auto-repeat can fire the same key 5+
+	// times per second, which would spam the chat with the same agent
+	// notification. The window covers auto-repeat but allows deliberate
+	// sequential presses.
+	let lastCycleTs = 0;
+	const CYCLE_DEBOUNCE_MS = 180;
 	const cycleShortcut = (sctx: { ui: ExtensionUIContext }): void => {
+		const now = Date.now();
+		if (now - lastCycleTs < CYCLE_DEBOUNCE_MS) return;
+		lastCycleTs = now;
 		lastUi = sctx.ui;
 		refreshCycle();
 		setAgent(nextAgent(currentAgent, cycle));
