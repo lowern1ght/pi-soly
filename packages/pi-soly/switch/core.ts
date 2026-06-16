@@ -65,29 +65,53 @@ export function isValidAgentName(name: string): boolean {
 }
 
 /** Discover agent `.md` files in user dir. */
-export function discoverUserAgents(userDir: string = path.join(os.homedir(), ".pi", "agent", "agents")): string[] {
-	if (!fs.existsSync(userDir)) return [];
-	const names: string[] = [];
-	for (const file of fs.readdirSync(userDir)) {
-		if (!file.endsWith(".md")) continue;
+/** User agent home directories, in priority order. First existing one
+ *  wins for new agent creation; all are read and merged in the cycle. */
+export function userAgentDirs(): string[] {
+	return [
+		path.join(os.homedir(), ".agents"),                          // vendor-neutral (preferred)
+		path.join(os.homedir(), ".pi", "agent", "agents"),           // pi's native
+	];
+}
+
+/** Read all user agent names from every registered home dir. Dedupes,
+ *  first-occurrence wins. */
+export function discoverUserAgents(): string[] {
+	const seen = new Set<string>();
+	const out: string[] = [];
+	for (const dir of userAgentDirs()) {
+		if (!fs.existsSync(dir)) continue;
+		let entries: string[];
 		try {
-			const raw = fs.readFileSync(path.join(userDir, file), "utf-8");
-			const m = raw.match(/^---\n([\s\S]*?)\n---/);
-			if (!m) continue;
-			const fm = m[1] ?? "";
-			const nameMatch = fm.match(/^name:\s*(.+)$/m);
-			if (nameMatch) {
-				const n = (nameMatch[1] ?? "").trim();
-				if (isValidAgentName(n)) names.push(n);
-			}
-		} catch { /* skip */ }
+			entries = fs.readdirSync(dir);
+		} catch {
+			continue;
+		}
+		for (const file of entries) {
+			if (!file.endsWith(".md")) continue;
+			try {
+				const raw = fs.readFileSync(path.join(dir, file), "utf-8");
+				const m = raw.match(/^---\n([\s\S]*?)\n---/);
+				if (!m) continue;
+				const fm = m[1] ?? "";
+				const nameMatch = fm.match(/^name:\s*(.+)$/m);
+				if (nameMatch) {
+					const n = (nameMatch[1] ?? "").trim();
+					if (isValidAgentName(n) && !seen.has(n)) {
+						seen.add(n);
+						out.push(n);
+					}
+				}
+			} catch { /* skip unreadable */ }
+		}
 	}
-	return names;
+	return out;
 }
 
 /** Build the full cycle of available agents. Built-ins first, then
- *  user-discovered. Dedupes while preserving first-occurrence order. */
-export function availableAgents(userDir?: string): string[] {
+ *  user-discovered (from all user agent home dirs). Dedupes while
+ *  preserving first-occurrence order. */
+export function availableAgents(): string[] {
 	const out: string[] = [];
 	const seen = new Set<string>();
 	const push = (n: string) => {
@@ -97,7 +121,7 @@ export function availableAgents(userDir?: string): string[] {
 		}
 	};
 	for (const a of BUILTIN_AGENTS) push(a);
-	for (const a of discoverUserAgents(userDir)) push(a);
+	for (const a of discoverUserAgents()) push(a);
 	return out;
 }
 
@@ -139,8 +163,8 @@ export function formatAgentSwitchNotify(prev: string, next: string): string {
 }
 
 /** Group agents: built-ins + user-defined. */
-export function groupedAvailableAgents(userDir?: string): Array<{ header: string; agents: string[] }> {
-	const all = availableAgents(userDir);
+export function groupedAvailableAgents(): Array<{ header: string; agents: string[] }> {
+	const all = availableAgents();
 	const groups: Array<{ header: string; agents: string[] }> = [];
 	const builtin = all.filter((a) => BUILTIN_AGENTS.includes(a));
 	if (builtin.length > 0) groups.push({ header: "built-in", agents: builtin });

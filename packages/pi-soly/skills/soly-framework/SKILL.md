@@ -43,6 +43,11 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 
 ```
 <project-root>/
+├── AGENTS.md                      # vendor-neutral agent context (loaded by pi)
+├── agents.md                      # same as AGENTS.md, lowercase accepted
+├── .agents/                       # project-level agent definitions
+│   ├── project-reviewer.md
+│   └── data-scientist.md
 ├── .soly/
 │   ├── ROADMAP.md                 # phase table
 │   ├── STATE.md                   # current position + decisions log
@@ -274,8 +279,26 @@ Intent docs are 0-point — written BEFORE any plan, by humans. They define the 
 
 1. `soly init` (or manually create `.soly/`, `docs/`, `rules/`)
 2. Write 1-3 intent docs in `.soly/docs/`
-3. Create `ROADMAP.md` with phase table
-4. `/plan 1` to start phase 1
+3. Optionally write `AGENTS.md` (or `agents.md`) at project root with project conventions
+4. Create `ROADMAP.md` with phase table
+5. `/plan 1` to start phase 1
+
+### Add project-specific agents
+
+Drop a markdown file in `.agents/<name>.md` (project) or `~/.agents/<name>.md` (user):
+
+```markdown
+---
+name: data-scientist
+description: Reads CSVs, runs pandas, plots results
+thinking: medium
+tools: read, bash
+---
+
+You are a data scientist. ...
+```
+
+Both `~/.agents/` and `~/.pi/agent/agents/` are read (vendor-neutral preferred). `Ctrl+Tab` to see them in the cycle.
 
 ### Add a feature to an existing phase
 

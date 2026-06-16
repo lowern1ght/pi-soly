@@ -29,7 +29,7 @@ export const KNOWN_INTEGRATIONS: KnownIntegration[] = [
 	{
 		tool: "ask_pro",
 		extension: "pi-ask",
-		summary: "Multi-question tabbed picker (Claude Code style).",
+		summary: "Multi-question tabbed picker.",
 		whenToUse:
 			"Use instead of `soly_ask_user` for `soly discuss` flows when you have multiple related questions. PREFERRED in `soly discuss` when available.",
 	},

@@ -35,9 +35,12 @@ const SHIPPED_SKILLS = [
 
 /** Where pi looks for user agents. Respects HOME/USERPROFILE for
  *  testability (otherwise we'd always write to the real user home). */
-function userAgentsDir(): string {
+function userAgentsDirs(): string[] {
 	const home = process.env.HOME || process.env.USERPROFILE || os.homedir();
-	return path.join(home, ".pi", "agent", "agents");
+	return [
+		path.join(home, ".agents"),                          // vendor-neutral (preferred)
+		path.join(home, ".pi", "agent", "agents"),           // pi's native
+	];
 }
 
 /** Where pi looks for user skills. */
@@ -87,20 +90,27 @@ function copyDirIfMissing(from: string, to: string): "installed" | "skipped" | "
 	}
 }
 
-/** Install shipped soly agents to `~/.pi/agent/agents/`. Idempotent. */
+/** Install shipped soly agents to `~/.agents/` (vendor-neutral,
+ *  preferred). Legacy `~/.pi/agent/agents/` copies are left alone —
+ *  `discoverUserAgents` reads both, so old installs still work. */
 export function installSolyAgents(extensionRoot: string): InstallResult {
 	const result: InstallResult = { installed: [], skipped: [], errors: [] };
 	const src = shippedAgentsDir(extensionRoot);
-	const dst = userAgentsDir();
 
 	if (!fs.existsSync(src)) return result; // dev mode no-op
 
-	try {
-		fs.mkdirSync(dst, { recursive: true });
-	} catch (err) {
-		result.errors.push(`mkdir ${dst}: ${(err as Error).message}`);
-		return result;
+	// Try vendor-neutral first, then fall back to pi's native dir.
+	let dst: string | null = null;
+	for (const candidate of userAgentsDirs()) {
+		try {
+			fs.mkdirSync(candidate, { recursive: true });
+			dst = candidate;
+			break;
+		} catch (err) {
+			result.errors.push(`mkdir ${candidate}: ${(err as Error).message}`);
+		}
 	}
+	if (!dst) return result;
 
 	for (const name of SHIPPED_AGENTS) {
 		const from = path.join(src, name);
@@ -145,20 +155,18 @@ export function installSolyAssets(extensionRoot: string): {
 	};
 }
 
-/** Check which shipped soly agents are present in the user dir. Used by doctor. */
+/** Check which shipped soly agents are present across all user agent
+ *  homes. A file counts as "installed" if it's in ANY of the dirs. */
 export function checkSolyAgentsInstalled(extensionRoot: string): {
 	installed: string[];
 	missing: string[];
 } {
-	const dst = userAgentsDir();
 	const installed: string[] = [];
 	const missing: string[] = [];
 	for (const name of SHIPPED_AGENTS) {
-		if (fs.existsSync(path.join(dst, name))) {
-			installed.push(name);
-		} else {
-			missing.push(name);
-		}
+		const present = userAgentsDirs().some((dir) => fs.existsSync(path.join(dir, name)));
+		if (present) installed.push(name);
+		else missing.push(name);
 	}
 	return { installed, missing };
 }

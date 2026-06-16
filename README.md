@@ -78,7 +78,7 @@ State lives in `.soly/` — portable, git-friendly, human-readable.
 
 ### 🎤 Multi-Question Picker
 
-Claude Code-style `ask_pro` for the LLM. Single-select, multi-select, recommended ⭐, free-text Other.
+Multi-question picker `ask_pro` for the LLM. Tabbed UI: single-select, multi-select, recommended ⭐, free-text Other.
 
 ```ts
 ask_pro({

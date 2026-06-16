@@ -3,7 +3,7 @@
 // =============================================================================
 //
 // Registers one LLM tool: `ask_pro`. Lets the LLM ask the user a list of
-// questions at once via a Claude Code-style tabbed picker (tabs, numbered
+// questions at once via a tabbed picker (tabs, numbered
 // options, ⭐ recommended answer, optional multi-select). All answers
 // returned in a single call.
 //
@@ -39,7 +39,7 @@ export default function piAskExtension(pi: ExtensionAPI) {
 		name: "ask_pro",
 		label: "pi-ask ask_pro",
 		description:
-			"Ask the user multiple questions at once via a Claude Code-style tabbed picker. Each question is a tab at the top. Options are numbered (1-N instant-pick), the recommended answer is marked ⭐. Supports single-select (default, auto-advance on pick) and multi-select (Enter toggles, last question shows Submit). All answers returned in one call. Use for progressive Q&A flows like `soly discuss`.",
+			"Ask the user multiple questions at once via a tabbed picker. Each question is a tab at the top. Options are numbered (1-N instant-pick), the recommended answer is marked ⭐. Supports single-select (default, auto-advance on pick) and multi-select (Enter toggles, last question shows Submit). All answers returned in one call. Use for progressive Q&A flows like `soly discuss`.",
 		parameters: Type.Object({
 			questions: Type.Array(
 				Type.Object({

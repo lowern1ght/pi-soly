@@ -124,13 +124,22 @@ export function showDoctor(_cmd: unknown, state: SolyState, ui: InspectUI, confi
 		if (fs.existsSync(phasesDir)) {
 			let totalPlans = 0;
 			let badPlans = 0;
+			// Tight match: "NN-something-PLAN.md" — phase number prefix, then
+			// slug, then -PLAN.md. Avoids matching "old-PLAN-PLAN.md" or
+			// "PLAN.md" without a phase prefix.
+			const planRe = /^\d{2,}-.+-PLAN\.md$/;
 			for (const p of fs.readdirSync(phasesDir, { withFileTypes: true })) {
 				if (!p.isDirectory() || p.name.startsWith(".")) continue;
 				for (const f of fs.readdirSync(path.join(phasesDir, p.name))) {
-					if (/-PLAN\.md$/.test(f)) {
+					if (planRe.test(f)) {
 						totalPlans++;
-						const raw = fs.readFileSync(path.join(phasesDir, p.name, f), "utf-8");
-						if (!raw.startsWith("---\n") && !raw.startsWith("---\r\n")) badPlans++;
+						try {
+							const raw = fs.readFileSync(path.join(phasesDir, p.name, f), "utf-8");
+							if (!raw.startsWith("---\n") && !raw.startsWith("---\r\n")) badPlans++;
+						} catch {
+							// Unreadable plan: count as bad so user notices
+							badPlans++;
+						}
 					}
 				}
 			}

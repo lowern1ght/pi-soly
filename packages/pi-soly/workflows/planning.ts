@@ -284,6 +284,15 @@ When the subagent returns, summarize what was refined. Do not execute — planni
 			const featureReadme = path.join(featureDir, "README.md");
 			try {
 				fs.mkdirSync(path.join(featureDir, "tasks"), { recursive: true });
+			} catch (e) {
+				return {
+					handled: true,
+					transformedText:
+						`soly plan: could not create .soly/features/${target.feature}/tasks/ (${(e as Error).message}). ` +
+						`Create it manually: \`mkdir -p .soly/features/${target.feature}/tasks/\``,
+				};
+			}
+			try {
 				if (!fs.existsSync(featureReadme)) {
 					fs.writeFileSync(
 						featureReadme,
@@ -295,8 +304,8 @@ When the subagent returns, summarize what was refined. Do not execute — planni
 				return {
 					handled: true,
 					transformedText:
-						`soly plan: could not auto-create .soly/features/${target.feature}/ (${(e as Error).message}). ` +
-						`Create it manually: \`mkdir -p .soly/features/${target.feature}/tasks/\``,
+						`soly plan: created .soly/features/${target.feature}/tasks/ but failed to write README.md (${(e as Error).message}). ` +
+						`Continue manually: \`touch .soly/features/${target.feature}/README.md\``,
 				};
 			}
 			// Re-read state so the planner sees the new feature

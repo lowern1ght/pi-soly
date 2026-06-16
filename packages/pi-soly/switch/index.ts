@@ -231,20 +231,50 @@ function createAgent(
 		ui.notify(`pi-switch: invalid name "${name}". Use letters/digits/dashes/underscores, ≤64 chars.`, "error");
 		return;
 	}
-	const userDir = path.join(os.homedir(), ".pi", "agent", "agents");
-	fs.mkdirSync(userDir, { recursive: true });
-	const file = path.join(userDir, `${name}.md`);
+	// Write to ~/.agents/ (vendor-neutral) first; fall back to ~/.pi/agent/agents/
+	// (pi's native) if .agents/ doesn't exist or is unwritable.
+	const home = os.homedir();
+	const candidates = [
+		path.join(home, ".agents"),
+		path.join(home, ".pi", "agent", "agents"),
+	];
+	const targetDir = candidates.find((d) => {
+		try {
+			if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+			// Probe write permission
+			const probe = path.join(d, ".pi-switch-write-probe");
+			fs.writeFileSync(probe, "");
+			fs.unlinkSync(probe);
+			return true;
+		} catch {
+			return false;
+		}
+	});
+	if (!targetDir) {
+		ui.notify(`pi-switch: could not find a writable agents dir (tried ${candidates.join(", ")}).`, "error");
+		return;
+	}
+	const file = path.join(targetDir, `${name}.md`);
 	if (fs.existsSync(file)) {
 		ui.notify(`pi-switch: ${file} already exists. edit it directly.`, "warning");
 		return;
 	}
 	void ui.input(`description for "${name}":`, "one-liner that shows in the picker")?.then((desc) => {
 		const description = desc?.trim() || `custom agent (${name})`;
-		fs.writeFileSync(file, agentTemplate(name, description), "utf-8");
-		ui.notify(
-			`pi-switch: created ${file}\n  → next Ctrl+Tab to see it in the cycle\n  → edit the system prompt to specialize`,
-			"info",
-		);
+		try {
+			// Atomic write: tmp + rename. Avoids partial files and the
+			// race where two parallel createAgent calls would clobber each
+			// other's write after both pass the existsSync check.
+			const tmp = `${file}.tmp-${process.pid}-${Date.now()}`;
+			fs.writeFileSync(tmp, agentTemplate(name, description), "utf-8");
+			fs.renameSync(tmp, file);
+			ui.notify(
+				`pi-switch: created ${file}\n  → next Ctrl+Tab to see it in the cycle\n  → edit the system prompt to specialize`,
+				"info",
+			);
+		} catch (err) {
+			ui.notify(`pi-switch: failed to write ${file}: ${(err as Error).message}`, "error");
+		}
 	});
 }
 

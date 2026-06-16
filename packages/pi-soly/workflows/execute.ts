@@ -309,18 +309,21 @@ When the subagent completes, synthesize the result. Do not re-execute its work.`
 		planNumber: isPlanLevel ? (target.plan ?? undefined) : undefined,
 	});
 
-	// For plan-level: also pull out the must_haves summary for inline cache.
-	const planFile = isPlanLevel
-		? path.join(phase.dir, `${phase.slug}-${String(target.plan).padStart(2, "0")}-${phase.slug.split("-").slice(1).join("-") || "plan"}-PLAN.md`)
-		: null;
-	// Fall back to findPlanFile if the conventional name didn't match.
-	let planFileResolved = planFile;
-	if (isPlanLevel && planFile && !fs.existsSync(planFile)) {
+	// For plan-level: find the PLAN.md. We always use the directory scan
+	// (the conventional name would require knowing the slug suffix, which
+	// is fragile and changed over time). Pattern: NN-MM-slug-PLAN.md.
+	let planFileResolved: string | null = null;
+	if (isPlanLevel && phase.dir) {
 		const padded = String(target.plan).padStart(2, "0");
-		const candidates = fs.readdirSync(phase.dir).filter((f) =>
-			new RegExp(`^\\d+-${padded}-.+-PLAN\\.md$`).test(f),
-		);
-		if (candidates.length > 0) planFileResolved = path.join(phase.dir, candidates[0]!);
+		let entries: string[];
+		try {
+			entries = fs.readdirSync(phase.dir);
+		} catch {
+			entries = [];
+		}
+		const re = new RegExp(`^\\d{2,}-${padded}-.+-PLAN\\.md$`);
+		const match = entries.find((f) => re.test(f));
+		if (match) planFileResolved = path.join(phase.dir, match);
 	}
 	const inlineSummary = isPlanLevel ? inlinePlanSummary(planFileResolved) : "_(phase-level exec — iterate all PLAN.md files; each iteration has its own bundle)_";
 

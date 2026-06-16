@@ -1,5 +1,5 @@
 // =============================================================================
-// picker.ts — Claude Code-style multi-question picker TUI component
+// picker.ts — multi-question picker TUI component
 // =============================================================================
 //
 // Renders a tabbed multi-question flow inside pi's TUI. One `ask_pro` tool
@@ -493,7 +493,7 @@ export class AskProComponent extends Container {
 			return;
 		}
 
-		// Space — toggle in multi-select (Claude Code convention).
+		// Space — toggle in multi-select.
 		// On "Other…", opens the input dialog (or toggles existing custom string).
 		// In single-select, Space is a no-op (Enter is the action key there).
 		if (keyData === KEY_SPACE) {

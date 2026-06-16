@@ -1,8 +1,7 @@
-# pi-ask — Claude Code-style multi-question picker for pi
+# pi-ask — multi-question picker for pi
 
 A small pi-coding-agent extension that registers one tool (`ask_pro`) for
-showing a **tabbed, multi-question picker** in pi's TUI. Inspired by Claude
-Code's `AskUserQuestion`.
+showing a **tabbed, multi-question picker** in pi's TUI.
 
 ## Features
 
@@ -88,10 +87,10 @@ Result:
 | `Enter` | **Single-select:** confirm + advance (or submit on last). **Multi-select:** advance to next question (or submit on last + all answered). Does NOT toggle. |
 | `Esc` | Cancel (returns `{cancelled: true}`) |
 
-Multi-select follows the Claude Code convention: **Space toggles, Enter
-advances/submits**. Single-select uses Enter as the universal action key
-(toggle/pick + advance). When you're on the last question and all
-questions are answered, the footer shows `⏎ submit` in accent color.
+Multi-select: **Space toggles, Enter advances/submits**. Single-select
+uses Enter as the universal action key (toggle/pick + advance). When
+you're on the last question and all questions are answered, the footer
+shows `⏎ submit` in accent color.
 
 ## Limits
 
@@ -101,30 +100,15 @@ questions are answered, the footer shows `⏎ submit` in accent color.
 - At most 1 `recommended: true` per question
 - TUI and RPC modes only (`hasUI: true`); print mode returns an error
 
-## Setup
-
-Drop the directory in `~/.pi/agent/extensions/`:
-
-```bash
-ls ~/.pi/agent/extensions/pi-ask/
-# index.ts picker.ts tests/ package.json tsconfig.json README.md
-```
-
-pi auto-discovers and loads it on next start. The `ask_pro` tool is then
-available to the LLM. No config required.
-
 ## Development
 
 ```bash
-cd ~/.pi/agent/extensions/pi-ask
+cd packages/pi-soly/ask
 bun test              # runs tests/picker.test.ts
 bun run typecheck     # tsc --noEmit
 ```
 
-CI: not configured (this is a single-file TUI component, low risk).
-Add `.github/workflows/ci.yml` if you want green-tick PRs.
-
-## Why a separate extension?
+## Why a separate module?
 
 The picker is **generic** — any pi extension (soly, your own tool, etc.) can
 use `ask_pro` to drive multi-question Q&A without re-implementing the TUI.

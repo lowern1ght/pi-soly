@@ -247,7 +247,7 @@ describe("AskProComponent — multi-select", () => {
 		expect(picker.getAnswers().get(0)).toEqual([0]); // multi preserved
 	});
 
-	test("Space toggles current selection in multi-select (Claude Code style)", () => {
+	test("Space toggles current selection in multi-select", () => {
 		const { picker } = setup(multiQuestions);
 		picker.handleInput("j"); // selectedIndex = 1 (Tokens)
 		picker.handleInput(" "); // Space toggles
