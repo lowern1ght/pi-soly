@@ -35,6 +35,7 @@ import {
 	saveAgent,
 } from "./core.ts";
 import { buildPiSwitchSection, recommendAgent } from "./prompt.ts";
+import { watchRotors, type WatcherHandle } from "./watcher.ts";
 
 const GLOBAL_KEY = "__PI_SWITCH_ROTOR__";
 
@@ -43,6 +44,22 @@ export default function piSwitchExtension(pi: ExtensionAPI) {
 	let currentRotor: string = DEFAULT_ROTOR;
 	let cycle: string[] = [DEFAULT_ROTOR];
 	let lastUi: ExtensionUIContext | null = null;
+	let rotorWatcher: WatcherHandle | null = null;
+
+	function startRotorWatcher(): void {
+		// Already running — restart to pick up new cwd
+		rotorWatcher?.stop();
+		rotorWatcher = watchRotors(cwd, {
+			onChange: () => {
+				refreshCycle();
+				publish();
+				rerender();
+			},
+			onNotify: (msg) => {
+				lastUi?.notify(`pi-switch: ${msg}`, "info");
+			},
+		});
+	}
 
 	function refreshCycle(): void {
 		cycle = availableAgents(cwd);
@@ -87,6 +104,7 @@ export default function piSwitchExtension(pi: ExtensionAPI) {
 		refreshCycle();
 		publish();
 		rerender();
+		startRotorWatcher();
 	});
 
 	// ----- before_agent_start: inject system-prompt section -----
