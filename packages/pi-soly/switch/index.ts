@@ -103,7 +103,7 @@ export default function piSwitchExtension(pi: ExtensionAPI) {
 	});
 
 	// ----- Ctrl+Shift+S: hot cycle (no popup, no confirmation) -----
-	pi.registerShortcut("ctrl+shift+s", {
+	pi.registerShortcut("f2", {
 		description: "Cycle to next agent (worker → oracle → scout → …)",
 		handler: (sctx) => {
 			lastUi = sctx.ui;
