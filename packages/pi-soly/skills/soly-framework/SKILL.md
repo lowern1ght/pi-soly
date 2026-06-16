@@ -45,16 +45,13 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 <project-root>/
 ├── AGENTS.md                      # vendor-neutral agent context (loaded by pi)
 ├── agents.md                      # same as AGENTS.md, lowercase accepted
-├── .agents/                       # project-level agent definitions
-│   ├── project-reviewer.md
-│   └── data-scientist.md
-├── .soly/
+├── .soly/                         # soly state (phases, plans, summaries)
 │   ├── ROADMAP.md                 # phase table
 │   ├── STATE.md                   # current position + decisions log
 │   ├── docs/                      # 0-point intent docs (human-written, locked)
 │   │   ├── vision.md
 │   │   └── architecture.md
-│   ├── rules/                     # project rules (version-controlled)
+│   ├── rules/                     # soly project rules (version-controlled)
 │   │   ├── code-style.md
 │   │   └── testing.md
 │   ├── phases/
@@ -70,7 +67,25 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 │   ├── iterations/                # per-execution context bundles (auto)
 │   ├── HANDOFF.json               # pause snapshot
 │   └── .continue-here.md          # pause resume marker
+├── .agents/                       # vendor-neutral agent config (per project)
+│   ├── rules/                     # agent rules (loaded with priority 3, after .soly/rules/)
+│   │   ├── code-style.md
+│   │   └── testing.md
+│   ├── skills/                    # project-scoped skills (pi auto-discovers)
+│   │   └── my-skill/
+│   │       └── SKILL.md
+│   ├── docs/                      # agent-specific docs (intent-style)
+│   │   └── architecture.md
+│   └── agents/                    # project-specific agent definitions
+│       ├── project-reviewer.md
+│       └── data-scientist.md
 ```
+
+**Two parallel conventions:** `.soly/` is soly-specific state (phases, plans). `.agents/` is vendor-neutral agent config (works with any AI tool that follows the AGENTS.md standard). The two coexist:
+
+- Use `.soly/` for soly workflow artifacts (PLAN.md, SUMMARY.md, etc.)
+- Use `.agents/` for things other AI tools should also see (rules, skills, agents)
+- Use `AGENTS.md` for top-level project-wide agent conventions
 
 ## Frontmatter conventions
 
@@ -285,7 +300,7 @@ Intent docs are 0-point — written BEFORE any plan, by humans. They define the 
 
 ### Add project-specific agents
 
-Drop a markdown file in `.agents/<name>.md` (project) or `~/.agents/<name>.md` (user):
+Drop a markdown file in `.agents/agents/<name>.md` (project) or `~/.agents/agents/<name>.md` (user):
 
 ```markdown
 ---
@@ -298,7 +313,13 @@ tools: read, bash
 You are a data scientist. ...
 ```
 
-Both `~/.agents/` and `~/.pi/agent/agents/` are read (vendor-neutral preferred). `Ctrl+Tab` to see them in the cycle.
+**Discovered from 4 locations** (priority order):
+1. `<project>/.agents/agents/` — project vendor-neutral (preferred)
+2. `<project>/.pi/agent/agents/` — project pi native (legacy)
+3. `~/.agents/agents/` — user vendor-neutral (preferred)
+4. `~/.pi/agent/agents/` — user pi native (legacy)
+
+`Ctrl+Tab` to see them in the cycle.
 
 ### Add a feature to an existing phase
 
@@ -334,9 +355,9 @@ If `/execute` complains about illegal partial state:
 - ❌ Edit `.soly/rules/` files you didn't write — those are project invariants
 - ❌ Skip the SUMMARY — illegal partial state
 - ❌ Spawn `soly-worker` or `soly-debugger` — use `soly-manager` (mode-switches)
-- ❌ Write rules in code comments — use `.soly/rules/*.md` files
+- ❌ Write rules in code comments — use `.soly/rules/*.md` or `.agents/rules/*.md` files
 - ❌ Edit `.soly/phases/*/PLAN.md` after `status: in_progress` — create a new plan
-- ❌ Put intent docs anywhere other than `.soly/docs/`
+- ❌ Put intent docs anywhere other than `.soly/docs/` (or `.agents/docs/` for vendor-neutral)
 
 ## When in doubt
 

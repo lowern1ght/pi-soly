@@ -353,10 +353,14 @@ export default function solyExtension(pi: ExtensionAPI) {
 		// Rules sources (priority order, higher wins on relPath collision).
 		// Project rules always beat global rules. .soly/rules.local/ is
 		// gitignored — for personal overrides on top of the project's rules.
+		// .agents/rules/ is the vendor-neutral project-level convention
+		// (same role as the old .claude/rules/).
 		ruleSources = [
 			{ dir: path.join(ctx.cwd, ".soly", "rules.local"), source: "project-soly", sourceLabel: "local", priority: 5 },
 			{ dir: path.join(ctx.cwd, ".soly", "rules"), source: "project-soly", sourceLabel: "soly", priority: 4 },
+			{ dir: path.join(ctx.cwd, ".agents", "rules"), source: "project-agents", sourceLabel: "agents", priority: 3 },
 			{ dir: path.join(os.homedir(), ".soly", "rules"), source: "global-soly", sourceLabel: "soly", priority: 2 },
+			{ dir: path.join(os.homedir(), ".agents", "rules"), source: "global-agents", sourceLabel: "agents", priority: 1 },
 		];
 		refreshRules();
 

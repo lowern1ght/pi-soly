@@ -123,14 +123,14 @@ describe("groupedAvailableAgents", () => {
 		expect(groups[0]?.header).toBe("built-in");
 	});
 	test("includes user group when present", () => {
-		// Use HOME override so the new ~.agents/ scan picks up our fixture
+		// Use HOME override so the new ~.agents/agents/ scan picks up our fixture
 		const home = process.env.HOME || process.env.USERPROFILE || os.homedir();
 		const prevHome = process.env.HOME;
 		const prevUserProfile = process.env.USERPROFILE;
 		const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "pis-home-"));
 		process.env.HOME = tmp;
 		process.env.USERPROFILE = tmp;
-		const agentsDir = path.join(tmp, ".agents");
+		const agentsDir = path.join(tmp, ".agents", "agents");
 		fs.mkdirSync(agentsDir, { recursive: true });
 		fs.writeFileSync(path.join(agentsDir, "my.md"), "---\nname: my-helper\n---\n# body\n");
 		const groups = groupedAvailableAgents();
@@ -140,6 +140,17 @@ describe("groupedAvailableAgents", () => {
 		process.env.HOME = prevHome ?? home;
 		process.env.USERPROFILE = prevUserProfile ?? home;
 		fs.rmSync(tmp, { recursive: true, force: true });
+	});
+
+	test("includes project agent when present (cwd scope)", () => {
+		const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "pis-proj-"));
+		const agentsDir = path.join(projectDir, ".agents", "agents");
+		fs.mkdirSync(agentsDir, { recursive: true });
+		fs.writeFileSync(path.join(agentsDir, "proj.md"), "---\nname: project-helper\n---\n# body\n");
+		const groups = groupedAvailableAgents(projectDir);
+		const userGroup = groups.find((g) => g.header === "user-defined");
+		expect(userGroup?.agents).toContain("project-helper");
+		fs.rmSync(projectDir, { recursive: true, force: true });
 	});
 });
 

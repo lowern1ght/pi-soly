@@ -65,23 +65,29 @@ export function isValidAgentName(name: string): boolean {
 }
 
 /** Discover agent `.md` files in user dir. */
-/** User agent home directories, in priority order. First existing one
- *  wins for new agent creation; all are read and merged in the cycle.
- *  Honors $HOME / $USERPROFILE so tests can redirect to a tmp dir. */
-export function userAgentDirs(): string[] {
+/** All known agent home directories, in priority order (project wins
+ *  over user-home; user-home `.agents/` wins over pi-native).
+ *  Project-level `.agents/agents/` is a vendor-neutral per-project
+ *  convention — same role as `.soly/` or the old `.claude/`.
+ *  Honors $HOME / $USERPROFILE for testability. */
+export function agentHomeDirs(cwd?: string): string[] {
 	const home = process.env.HOME || process.env.USERPROFILE || os.homedir();
-	return [
-		path.join(home, ".agents"),                          // vendor-neutral (preferred)
-		path.join(home, ".pi", "agent", "agents"),           // pi's native
-	];
+	const dirs: string[] = [];
+	if (cwd) {
+		dirs.push(path.join(cwd, ".agents", "agents"));         // project (vendor-neutral, preferred)
+		dirs.push(path.join(cwd, ".pi", "agent", "agents"));    // project (pi native, legacy)
+	}
+	dirs.push(path.join(home, ".agents", "agents"));              // user (vendor-neutral)
+	dirs.push(path.join(home, ".pi", "agent", "agents"));         // user (pi native, legacy)
+	return dirs;
 }
 
-/** Read all user agent names from every registered home dir. Dedupes,
- *  first-occurrence wins. */
-export function discoverUserAgents(): string[] {
+/** Read all agent names from every home dir. Dedupes, first-occurrence
+ *  wins. If cwd is provided, project dirs are scanned first. */
+export function discoverUserAgents(cwd?: string): string[] {
 	const seen = new Set<string>();
 	const out: string[] = [];
-	for (const dir of userAgentDirs()) {
+	for (const dir of agentHomeDirs(cwd)) {
 		if (!fs.existsSync(dir)) continue;
 		let entries: string[];
 		try {
@@ -111,9 +117,9 @@ export function discoverUserAgents(): string[] {
 }
 
 /** Build the full cycle of available agents. Built-ins first, then
- *  user-discovered (from all user agent home dirs). Dedupes while
- *  preserving first-occurrence order. */
-export function availableAgents(): string[] {
+ *  project-level agents (if cwd given), then user-home agents.
+ *  Dedupes while preserving first-occurrence order. */
+export function availableAgents(cwd?: string): string[] {
 	const out: string[] = [];
 	const seen = new Set<string>();
 	const push = (n: string) => {
@@ -123,7 +129,7 @@ export function availableAgents(): string[] {
 		}
 	};
 	for (const a of BUILTIN_AGENTS) push(a);
-	for (const a of discoverUserAgents()) push(a);
+	for (const a of discoverUserAgents(cwd)) push(a);
 	return out;
 }
 
@@ -165,8 +171,8 @@ export function formatAgentSwitchNotify(prev: string, next: string): string {
 }
 
 /** Group agents: built-ins + user-defined. */
-export function groupedAvailableAgents(): Array<{ header: string; agents: string[] }> {
-	const all = availableAgents();
+export function groupedAvailableAgents(cwd?: string): Array<{ header: string; agents: string[] }> {
+	const all = availableAgents(cwd);
 	const groups: Array<{ header: string; agents: string[] }> = [];
 	const builtin = all.filter((a) => BUILTIN_AGENTS.includes(a));
 	if (builtin.length > 0) groups.push({ header: "built-in", agents: builtin });

@@ -34,12 +34,14 @@ const SHIPPED_SKILLS = [
 ] as const;
 
 /** Where pi looks for user agents. Respects HOME/USERPROFILE for
- *  testability (otherwise we'd always write to the real user home). */
+ *  testability (otherwise we'd always write to the real user home).
+ *  Path scheme: `<root>/.agents/agents/` (vendor-neutral) and
+ *  `<root>/.pi/agent/agents/` (pi native, legacy). */
 function userAgentsDirs(): string[] {
 	const home = process.env.HOME || process.env.USERPROFILE || os.homedir();
 	return [
-		path.join(home, ".agents"),                          // vendor-neutral (preferred)
-		path.join(home, ".pi", "agent", "agents"),           // pi's native
+		path.join(home, ".agents", "agents"),                // vendor-neutral (preferred)
+		path.join(home, ".pi", "agent", "agents"),           // pi native
 	];
 }
 

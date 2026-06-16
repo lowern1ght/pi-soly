@@ -45,7 +45,7 @@ export default function piSwitchExtension(pi: ExtensionAPI) {
 	let lastUi: ExtensionUIContext | null = null;
 
 	function refreshCycle(): void {
-		cycle = availableAgents();
+		cycle = availableAgents(cwd);
 		if (!cycle.includes(currentAgent)) currentAgent = DEFAULT_AGENT;
 	}
 
@@ -177,8 +177,8 @@ function openPicker(ui: ExtensionUIContext): void {
 function handleSet(name: string, ui: ExtensionUIContext): void {
 	const target = parseAgentName(name);
 	if (!target) return ui.notify(`pi-switch: invalid name "${name}".`, "error");
-	if (!availableAgents().includes(target)) {
-		return ui.notify(`pi-switch: unknown "${target}". available: ${availableAgents().join(", ")}`, "error");
+	if (!availableAgents(cwd).includes(target)) {
+		return ui.notify(`pi-switch: unknown "${target}". available: ${availableAgents(cwd).join(", ")}`, "error");
 	}
 	setAgentRef(target);
 }
@@ -314,7 +314,7 @@ you have a specific reason to change it.
 }
 
 function doctorReport(): string {
-	const cycle = availableAgents();
+	const cycle = availableAgents(cwd);
 	const userDir = path.join(os.homedir(), ".pi", "agent", "agents");
 	const lines: string[] = ["pi-switch doctor:", ""];
 	const builtins = cycle.filter((a) => BUILTIN_AGENTS.includes(a));
