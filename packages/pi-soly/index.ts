@@ -713,5 +713,4 @@ export default function solyExtension(pi: ExtensionAPI) {
 
 	// Mount built-in sub-features
 	piAskExtension(pi);
-	piSwitchExtension(pi);
 }
