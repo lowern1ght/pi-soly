@@ -332,6 +332,24 @@ What must the LLM do?
 	});
 
 	// ============================================================================
+	// /soly migrate — move .soly/ → .agents/ atomically
+	// ============================================================================
+	pi.registerCommand("soly-migrate", {
+		description:
+			"migrate project state from .soly/ to .agents/ (atomic rename, validates result, suggests git commit)",
+		handler: async (args, ctx) => {
+			const ui: CommandUI = {
+				notify: (t, k) => ctx.ui.notify(t, k ?? "info"),
+				select: async (label, options) => {
+					const result = await ctx.ui.select(label, options);
+					return result === undefined ? null : options.indexOf(result);
+				},
+				confirm: (title, message) => ctx.ui.confirm(title, message),
+			};
+			await migrateSolyDir(ctx.cwd, ui, { autoYes: args.includes("--yes") });
+		},
+	});
+
 	// /soly
 	// ============================================================================
 
