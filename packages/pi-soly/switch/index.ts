@@ -56,8 +56,12 @@ export default function piSwitchExtension(pi: ExtensionAPI) {
 		if (!lastUi) return;
 		try {
 			const meta = getAgentMeta(currentAgent);
-			const pill = `${meta.emoji} ${currentAgent}`;
-			lastUi.setStatus("pi-switch", currentAgent === DEFAULT_AGENT ? null : pill);
+			// Persistent pill — always visible above the input, even for the
+			// default agent. The user wants a constant mode indicator, not a
+			// transient one. Marker "▶" makes it scannable.
+			const marker = currentAgent === DEFAULT_AGENT ? "·" : "▶";
+			const pill = `${marker} ${meta.emoji} ${currentAgent}`;
+			lastUi.setStatus("pi-switch", pill);
 		} catch { /* no ui yet */ }
 	}
 
