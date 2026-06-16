@@ -1,7 +1,7 @@
 {
   "name": "pi-soly",
   "version": "0.5.8",
-  "description": "Project management for pi — plans, state, subagent-driven execution. Inspired by GSD.",
+  "description": "Project management framework for pi-coding-agent. Workflows, planning, multi-question picker, agent switcher, live task list — one npm install, zero config.",
   "type": "module",
   "main": "index.ts",
   "scripts": {
@@ -22,6 +22,7 @@
     "typescript": "^6.0.3"
   },
   "files": [
+    "README.md",
     "commands.ts",
     "config.ts",
     "core.ts",
@@ -51,7 +52,10 @@
     "planning",
     "subagents",
     "multi-question",
-    "agent-switcher"
+    "agent-switcher",
+    "task-list",
+    "workflow-engine",
+    "ai-coding"
   ],
   "license": "MIT",
   "pi": {
@@ -62,9 +66,13 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
+  "homepage": "https://github.com/lowern1ght/pi-soly#readme",
+  "bugs": {
+    "url": "https://github.com/lowern1ght/pi-soly/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "http://git.local.stbl/lowern1ght/pi-soly.framework.git",
-    "directory": "packages/soly"
+    "url": "https://github.com/lowern1ght/pi-soly.git",
+    "directory": "packages/pi-soly"
   }
 }

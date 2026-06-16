@@ -1,78 +1,215 @@
-# pi-soly
+<div align="center">
 
-Project management + UI extensions for
-[pi-coding-agent](https://github.com/nicobailon/pi-coding-agent), bundled
-in a single npm-installable package.
+# ⚡ pi-soly
 
-- `pi-soly` core — GSD-style workflow engine: intent docs, ROADMAP/STATE/CONTEXT cycle,
-  subagent-driven execution
-- `ask/` — multi-question picker (`ask_pro` tool)
-- `switch/` — agent switcher with footer pill (F2 to cycle, `/agent` slash command)
-- `todo/` — live task list rendered in the footer (`todo_update` tool)
+**The project management framework for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent).**
 
-> Originally shipped as four separate packages (`pi-soly`, `pi-asked`,
-> `pi-todo-list`, `pi-agented`). Consolidated into one `pi-soly` package
-> starting at `v0.4.0`. The old packages are still on npmjs but no
-> longer needed — install `pi-soly` and you get everything.
+Plans · State · Subagents · Multi-question picker · Agent switcher · Live task list.
 
-## Install
+One `npm install`. Zero config. Pure magic.
+
+[![npm version](https://img.shields.io/npm/v/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
+[![npm downloads](https://img.shields.io/npm/dm/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
+[![CI](https://img.shields.io/github/actions/workflow/status/lowern1ght/pi-soly/ci.yml)](https://github.com/lowern1ght/pi-soly/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/lowern1ght/pi-soly/blob/master/LICENSE)
+[![Built with Bun](https://img.shields.io/badge/Built_with-Bun-f9f1e1?logo=bun)](https://bun.sh)
+
+[Install](#-install) · [Features](#-features) · [Docs](#-documentation) · [Architecture](#-architecture) · [Releases](#-releases)
+
+</div>
+
+---
+
+## ⚡ Install
 
 ```bash
 pi install npm:pi-soly
 ```
 
-The first install copies the package into `~/.pi/agent/npm/`. pi
-auto-discovers the extension on next session start. Run `/reload` in pi
-after upgrading to pick up the new version without a full restart.
+That's it. Restart pi, and you have:
 
-### Local install (for development)
+- **A complete project management engine** — plans, state, subagent-driven execution
+- **A multi-question picker** — `ask_pro` tool for the LLM
+- **An agent switcher** — `Ctrl+Tab` to cycle, footer pill always visible
+- **A live task list** — `todo_update` tool renders in the footer
+- **7 soly agents** installed on first run
 
-```bash
-pi install ./packages/pi-soly
-```
+---
 
-This adds a relative path to `~/.pi/agent/settings.json`, so edits in
-the source are picked up after `/reload`.
+## 🎯 Why pi-soly?
 
-## What's included
-
-| Module | Description |
+| Without pi-soly | With pi-soly |
 |---|---|
-| **Workflow engine** | `soly_plan`, `soly_execute`, `soly_resume`, `soly_inspect`, `soly_quick`, `soly_discuss` slash commands. State in `.soly/STATE.md`, phases in `.soly/phases/<N>-<slug>/`. |
-| **Multi-question picker** | `ask_pro` tool — tabbed picker, single/multi-select, recommended ⭐, Other… free text. |
-| **Agent switcher** | `F2` to cycle agents, `/agent <name>`, `/agent create`, `/agent doctor`, `/agent recommend <task>`. Footer pill `· ⚡ worker` always visible. |
-| **Task list** | `todo_update` tool — renders `todos 2/5` in the footer with the current action highlighted. |
-| **Soly agents** | `soly-worker`, `soly-debugger`, `soly-tester`, `soly-reviewer`, `soly-refactor`, `soly-documenter`, `soly-oracle` — installed on first run into `~/.pi/agent/agents/`. |
+| Write your own planning workflow | `/plan`, `/execute`, `/resume`, `/inspect` — ready |
+| Manually dispatch subagents | `useSolyWorkerSubagents: true` — automatic routing |
+| 3 different packages for pickers/tasks/agents | One package, one config, one install |
+| Agent name as free text in slash commands | Footer pill + `Ctrl+Tab` + `/agent` picker |
+| Re-invent the state machine | `.soly/STATE.md` + auto-managed phases |
 
-## Usage
+---
 
-Inside a pi session:
+## 🔥 Features
+
+### 📋 Project Management Engine
+
+GSD-inspired planning and execution. State is the source of truth, not vibes.
 
 ```bash
-/agent                # open agent picker
-/agent oracle         # switch to oracle
-F2                    # cycle to next agent
-
-/plan                 # start planning a new phase
-/execute              # execute current plan
-/pause                # pause and save context
-/resume               # resume a paused session
-
-ask_pro question=…    # multi-question UI (LLM tool)
-todo_update todos=…   # update task list (LLM tool)
+/plan            # generate PLAN.md for the current phase
+/execute         # dispatch plan to soly-worker subagent
+/resume          # pick up a paused session
+/inspect         # show current state summary
+/discuss 3       # talk through decisions before planning phase 3
 ```
 
-The footer shows the current agent and todo progress at all times:
+State lives in `.soly/` — portable, git-friendly, human-readable.
+
 ```
-[model]  · ⚡ worker  · todos 2/5: write tests  · [cwd]
+.soly/
+├── ROADMAP.md           # phase table
+├── STATE.md             # current position + decisions log
+├── docs/                # 0-point intent docs (your vision, locked)
+└── phases/
+    └── 01-foundation/
+        ├── 01-CONTEXT.md    # domain + decisions for this phase
+        ├── 01-RESEARCH.md   # what we looked up
+        └── 01-PLAN.md       # ordered steps to execute
 ```
 
-## Development
+### 🎤 Multi-Question Picker
+
+Claude Code-style `ask_pro` for the LLM. Single-select, multi-select, recommended ⭐, free-text Other.
+
+```ts
+ask_pro({
+  questions: [{
+    header: "Auth",
+    question: "How should we store the OAuth refresh token?",
+    options: [
+      { label: "Encrypted in SQLite",  description: "Survives restart, single-device.", recommended: true },
+      { label: "OS keychain",          description: "Native, multi-device via iCloud." },
+      { label: "Plain env var",         description: "Simplest, dev only." }
+    ]
+  }]
+})
+```
+
+### 🎛 Agent Switcher
+
+Footer pill that's always there. `Ctrl+Tab` to cycle. No popup, no friction.
+
+```
+[model]  · ⚡ worker    · todos 2/5: write tests   ← footer, always visible
+[model]  ▶ 🐢 oracle    · todos 2/5: write tests   ← after one Ctrl+Tab
+[model]  · 🔍 scout     · todos 2/5: write tests   ← after two
+```
+
+Agents:
+- `worker` — default, full read+write
+- `oracle` — read-only decision advisor
+- `scout` — codebase reconnaissance
+- `researcher` — external docs, ecosystem
+- `planner` — architecture and decomposition
+- `context-builder` — hands off context to other agents
+- `reviewer` — adversarial code review, read-only
+- `delegate` — chains agents together
+
+### 📝 Live Task List
+
+`todo_update` tool — renders in the footer as `todos 2/5: current action`.
+
+The LLM can update its own task list mid-turn. You watch progress without re-asking.
+
+```ts
+todo_update({
+  todos: [
+    { content: "Read existing config", status: "completed", priority: "high" },
+    { content: "Write new schema",     status: "in_progress", priority: "high" },
+    { content: "Add migration",        status: "pending",     priority: "medium" },
+    { content: "Update tests",         status: "pending",     priority: "medium" },
+    { content: "Run typecheck",        status: "pending",     priority: "low" }
+  ]
+})
+```
+
+---
+
+## 🏗 Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                   pi-coding-agent (peer dep)                  │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+        ┌────────────────┴────────────────┐
+        │                                 │
+        ▼                                 ▼
+  ┌────────────┐                  ┌─────────────┐
+  │  ask_pro   │                  │  todo_      │
+  │  picker    │                  │  update     │
+  │  (tool)    │                  │  (tool)     │
+  └────────────┘                  └─────────────┘
+        │                                 │
+        └─────────────────┬───────────────┘
+                          │
+                          ▼
+                ┌──────────────────┐
+                │  Workflow engine │
+                │                  │
+                │  /plan /execute  │
+                │  /resume /inspect│
+                │  /discuss /quick │
+                └────────┬─────────┘
+                         │
+            ┌────────────┼────────────┐
+            ▼            ▼            ▼
+       .soly/STATE  phases/<N>/   iterations/
+       (current     CONTEXT,      (per-exec
+        position)   PLAN,         context
+                    RESEARCH)     bundle)
+                         │
+                         ▼
+                ┌──────────────────┐
+                │  switch/         │
+                │  agent switcher  │
+                │                  │
+                │  Ctrl+Tab        │
+                │  footer pill     │
+                │  /agent picker   │
+                └────────┬─────────┘
+                         │
+                         ▼
+                ┌──────────────────┐
+                │  7 soly agents   │
+                │                  │
+                │  soly-worker     │
+                │  soly-debugger   │
+                │  soly-tester     │
+                │  soly-reviewer   │
+                │  soly-refactor   │
+                │  soly-documenter │
+                │  soly-oracle     │
+                └──────────────────┘
+```
+
+---
+
+## 📚 Documentation
+
+- **Slash commands** — `/plan`, `/execute`, `/resume`, `/inspect`, `/discuss <N>`, `/quick <task>`, `/agent`
+- **Tools** — `ask_pro(question[])` and `todo_update(todo[])`
+- **Events** — `session_start`, `before_agent_start`, `message_end`, `tool_call`, `tool_result`
+- **State files** — `.soly/STATE.md`, `.soly/ROADMAP.md`, `.soly/phases/<N>-<slug>/<N>-PLAN.md`
+- **Soly agents** — installed to `~/.pi/agent/agents/soly-*.md` on first run
+
+---
+
+## 🛠 Development
 
 ### Requirements
 
-- [Bun](https://bun.sh) (latest)
-- [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent) (peer dep)
+- [Bun](https://bun.sh) ≥ 1.3
+- [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent) ≥ 0.78
 
 ### Setup
 
@@ -93,86 +230,54 @@ bun run ci        # both
 ### Live-reload in pi
 
 ```bash
-pi install ./packages/pi-soly    # one-time
-# then edit files → /reload in pi to pick up
+pi install ./packages/pi-soly
+# edit files → /reload in pi to pick up changes
 ```
 
-## Releasing a new version
+---
 
-The package versions as a single unit now (no more per-package versions).
-Release workflow runs on **tag push** matching `pi-soly-v*` (e.g.
-`pi-soly-v0.5.3`).
+## 🚢 Releases
+
+Tag-based, fully automated. Push a `pi-soly-v*` tag, get a publish.
 
 ```bash
-# 1. Bump version in packages/pi-soly/package.json
-./scripts/release.sh pi-soly 0.5.3
-
-# 2. Push commit + tag to both remotes
+./scripts/release.sh pi-soly 0.5.9
 git push origin master
 git push github master
-git push origin pi-soly-v0.5.3 --force
-git push github pi-soly-v0.5.3 --force
-
-# What happens on the GitHub Actions runner:
-#   1. ci.yml fires (tag push matches the trigger)
-#   2. "test" job: bun install + bun test + bun run typecheck
-#   3. "publish" job (only on tag push):
-#        - reads NPM_TOKEN from environment "npm-publish" secrets
-#        - detect package from tag (pi-soly-v0.5.3 → pi-soly)
-#        - verify package.json version matches tag
-#        - configure .npmrc at monorepo root with NPM_TOKEN
-#        - npm publish --access public
-#   4. Package appears at https://www.npmjs.com/package/pi-soly
+git push github pi-soly-v0.5.9 --force
 ```
 
-Required GitHub setup:
-
-- **Repository secret** (optional, for repo-wide access):
-  none — we use environment-scoped secrets.
-- **Environment** `npm-publish` (Settings → Environments) with secret:
-  - **`NPM_TOKEN`** — an npmjs.com access token with **Automation** scope
-    (or **Publish**). Generate at
-    https://www.npmjs.com/settings/~/tokens.
-
-## CI / CD
-
-A single `ci.yml` workflow (`.github/workflows/ci.yml`) handles test
-and publish:
+CI runs on a self-hosted GitHub Actions runner:
 
 | Trigger | Job | Action |
 |---|---|---|
 | Push to `master` | `test` | `bun install` + `bun test` + `bun run typecheck` |
 | PR to `master` | `test` | same |
-| Push tag `pi-soly-v*` | `test` → `publish` | tests + verify version + `npm publish` |
+| Push tag `pi-soly-v*` | `test` → `publish` | tests + `npm publish` to npmjs |
 
-Runner is a self-hosted GitHub Actions runner
-(`actions.runner.lowern1ght-pi-soly.pi-soly-runner.service`) on
-`100.100.100.31` (same host as the old Forgejo runner), with default
-labels `self-hosted, linux, x64`. Bun 1.3.14 and Node 20.20.2 are
-pre-installed at `/usr/local/bin` — no setup-bun step needed.
+The `publish` job uses GitHub Environment `npm-publish` so `NPM_TOKEN` is only exposed during the publish step. **Zero secrets in workflow YAML.**
 
-The `publish` job is gated by `if: startsWith(github.ref, 'refs/tags/')`
-and uses `environment: npm-publish` so `NPM_TOKEN` is only exposed
-during the publish step.
+---
 
-## Architecture
+## 🤝 Compatibility
 
-```
-pi-coding-agent (bundled, peerDep)
-└─ pi-soly (single package)
-   ├─ Workflow engine
-   │   ├─ Intent docs (.soly/docs/) — user's vision
-   │   ├─ ROADMAP.md — phases table
-   │   ├─ STATE.md — current position + decisions log
-   │   ├─ phases/<N>-<slug>/ — CONTEXT, RESEARCH, PLANs
-   │   └─ iterations/ — per-execution context bundles
-   ├─ ask/ — multi-question picker (ask_pro tool)
-   ├─ switch/ — agent switcher (F2, /agent, footer pill)
-   ├─ todo/ — live task list (todo_update tool)
-   ├─ agents/soly-*.md — 7 subagent definitions
-   └─ workflows/ — execute, plan, resume, inspect, quick
-```
+- **pi-coding-agent** ≥ 0.78
+- **Node** ≥ 20 (pre-installed on the runner)
+- **Bun** ≥ 1.3 (pre-installed on the runner)
+- **OS** — Linux, macOS, Windows (anywhere Bun runs)
 
-## License
+---
 
-MIT
+## 📜 License
+
+MIT — see [LICENSE](LICENSE).
+
+---
+
+<div align="center">
+
+**Built by [@lowern1ght](https://github.com/lowern1ght) · Powered by [pi](https://github.com/nicobailon/pi-coding-agent) + [Bun](https://bun.sh)**
+
+[⭐ Star on GitHub](https://github.com/lowern1ght/pi-soly) · [📦 View on npm](https://www.npmjs.com/package/pi-soly) · [🐛 Report a bug](https://github.com/lowern1ght/pi-soly/issues)
+
+</div>

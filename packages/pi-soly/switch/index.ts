@@ -73,13 +73,8 @@ export default function piSwitchExtension(pi: ExtensionAPI) {
 		publish();
 		if (cwd) saveAgent(cwd, next);
 		rerender();
-		if (lastUi) {
-			const m = getAgentMeta(next);
-			lastUi.notify(
-				`${m.emoji} ${next}  ·  ${m.description}${m.writesFiles ? "" : "  ·  read-only"}`,
-				"info",
-			);
-		}
+		// Footer pill is the only visible signal of the switch.
+		// Chat stays clean — agent is plumbing, not conversation content.
 	}
 
 	// ----- session_start: load persisted agent + set initial pill -----
