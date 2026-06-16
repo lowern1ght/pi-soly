@@ -8,58 +8,58 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import {
-	DEFAULT_AGENT,
-	BUILTIN_AGENTS,
-	AGENT_META,
-	getAgentMeta,
-	isValidAgentName,
-	discoverUserAgents,
+	DEFAULT_ROTOR,
+	BUILTIN_ROTORS,
+	ROTOR_META,
+	getRotorMeta,
+	isValidRotorName,
+	discoverUserRotors,
 	availableAgents,
 	nextAgent,
-	parseAgentName,
+	parseRotorName,
 	formatAgentBadge,
-	formatAgentSwitchNotify,
+	formatRotorSwitchNotify,
 	formatHeaderLine,
-	groupedAvailableAgents,
+	groupedAvailableRotors,
 	agentFilePath,
 	loadAgent,
 	saveAgent,
 } from "../core.js";
 
-describe("DEFAULT_AGENT", () => {
+describe("DEFAULT_ROTOR", () => {
 	test("is 'worker'", () => {
-		expect(DEFAULT_AGENT).toBe("worker");
+		expect(DEFAULT_ROTOR).toBe("worker");
 	});
 });
 
-describe("isValidAgentName", () => {
+describe("isValidRotorName", () => {
 	test("accepts simple names", () => {
-		expect(isValidAgentName("worker")).toBe(true);
-		expect(isValidAgentName("my_agent")).toBe(true);
+		expect(isValidRotorName("worker")).toBe(true);
+		expect(isValidRotorName("my_agent")).toBe(true);
 	});
 	test("rejects invalid", () => {
-		expect(isValidAgentName("with space")).toBe(false);
-		expect(isValidAgentName("")).toBe(false);
-		expect(isValidAgentName("a".repeat(65))).toBe(false);
+		expect(isValidRotorName("with space")).toBe(false);
+		expect(isValidRotorName("")).toBe(false);
+		expect(isValidRotorName("a".repeat(65))).toBe(false);
 	});
 });
 
-describe("AGENT_META", () => {
+describe("ROTOR_META", () => {
 	test("every built-in has metadata", () => {
-		for (const a of BUILTIN_AGENTS) {
-			expect(AGENT_META[a]).toBeDefined();
-			expect(AGENT_META[a]!.emoji.length).toBeGreaterThan(0);
+		for (const a of BUILTIN_ROTORS) {
+			expect(ROTOR_META[a]).toBeDefined();
+			expect(ROTOR_META[a]!.emoji.length).toBeGreaterThan(0);
 		}
 	});
 	test("meta has writesFiles flag", () => {
-		expect(AGENT_META.worker!.writesFiles).toBe(true);
-		expect(AGENT_META.oracle!.writesFiles).toBe(false);
+		expect(ROTOR_META.worker!.writesFiles).toBe(true);
+		expect(ROTOR_META.oracle!.writesFiles).toBe(false);
 	});
 });
 
-describe("getAgentMeta", () => {
+describe("getRotorMeta", () => {
 	test("returns fallback for unknown", () => {
-		const m = getAgentMeta("zzz");
+		const m = getRotorMeta("zzz");
 		expect(m.emoji.length).toBeGreaterThan(0);
 	});
 });
@@ -74,16 +74,16 @@ describe("nextAgent", () => {
 	});
 });
 
-describe("parseAgentName", () => {
+describe("parseRotorName", () => {
 	test("trims and validates", () => {
-		expect(parseAgentName("  oracle  ")).toBe("oracle");
-		expect(parseAgentName("with space")).toBeNull();
+		expect(parseRotorName("  oracle  ")).toBe("oracle");
+		expect(parseRotorName("with space")).toBeNull();
 	});
 });
 
 describe("formatAgentBadge", () => {
 	test("null for default", () => {
-		expect(formatAgentBadge(DEFAULT_AGENT)).toBeNull();
+		expect(formatAgentBadge(DEFAULT_ROTOR)).toBeNull();
 	});
 	test("emoji + name for non-default", () => {
 		const b = formatAgentBadge("oracle");
@@ -91,9 +91,9 @@ describe("formatAgentBadge", () => {
 	});
 });
 
-describe("formatAgentSwitchNotify", () => {
+describe("formatRotorSwitchNotify", () => {
 	test("multi-line: old → new + capability", () => {
-		const out = formatAgentSwitchNotify("worker", "oracle");
+		const out = formatRotorSwitchNotify("worker", "oracle");
 		expect(out).toContain("pi-switch agent changed");
 		expect(out).toContain("worker");
 		expect(out).toContain("oracle");
@@ -117,23 +117,23 @@ describe("formatHeaderLine", () => {
 	});
 });
 
-describe("groupedAvailableAgents", () => {
+describe("groupedAvailableRotors", () => {
 	test("includes built-in group", () => {
-		const groups = groupedAvailableAgents("/nonexistent");
+		const groups = groupedAvailableRotors("/nonexistent");
 		expect(groups[0]?.header).toBe("built-in");
 	});
 	test("includes user group when present", () => {
-		// Use HOME override so the new ~.agents/agents/ scan picks up our fixture
+		// Use HOME override so the new ~.agents/ scan picks up our fixture
 		const home = process.env.HOME || process.env.USERPROFILE || os.homedir();
 		const prevHome = process.env.HOME;
 		const prevUserProfile = process.env.USERPROFILE;
 		const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "pis-home-"));
 		process.env.HOME = tmp;
 		process.env.USERPROFILE = tmp;
-		const agentsDir = path.join(tmp, ".agents", "agents");
+		const agentsDir = path.join(tmp, ".agents");
 		fs.mkdirSync(agentsDir, { recursive: true });
 		fs.writeFileSync(path.join(agentsDir, "my.md"), "---\nname: my-helper\n---\n# body\n");
-		const groups = groupedAvailableAgents();
+		const groups = groupedAvailableRotors();
 		const userGroup = groups.find((g) => g.header === "user-defined");
 		expect(userGroup?.agents).toContain("my-helper");
 		// restore
@@ -144,10 +144,10 @@ describe("groupedAvailableAgents", () => {
 
 	test("includes project agent when present (cwd scope)", () => {
 		const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "pis-proj-"));
-		const agentsDir = path.join(projectDir, ".agents", "agents");
+		const agentsDir = path.join(projectDir, ".agents");
 		fs.mkdirSync(agentsDir, { recursive: true });
 		fs.writeFileSync(path.join(agentsDir, "proj.md"), "---\nname: project-helper\n---\n# body\n");
-		const groups = groupedAvailableAgents(projectDir);
+		const groups = groupedAvailableRotors(projectDir);
 		const userGroup = groups.find((g) => g.header === "user-defined");
 		expect(userGroup?.agents).toContain("project-helper");
 		fs.rmSync(projectDir, { recursive: true, force: true });

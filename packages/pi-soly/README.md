@@ -4,7 +4,7 @@
 
 **The project management framework for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent).**
 
-Plans · State · Subagents · Multi-question picker · Agent switcher · Live task list.
+Plans · State · Subagents · Multi-question picker · Rotor switcher · Live task list.
 
 One `npm install`. Zero config. Pure magic.
 
@@ -30,7 +30,7 @@ That's it. Restart pi, and you have:
 
 - **A complete project management engine** — plans, state, subagent-driven execution
 - **A multi-question picker** — `ask_pro` tool for the LLM
-- **An agent switcher** — `Ctrl+Tab` to cycle, footer pill always visible
+- **A rotor switcher** — `Ctrl+Tab` to cycle, footer pill always visible
 - **A live task list** — `todo_update` tool renders in the footer
 - **7 soly agents** installed on first run
 
@@ -43,7 +43,7 @@ That's it. Restart pi, and you have:
 | Write your own planning workflow | `/plan`, `/execute`, `/resume`, `/inspect` — ready |
 | Manually dispatch subagents | `useSolyWorkerSubagents: true` — automatic routing |
 | 3 different packages for pickers/tasks/agents | One package, one config, one install |
-| Agent name as free text in slash commands | Footer pill + `Ctrl+Tab` + `/agent` picker |
+| Rotor name as free text in slash commands | Footer pill + `Ctrl+Tab` + `/rotor` picker |
 | Re-invent the state machine | `.soly/STATE.md` + auto-managed phases |
 
 ---
@@ -94,7 +94,7 @@ ask_pro({
 })
 ```
 
-### 🎛 Agent Switcher
+### 🎛 Rotor Switcher
 
 Footer pill that's always there. `Ctrl+Tab` to cycle. No popup, no friction.
 
@@ -171,11 +171,11 @@ todo_update({
                          ▼
                 ┌──────────────────┐
                 │  switch/         │
-                │  agent switcher  │
+                │  rotor switcher  │
                 │                  │
                 │  Ctrl+Tab        │
                 │  footer pill     │
-                │  /agent picker   │
+                │  /rotor picker   │
                 └────────┬─────────┘
                          │
                          ▼
@@ -196,7 +196,7 @@ todo_update({
 
 ## 📚 Documentation
 
-- **Slash commands** — `/plan`, `/execute`, `/resume`, `/inspect`, `/discuss <N>`, `/quick <task>`, `/agent`
+- **Slash commands** — `/plan`, `/execute`, `/resume`, `/inspect`, `/discuss <N>`, `/quick <task>`, `/rotor`
 - **Tools** — `ask_pro(question[])` and `todo_update(todo[])`
 - **Events** — `session_start`, `before_agent_start`, `message_end`, `tool_call`, `tool_result`
 - **State files** — `.soly/STATE.md`, `.soly/ROADMAP.md`, `.soly/phases/<N>-<slug>/<N>-PLAN.md`

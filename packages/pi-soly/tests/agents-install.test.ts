@@ -35,7 +35,7 @@ beforeAll(() => {
 	);
 	// Fake $HOME — clean state
 	fs.mkdirSync(fakeHome, { recursive: true });
-	fs.rmSync(path.join(fakeHome, ".agents", "agents"), { recursive: true, force: true });
+	fs.rmSync(path.join(fakeHome, ".agents"), { recursive: true, force: true });
 	fs.rmSync(path.join(fakeHome, ".pi", "agent", "agents"), { recursive: true, force: true });
 	fs.rmSync(path.join(fakeHome, ".pi", "agent", "skills"), { recursive: true, force: true });
 	// Redirect HOME/USERPROFILE
@@ -52,13 +52,13 @@ afterAll(() => {
 });
 
 describe("installSolyAgents", () => {
-	test("copies soly-manager to ~/.agents/agents/ (preferred) on first run", () => {
+	test("copies soly-manager to ~/soly-manager.md/ (preferred) on first run", () => {
 		const result = installSolyAgents(fakeExt);
 		expect(result.installed.length).toBe(1);
 		expect(result.installed).toContain("soly-manager.md");
 		expect(result.skipped).toEqual([]);
 		expect(result.errors).toEqual([]);
-		const preferredDir = path.join(fakeHome, ".agents", "agents");
+		const preferredDir = path.join(fakeHome, ".agents");
 		expect(fs.existsSync(path.join(preferredDir, "soly-manager.md"))).toBe(true);
 	});
 
@@ -70,7 +70,7 @@ describe("installSolyAgents", () => {
 	});
 
 	test("does NOT overwrite user-customized soly-manager.md", () => {
-		const userDir = path.join(fakeHome, ".agents", "agents");
+		const userDir = path.join(fakeHome, ".agents");
 		const customPath = path.join(userDir, "soly-manager.md");
 		fs.writeFileSync(customPath, "# USER CUSTOMIZED soly-manager\n");
 
@@ -88,7 +88,7 @@ describe("installSolyAgents", () => {
 		expect(result.skipped).toEqual([]);
 	});
 
-	test("falls back to ~/.pi/agent/agents/ when ~/.agents/agents/ is unwritable", () => {
+	test("falls back to ~/.pi/agent/agents/ when ~/soly-manager.md/ is unwritable", () => {
 		const freshHome = path.join(tmpRoot, "fallback-home-" + Date.now());
 		fs.mkdirSync(freshHome, { recursive: true });
 		// Block ~/.agents by placing a non-dir at that path

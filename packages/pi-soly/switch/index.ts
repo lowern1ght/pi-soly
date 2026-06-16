@@ -2,18 +2,18 @@
 // index.ts — pi-switch extension entry (v2: footer-pill UI)
 // =============================================================================
 //
-// Wires the agent switcher into pi as a compact footer pill:
+// Wires the rotor switcher into pi as a compact footer pill:
 //   - Footer status pill: "▶ ⚡ worker" (or "· ⚡ worker" for the default)
-//   - Click pill or `/agent` → open full picker modal (SelectList)
-//   - Ctrl+Tab → cycle to next agent (no popup, hot switch)
+//   - Click pill or `/rotor` → open full picker modal (SelectList)
+//   - Ctrl+Tab → cycle to next rotor (no popup, hot switch)
 //   - F2 → same, fallback if your terminal doesn't pass Ctrl+Tab through
-//   - Persists current agent to .soly/agent or ~/.pi-switch/agent
-//   - Exposes `globalThis.__PI_SWITCH_AGENT__` for other extensions
+//   - Persists current rotor to .soly/agent or ~/.pi-switch/agent
+//   - Exposes `globalThis.__PI_SWITCH_ROTOR__` for other extensions
 //   - Injects a short system-prompt section so the LLM knows the current
-//     agent and the available alternatives
+//     rotor and the available alternatives
 //
 // UI philosophy:
-//   - Header is for content, not for tool chrome. Move agents to footer.
+//   - Header is for content, not for tool chrome. Move rotors to footer.
 //   - Click to explore, hotkey to power-use, no DOM clutter in between.
 //   - Visual change is the pill text only. Chat stays clean.
 // =============================================================================
@@ -24,57 +24,57 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import {
-	DEFAULT_AGENT,
-	BUILTIN_AGENTS,
+	DEFAULT_ROTOR,
+	BUILTIN_ROTORS,
 	availableAgents,
 	nextAgent,
-	parseAgentName,
-	groupedAvailableAgents,
-	getAgentMeta,
+	parseRotorName,
+	groupedAvailableRotors,
+	getRotorMeta,
 	loadAgent,
 	saveAgent,
 } from "./core.ts";
 import { buildPiSwitchSection, recommendAgent } from "./prompt.ts";
 
-const GLOBAL_KEY = "__PI_SWITCH_AGENT__";
+const GLOBAL_KEY = "__PI_SWITCH_ROTOR__";
 
 export default function piSwitchExtension(pi: ExtensionAPI) {
 	let cwd = "";
-	let currentAgent: string = DEFAULT_AGENT;
-	let cycle: string[] = [DEFAULT_AGENT];
+	let currentRotor: string = DEFAULT_ROTOR;
+	let cycle: string[] = [DEFAULT_ROTOR];
 	let lastUi: ExtensionUIContext | null = null;
 
 	function refreshCycle(): void {
 		cycle = availableAgents(cwd);
-		if (!cycle.includes(currentAgent)) currentAgent = DEFAULT_AGENT;
+		if (!cycle.includes(currentRotor)) currentRotor = DEFAULT_ROTOR;
 	}
 
 	function publish(): void {
-		(globalThis as Record<string, unknown>)[GLOBAL_KEY] = currentAgent;
+		(globalThis as Record<string, unknown>)[GLOBAL_KEY] = currentRotor;
 	}
 
 	function rerender(): void {
 		if (!lastUi) return;
 		try {
-			const meta = getAgentMeta(currentAgent);
+			const meta = getRotorMeta(currentRotor);
 			// Persistent pill — always visible above the input, even for the
-			// default agent. The user wants a constant mode indicator, not a
+			// default rotor. The user wants a constant mode indicator, not a
 			// transient one. Marker "▶" makes it scannable.
-			const marker = currentAgent === DEFAULT_AGENT ? "·" : "▶";
-			const pill = `${marker} ${meta.emoji} ${currentAgent}`;
+			const marker = currentRotor === DEFAULT_ROTOR ? "·" : "▶";
+			const pill = `${marker} ${meta.emoji} ${currentRotor}`;
 			lastUi.setStatus("pi-switch", pill);
 		} catch { /* no ui yet */ }
 	}
 
-	function setAgent(next: string): void {
-		const prev = currentAgent;
+	function setRotor(next: string): void {
+		const prev = currentRotor;
 		if (next === prev) return;
-		currentAgent = next;
+		currentRotor = next;
 		publish();
 		if (cwd) saveAgent(cwd, next);
 		rerender();
 		// Footer pill is the only visible signal of the switch.
-		// Chat stays clean — agent is plumbing, not conversation content.
+		// Chat stays clean — rotor is plumbing, not conversation content.
 	}
 
 	// ----- session_start: load persisted agent + set initial pill -----
@@ -83,7 +83,7 @@ export default function piSwitchExtension(pi: ExtensionAPI) {
 		lastUi = ctx.ui;
 		publish();
 		const restored = loadAgent(cwd);
-		if (restored) currentAgent = restored;
+		if (restored) currentRotor = restored;
 		refreshCycle();
 		publish();
 		rerender();
@@ -113,7 +113,7 @@ export default function piSwitchExtension(pi: ExtensionAPI) {
 		lastCycleTs = now;
 		lastUi = sctx.ui;
 		refreshCycle();
-		setAgent(nextAgent(currentAgent, cycle));
+		setRotor(nextAgent(currentRotor, cycle));
 	};
 	pi.registerShortcut("ctrl+tab", {
 		description: "Cycle to next agent (worker → oracle → scout → …)",
@@ -124,9 +124,10 @@ export default function piSwitchExtension(pi: ExtensionAPI) {
 		handler: (sctx) => cycleShortcut(sctx),
 	});
 
-	// ----- /agent: open picker, or subcommands (create / doctor / recommend / set) -----
-	pi.registerCommand("agent", {
-		description: "open agent picker, or `set <name>`, `create`, `doctor`, `recommend <task>`",
+	// ----- /rotor: open picker, or subcommands (create / doctor / recommend / set) -----
+	// (formerly /agent — renamed to /rotor in 1.0.0 to match the "rotor" naming convention)
+	pi.registerCommand("rotor", {
+		description: "open rotor picker, or `set <name>`, `create`, `doctor`, `recommend <task>`",
 		handler: async (args, ctx) => {
 			lastUi = ctx.ui;
 			refreshCycle();
@@ -140,7 +141,7 @@ export default function piSwitchExtension(pi: ExtensionAPI) {
 			if (subcommand === "set" && arg) return handleSet(arg, ctx.ui);
 
 			// Direct agent name → set
-			if (subcommand && cycle.includes(subcommand)) return setAgent(subcommand);
+			if (subcommand && cycle.includes(subcommand)) return setRotor(subcommand);
 			if (arg && !subcommand) return handleSet(arg, ctx.ui);
 
 			// No arg: open picker modal
@@ -159,28 +160,28 @@ function openPicker(ui: ExtensionUIContext): void {
 		for (const g of groups) {
 			all.push({ value: "__sep__", label: `── ${g.header} `, description: "", isCurrent: false });
 			for (const a of g.agents) {
-				const m = getAgentMeta(a);
+				const m = getRotorMeta(a);
 				all.push({
 					value: a,
 					label: `${m.emoji}  ${a}`,
 					description: `${m.description}${m.writesFiles ? "" : "  ·  read-only"}`,
-					isCurrent: a === currentAgentRef(),
+					isCurrent: a === currentRotorRef(),
 				});
 			}
 		}
 		return all;
 	}, ui, (choice) => {
-		if (choice && choice !== "__sep__") setAgentRef(choice);
+		if (choice && choice !== "__sep__") setRotorRef(choice);
 	});
 }
 
 function handleSet(name: string, ui: ExtensionUIContext): void {
-	const target = parseAgentName(name);
+	const target = parseRotorName(name);
 	if (!target) return ui.notify(`pi-switch: invalid name "${name}".`, "error");
 	if (!availableAgents(cwd).includes(target)) {
 		return ui.notify(`pi-switch: unknown "${target}". available: ${availableAgents(cwd).join(", ")}`, "error");
 	}
-	setAgentRef(target);
+	setRotorRef(target);
 }
 
 function handleRecommend(task: string, ui: ExtensionUIContext): void {
@@ -191,22 +192,22 @@ function handleRecommend(task: string, ui: ExtensionUIContext): void {
 }
 
 // ---------------------------------------------------------------------------
-// setAgent / currentAgent — module-scope so the modal can mutate them
+// setAgent / currentRotor — module-scope so the modal can mutate them
 // ---------------------------------------------------------------------------
 
-let currentAgentRef: () => string = () => DEFAULT_AGENT;
-let setAgentRef: (next: string) => void = () => {};
+let currentRotorRef: () => string = () => DEFAULT_ROTOR;
+let setRotorRef: (next: string) => void = () => {};
 
 // The picker and the main extension share state via these refs.
 // We patch them in `wire()` at the top of the default export.
 function wire(get: () => string, set: (n: string) => void): void {
-	currentAgentRef = get;
-	setAgentRef = set;
+	currentRotorRef = get;
+	setRotorRef = set;
 }
 
 function refreshAndBuild<T>(
 	ui: ExtensionUIContext,
-	build: (groups: ReturnType<typeof groupedAvailableAgents>) => T,
+	build: (groups: ReturnType<typeof groupedAvailableRotors>) => T,
 	_ui: ExtensionUIContext,
 	_onSelect: (value: string) => void,
 ): void {
@@ -227,7 +228,7 @@ function createAgent(
 		ui.notify("pi-switch: usage — `/agent create <name>`", "info");
 		return;
 	}
-	if (!parseAgentName(name)) {
+	if (!parseRotorName(name)) {
 		ui.notify(`pi-switch: invalid name "${name}". Use letters/digits/dashes/underscores, ≤64 chars.`, "error");
 		return;
 	}
@@ -266,7 +267,7 @@ function createAgent(
 			// race where two parallel createAgent calls would clobber each
 			// other's write after both pass the existsSync check.
 			const tmp = `${file}.tmp-${process.pid}-${Date.now()}`;
-			fs.writeFileSync(tmp, agentTemplate(name, description), "utf-8");
+			fs.writeFileSync(tmp, rotorTemplate(name, description), "utf-8");
 			fs.renameSync(tmp, file);
 			ui.notify(
 				`pi-switch: created ${file}\n  → next Ctrl+Tab to see it in the cycle\n  → edit the system prompt to specialize`,
@@ -278,7 +279,7 @@ function createAgent(
 	});
 }
 
-function agentTemplate(name: string, description: string): string {
+function rotorTemplate(name: string, description: string): string {
 	return `---
 name: ${name}
 description: ${description}
@@ -317,8 +318,8 @@ function doctorReport(): string {
 	const cycle = availableAgents(cwd);
 	const userDir = path.join(os.homedir(), ".pi", "agent", "agents");
 	const lines: string[] = ["pi-switch doctor:", ""];
-	const builtins = cycle.filter((a) => BUILTIN_AGENTS.includes(a));
-	const users = cycle.filter((a) => !BUILTIN_AGENTS.includes(a));
+	const builtins = cycle.filter((a) => BUILTIN_ROTORS.includes(a));
+	const users = cycle.filter((a) => !BUILTIN_ROTORS.includes(a));
 	lines.push(`cycle: ${cycle.length} agents (${builtins.length} built-in, ${users.length} user)`);
 	lines.push("");
 	if (!fs.existsSync(userDir)) {

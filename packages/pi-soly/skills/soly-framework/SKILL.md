@@ -35,7 +35,7 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 | `/quick <task>` | One-shot task that doesn't need a full plan — direct dispatch |
 | `/soly` | Project state inspection (alias for `/inspect`) |
 | `/why` | Show what context the LLM's last turn was based on |
-| `/agent [name]` | Switch the current cycle agent (or open picker) |
+| `/rotor [name]` | Switch the current rotor (or open picker) |
 
 `/soly <verb>` plain-text aliases also work for some verbs (legacy compat).
 
@@ -198,16 +198,18 @@ The only legal sequence for finishing a plan:
 
 Once production commits exist, returning without a committed `SUMMARY.md` is an **illegal partial-plan state** — the next `/execute` will detect it and refuse to start.
 
-## Cycle agents (4 built-in)
+## Cycle rotors (4 built-in)
 
-| Agent | Writes | Use for |
+| Rotor | Writes | Use for |
 |---|---|---|
 | `worker` | ✅ | Generic implementation, full tools |
 | `oracle` | ❌ | Decision-consistency, no file edits |
 | `scout` | ❌ | Codebase recon, read-only |
 | `reviewer` | ❌ | Adversarial code review |
 
-Switch with `/agent <name>` or `Ctrl+Tab` (cycles through). Footer pill shows current: `· ⚡ worker` / `▶ 🐢 oracle`.
+Switch with `/rotor <name>` or `Ctrl+Tab` (cycles through). Footer pill shows current: `· ⚡ worker` / `▶ 🐢 oracle`.
+
+**Why "rotors"?** Because they *rotate* — `Ctrl+Tab` cycles through them. The word emphasizes the cycling behavior. Subagents (like `soly-manager`) are still called agents — they're a different concept (spawned for a task, not cycled through).
 
 ## Subagent: soly-manager (single, mode-switching)
 
@@ -300,7 +302,7 @@ Intent docs are 0-point — written BEFORE any plan, by humans. They define the 
 
 ### Add project-specific agents
 
-Drop a markdown file in `.agents/agents/<name>.md` (project) or `~/.agents/agents/<name>.md` (user):
+Drop a markdown file in `.agents/<name>.md` (project) or `~/.agents/<name>.md` (user):
 
 ```markdown
 ---
@@ -314,9 +316,9 @@ You are a data scientist. ...
 ```
 
 **Discovered from 4 locations** (priority order):
-1. `<project>/.agents/agents/` — project vendor-neutral (preferred)
+1. `<project>/.agents/` — project vendor-neutral (preferred)
 2. `<project>/.pi/agent/agents/` — project pi native (legacy)
-3. `~/.agents/agents/` — user vendor-neutral (preferred)
+3. `~/.agents/` — user vendor-neutral (preferred)
 4. `~/.pi/agent/agents/` — user pi native (legacy)
 
 `Ctrl+Tab` to see them in the cycle.

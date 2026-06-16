@@ -35,13 +35,14 @@ const SHIPPED_SKILLS = [
 
 /** Where pi looks for user agents. Respects HOME/USERPROFILE for
  *  testability (otherwise we'd always write to the real user home).
- *  Path scheme: `<root>/.agents/agents/` (vendor-neutral) and
- *  `<root>/.pi/agent/agents/` (pi native, legacy). */
+ *  Agent files live directly in the dir (no `agents/` subfolder):
+ *    ~/.agents/reviewer.md   (NOT ~/.agents/agents/reviewer.md)
+ *  This keeps the path clean and matches the project-level convention. */
 function userAgentsDirs(): string[] {
 	const home = process.env.HOME || process.env.USERPROFILE || os.homedir();
 	return [
-		path.join(home, ".agents", "agents"),                // vendor-neutral (preferred)
-		path.join(home, ".pi", "agent", "agents"),           // pi native
+		path.join(home, ".agents"),                          // vendor-neutral (preferred)
+		path.join(home, ".pi", "agent", "agents"),           // pi native (legacy)
 	];
 }
 
@@ -94,7 +95,7 @@ function copyDirIfMissing(from: string, to: string): "installed" | "skipped" | "
 
 /** Install shipped soly agents to `~/.agents/` (vendor-neutral,
  *  preferred). Legacy `~/.pi/agent/agents/` copies are left alone —
- *  `discoverUserAgents` reads both, so old installs still work. */
+ *  `discoverUserRotors` reads both, so old installs still work. */
 export function installSolyAgents(extensionRoot: string): InstallResult {
 	const result: InstallResult = { installed: [], skipped: [], errors: [] };
 	const src = shippedAgentsDir(extensionRoot);

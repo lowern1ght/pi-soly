@@ -80,12 +80,12 @@ export default function solyExtension(pi: ExtensionAPI) {
 	let sessionCwd = "";
 
 	// ============================================================================
-	// Agent switcher (Shift+Tab cycles through available subagents)
+	// Rotor switcher (Shift+Tab cycles through available rotors)
 	// ============================================================================
 
 	// ============================================================================
-	// Agent switcher: REMOVED. The agent cycler is now owned by the
-	// separate `pi-switch` extension (footer pill + Ctrl+Tab + /agent slash).
+	// Rotor switcher: REMOVED. The rotor cycler is now owned by the
+	// separate `pi-switch` extension (footer pill + Ctrl+Tab + /rotor slash).
 	// Soly owns a single subagent (soly-manager.md) and the auto-install on
 	// opt-in. Workflows read the current agent from
 	// globalThis.__PI_SWITCH_AGENT__ (set by pi-switch).
@@ -328,7 +328,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 	// and mnemonic for "A"gent.)
 	// ============================================================================
 	// Agent switcher REMOVED — moved to the separate `pi-switch` extension.
-	// Soly no longer owns Ctrl+Tab, the footer pill, or /agent slash.
+	// Soly no longer owns Ctrl+Tab, the footer pill, or /rotor slash.
 	// The current agent is read by soly workflows from
 	// globalThis.__PI_SWITCH_AGENT__ (set by pi-switch), with a fallback
 	// to "worker" if pi-switch isn't installed.
