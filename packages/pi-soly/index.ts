@@ -88,9 +88,10 @@ export default function solyExtension(pi: ExtensionAPI) {
 	// ============================================================================
 	// Rotor switcher: REMOVED. The rotor cycler is now owned by the
 	// separate `pi-switch` extension (footer pill + Ctrl+Tab + /rotor slash).
-	// Soly owns a single subagent (soly-manager.md) and the auto-install on
-	// opt-in. Workflows read the current agent from
-	// globalThis.__PI_SWITCH_AGENT__ (set by pi-switch).
+	// Soly no longer ships a subagent (removed in 1.3.0). The LLM does plan
+	// execution directly using slash commands + the soly-framework skill.
+	// Workflows read the current rotor from globalThis.__PI_SWITCH_ROTOR__
+	// (set by pi-switch).
 	// ============================================================================
 
 	// Config (per-project + global + defaults). Refreshed on session_start
@@ -354,7 +355,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 	pi.on("session_start", async (event, ctx) => {
 		// Deprecation warning: if the project still uses `.soly/`, nudge the
 		// user toward `.agents/`. One-time per session.
-		if (isLegacySolyDir(ctx.cwd)) {
+		if (activeConfig.agent.useSolyWorkerSubagents && isLegacySolyDir(ctx.cwd)) {
 			notifyDeprecation(
 				ctx.ui,
 				`.soly/ (legacy)`,
@@ -405,21 +406,22 @@ export default function solyExtension(pi: ExtensionAPI) {
 			}
 		}
 
-		// Auto-install soly user-scope assets (soly-manager agent + soly-framework
-		// skill) to ~/.pi/agent/ on first run. Opt-in via config
-		// `agent.useSolyWorkerSubagents` (default false). Idempotent — respects
-		// any existing user-customized copies.
+		// Auto-install soly user-scope assets (soly-framework skill only,
+		// since 1.3.0 we don't ship a subagent) to ~/.pi/agent/skills/ on
+		// first run. Opt-in via config `agent.useSolyWorkerSubagents`
+		// (kept for backward compat, now a no-op for the skill install).
+		// Idempotent — respects any existing user-customized copies.
 		if (activeConfig.agent.useSolyWorkerSubagents) {
 			const extRoot = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
 			const assets = installSolyAssets(extRoot);
-			const installed = [...assets.agents.installed, ...assets.skills.installed.map((s) => `skill:${s}`)];
+			const installed = assets.skills.installed.map((s) => `skill:${s}`);
 			if (installed.length > 0) {
 				ctx.ui.notify(
-					`soly: installed (${installed.join(", ")}) — run \`/subagents-doctor\` to verify`,
+					`soly: installed (${installed.join(", ")}) — pi will discover on next session`,
 					"info",
 				);
 			}
-			for (const e of [...assets.agents.errors, ...assets.skills.errors]) {
+			for (const e of assets.skills.errors) {
 				ctx.ui.notify(`soly: install error — ${e}`, "warning");
 			}
 		}

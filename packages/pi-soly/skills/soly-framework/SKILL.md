@@ -27,7 +27,7 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 | Command | What it does |
 |---|---|
 | `/plan [N]` | Generate or update `PLAN.md` for phase N (or current phase) |
-| `/execute [N[.MM]]` | Dispatch plan(s) to `soly-manager` subagent. `N` = all plans in phase. `N.MM` = specific plan. |
+| `/execute [N[.MM]]` | Execute plan(s) in phase N. `N` = all plans. `N.MM` = specific plan. The LLM (you) executes directly. |
 | `/discuss N` | Discussion-driven scoping for phase N — capture decisions before planning |
 | `/inspect` | One-screen summary: position, phases, recent decisions |
 | `/pause` | Save handoff (`HANDOFF.json` + `.continue-here.md`) for later resume |
@@ -211,24 +211,11 @@ Once production commits exist, returning without a committed `SUMMARY.md` is an 
 
 Switch with `/rotor <name>` or `Ctrl+Tab` (cycles through). Footer pill shows current: `· ⚡ worker` / `▶ 🐢 oracle`.
 
-**Why "rotors"?** Because they *rotate* — `Ctrl+Tab` cycles through them. The word emphasizes the cycling behavior. Subagents (like `soly-manager`) are still called agents — they're a different concept (spawned for a task, not cycled through).
+**Why "rotors"?** Because they *rotate* — `Ctrl+Tab` cycles through them. The word emphasizes the cycling behavior. As of 1.3.0 there are no soly subagents — only the cycle rotors.
 
-## Subagent: soly-manager (single, mode-switching)
+## Subagent: none (as of 1.3.0)
 
-Spawn via `subagent({ agent: "soly-manager", task: ... })`. The task brief tells it which mode to be in:
-
-| Task brief mentions | Mode |
-|---|---|
-| implement, build, write code, add feature, create | **worker** |
-| debug, bug, fix, crash, error, repro, broken | **debugger** |
-| test, coverage, spec, assert, only modify tests | **tester** |
-| review, audit, adversarial, find bugs, qa | **reviewer** |
-| refactor, simplify, extract, rename, no behavior change | **refactor** |
-| document, readme, jsdoc, comment, intent doc | **documenter** |
-| validate, scope, drift, decision, before committing | **oracle** |
-| plan, design, outline, structure, decompose | **planner** |
-
-**soly-manager is ONE agent that switches modes. Don't spawn soly-worker / soly-debugger / etc. — those don't exist anymore.**
+**Soly no longer ships a subagent.** You (the LLM) execute plans directly in the main session using the slash commands above. If you need help, use pi's built-in cycle agents (\`worker\`, \`oracle\`, \`scout\`, \`reviewer\`) or the user's custom agents in \`~/.agents/\`. Don't spawn \`soly-manager\` / \`soly-worker\` / etc. — they don't exist.
 
 ## Tools the LLM can call
 
@@ -358,7 +345,7 @@ If `/execute` complains about illegal partial state:
 
 - ❌ Edit `.soly/rules/` files you didn't write — those are project invariants
 - ❌ Skip the SUMMARY — illegal partial state
-- ❌ Spawn `soly-worker` or `soly-debugger` — use `soly-manager` (mode-switches)
+- ❌ Spawn `soly-manager` / `soly-worker` / etc. — there are no soly subagents (removed in 1.3.0). Use pi's built-in subagents via the parent LLM's \`subagent(...)\` call.
 - ❌ Write rules in code comments — use `.soly/rules/*.md` or `.agents/rules/*.md` files
 - ❌ Edit `.soly/phases/*/PLAN.md` after `status: in_progress` — create a new plan
 - ❌ Put intent docs anywhere other than `.soly/docs/` (or `.agents/docs/` for vendor-neutral)

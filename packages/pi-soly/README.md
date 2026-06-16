@@ -56,7 +56,7 @@ GSD-inspired planning and execution. State is the source of truth, not vibes.
 
 ```bash
 /plan            # generate PLAN.md for the current phase
-/execute         # dispatch plan to soly-worker subagent
+/execute         # execute plan directly (LLM does the work)
 /resume          # pick up a paused session
 /inspect         # show current state summary
 /discuss 3       # talk through decisions before planning phase 3
@@ -182,7 +182,7 @@ todo_update({
                 ┌──────────────────┐
                 │  7 soly agents   │
                 │                  │
-                │  soly-worker     │
+                │  worker (cycle)     │
                 │  soly-debugger   │
                 │  soly-tester     │
                 │  soly-reviewer   │

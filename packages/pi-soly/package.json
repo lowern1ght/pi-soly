@@ -38,7 +38,6 @@
     "scratchpad.ts",
     "tools.ts",
     "agents-install.ts",
-    "agents",
     "ask",
     "skills",
     "switch",

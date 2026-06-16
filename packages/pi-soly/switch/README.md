@@ -25,7 +25,7 @@ Agents are markdown files with YAML frontmatter. pi-subagents (and pi-switch) di
 |---|---|---|
 | `~/.pi/agent/npm/node_modules/pi-subagents/agents/*.md` | built-in (worker, oracle, scout, reviewer) | ❌ |
 | `~/.pi/agent/agents/*.md` | user-defined | ✅ |
-| `~/.pi/agent/extensions/pi-soly/agents/*.md` (auto-installed if `useSolyWorkerSubagents: true` in `.soly/config.json`) | soly-manager (mode-switching subagent) | ✅ source |
+| `~/.pi/agent/extensions/pi-soly/agents/*.md` (auto-installed if `useSolyWorkerSubagents: true` in `.soly/config.json`) | (removed in 1.3.0 — soly no longer ships a subagent) | — |
 
 ### Frontmatter schema
 
@@ -61,7 +61,7 @@ You'll be prompted for a one-liner description. Then edit the file to specialize
 |---|---|
 | See current + available | `/agent` |
 | Cycle | `Ctrl+Tab` (or `F2`) |
-| Set explicitly | `/agent soly-manager` |
+| Set explicitly | `(n/a — no soly subagent since 1.3.0)` |
 | Diagnose | `/agent doctor` |
 | Recommend for a task | `/agent recommend investigate React Server Components` |
 
@@ -76,7 +76,7 @@ The LLM's system prompt includes a table mapping task keywords to agents. When t
 | scout, scan, map, where is, locate, skim | 🔍 scout | codebase recon |
 | review, audit, check, adversarial, critique, qa | 👀 reviewer | adversarial review |
 | oracle, decision, tradeoff, which approach, drift | 🔮 oracle | decision consistency |
-| implement, build, write code, add feature, debug, fix, test, refactor, document, plan, validate | ⚡ soly-manager | workflow executor, mode-switches from task brief |
+| implement, build, write code, add feature, debug, fix, test, refactor, document, plan, validate | ⚡ worker | do it yourself using slash commands |
 | (anything else) | ⚡ worker | generic implementation |
 
 Same keywords in Russian work (изучи, баг, тест, etc.).
@@ -84,7 +84,7 @@ Same keywords in Russian work (изучи, баг, тест, etc.).
 ## Integration with other extensions
 
 - **pi-soly** reads `globalThis.__PI_SWITCH_AGENT__` to know which cycle agent is active. Falls back to `"worker"` if pi-switch isn't loaded.
-- **pi-soly** also auto-installs `soly-manager.md` (single mode-switching subagent) to `~/.pi/agent/agents/` when `useSolyWorkerSubagents: true` in `.soly/config.json`.
+- **pi-soly no longer ships a subagent** (removed in 1.3.0). The LLM in the main session executes plans directly using the slash commands + the `soly-framework` skill.
 
 ## Files
 

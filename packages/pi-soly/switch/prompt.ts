@@ -19,7 +19,7 @@ export const TASK_AGENT_HINTS: ReadonlyArray<{
 	  agent: "scout", emoji: "\ud83d\udd0d",
 	  why: "codebase recon, patterns, file locations" },
 	{ pattern: /\b(plan|design|architect|outline|structure|break\s*down|steps|order)\b/i,
-	  agent: "soly-manager", emoji: "\ud83d\udccb",
+	  agent: "worker", emoji: "\ud83d\udccb",
 	  why: "decompose into ordered steps, identify risks" },
 	{ pattern: /\b(review|audit|check|adversarial|critique|find\s+bugs|qa)\b/i,
 	  agent: "reviewer", emoji: "\ud83d\udc40",
@@ -28,22 +28,22 @@ export const TASK_AGENT_HINTS: ReadonlyArray<{
 	  agent: "oracle", emoji: "\ud83d\udd2e",
 	  why: "decision consistency, hidden assumptions, drift detection" },
 	{ pattern: /\b(debug|bug|fix|crash|error|stack\s*trace|repro|why\s+is\s+this\s+broken)\b/i,
-	  agent: "soly-manager", emoji: "\ud83d\udc1e",
+	  agent: "worker", emoji: "\ud83d\udc1e",
 	  why: "isolated bug investigation with minimal repro" },
 	{ pattern: /\b(test|tests|coverage|spec|assert)\b/i,
-	  agent: "soly-manager", emoji: "\ud83e\uddea",
+	  agent: "worker", emoji: "\ud83e\uddea",
 	  why: "test-only work, never modifies prod code" },
 	{ pattern: /\b(refactor|clean\s*up|simplify|extract|rename|restructure|no\s+behavior\s+change)\b/i,
-	  agent: "soly-manager", emoji: "\ud83d\udd04",
+	  agent: "worker", emoji: "\ud83d\udd04",
 	  why: "pure refactoring, behavior-preserving" },
 	{ pattern: /\b(document|docs|readme|jsdoc|comment|annotate)\b/i,
-	  agent: "soly-manager", emoji: "\ud83d\udcdd",
+	  agent: "worker", emoji: "\ud83d\udcdd",
 	  why: "doc updates, READMEs, inline annotations" },
 	{ pattern: /\b(implement|build|write\s+code|add\s+feature|create\s+the)\b/i,
 	  agent: "worker", emoji: "\u26a1",
 	  why: "generic implementation with all tools" },
 	{ pattern: /\b(orchestrate|coordinate|dispatch|chain|run\s+in\s+parallel|first\s+.+\s+then)\b/i,
-	  agent: "soly-manager", emoji: "\ud83e\udd1d",
+	  agent: "worker", emoji: "\ud83e\udd1d",
 	  why: "multi-agent orchestration" },
 	// Russian keywords (loose match — Russian words inflect heavily; we match
 	// word stems, accepting some false positives as the cost of broader coverage)
@@ -54,7 +54,7 @@ export const TASK_AGENT_HINTS: ReadonlyArray<{
 	  agent: "scout", emoji: "\ud83d\udd0d",
 	  why: "codebase recon, patterns, file locations" },
 	{ pattern: /(спланир|plan|design|architect)/i,
-	  agent: "soly-manager", emoji: "\ud83d\udccb",
+	  agent: "worker", emoji: "\ud83d\udccb",
 	  why: "decompose into ordered steps, identify risks" },
 	{ pattern: /(проверь|ревью|аудит|review|audit)/i,
 	  agent: "reviewer", emoji: "\ud83d\udc40",
@@ -63,22 +63,22 @@ export const TASK_AGENT_HINTS: ReadonlyArray<{
 	  agent: "oracle", emoji: "\ud83d\udd2e",
 	  why: "decision consistency, hidden assumptions, drift detection" },
 	{ pattern: /(баг|ошибк|почему\s+(?:падает|ломает)|debug|bug|crash|stack\s*trace|repro)/i,
-	  agent: "soly-manager", emoji: "\ud83d\udc1e",
+	  agent: "worker", emoji: "\ud83d\udc1e",
 	  why: "isolated bug investigation with minimal repro" },
 	{ pattern: /(тест|покрыт|test|coverage|spec|assert)/i,
-	  agent: "soly-manager", emoji: "\ud83e\uddea",
+	  agent: "worker", emoji: "\ud83e\uddea",
 	  why: "test-only work, never modifies prod code" },
 	{ pattern: /(рефактор|упрост|refactor|simplify|extract|restructure)/i,
-	  agent: "soly-manager", emoji: "\ud83d\udd04",
+	  agent: "worker", emoji: "\ud83d\udd04",
 	  why: "pure refactoring, behavior-preserving" },
 	{ pattern: /(документ|описани|document|readme|jsdoc)/i,
-	  agent: "soly-manager", emoji: "\ud83d\udcdd",
+	  agent: "worker", emoji: "\ud83d\udcdd",
 	  why: "doc updates, READMEs, inline annotations" },
 	{ pattern: /(реализуй|сделай|напиши|создай|implement|build|add\s+feature|create\s+the)/i,
 	  agent: "worker", emoji: "\u26a1",
 	  why: "generic implementation with all tools" },
 	{ pattern: /(оркестрируй|координируй|orchestrate|coordinate|dispatch|chain)/i,
-	  agent: "soly-manager", emoji: "\ud83e\udd1d",
+	  agent: "worker", emoji: "\ud83e\udd1d",
 	  why: "multi-agent orchestration" },
 ];
 
@@ -108,7 +108,7 @@ The current agent is shown in the footer status line as \`[emoji name]\`.
 
 When you need a specialist for a sub-task, use the right agent via the parent LLM's \`subagent(...)\` call.
 
-**Soly subagent:** there is exactly one — \`soly-manager\`. It's a workflow executor that switches modes (worker/debugger/tester/reviewer/refactor/documenter/oracle/planner) based on the task brief. For any soly plan execution, spawn \`soly-manager\` via \`subagent(...)\` with the task — it picks the right mode itself.
+**No soly subagent.** As of 1.3.0, soly no longer ships a subagent. The LLM in the main session executes plans directly using the slash commands (\`/plan\`, \`/execute\`, etc.) and the \`soly-framework\` skill. Use pi's built-in subagents (\`worker\`, \`oracle\`, \`scout\`, \`reviewer\`) for read-only research.
 
 **Task → agent heuristics.** Before launching a generic \`subagent(...)\`, scan the request for these keywords:
 
@@ -117,14 +117,14 @@ When you need a specialist for a sub-task, use the right agent via the parent LL
 | scout, scan, map, find all, where is, locate, explore codebase, skim | 🔍 scout | codebase recon, patterns, file locations |
 | review, audit, check, adversarial, critique, find bugs, qa | 👀 reviewer | adversarial correctness, security, style review |
 | oracle, decision, tradeoff, compare, which approach, is this wise, drift | 🔮 oracle | decision consistency, hidden assumptions |
-| implement, build, write code, add feature, create the, debug, fix, test, refactor, document, plan, validate | ⚡ soly-manager | workflow executor, picks mode from task brief |
-| (anything else) | ⚡ worker | generic implementation, all tools |
+| (anything else, including implement, debug, fix, test, refactor, document, plan) | ⚡ worker | generic implementation, all tools — prefer to do it yourself |
 
 For multi-step tasks, the orchestrator (you) decides which agents run and in what order. You can chain agents via \`subagent({ chain: [...] })\` or run them in parallel via parallel tasks.
 
 DON'T:
 - Launch a worker for analysis (use oracle/scout/reviewer)
 - Launch an oracle for implementation (it has no write tools)
+- Spawn \`soly-manager\` / \`soly-worker\` / etc. — there are no soly subagents anymore (as of 1.3.0)
 - Spawn soly-worker / soly-debugger / soly-tester — there is only \`soly-manager\`
 - Manually edit \`.soly/agent\` or \`~/.pi-switch/agent\` — use the slash command
 `;

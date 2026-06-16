@@ -21,8 +21,8 @@ describe("buildPiSwitchSection", () => {
 		expect(s).toContain("scout");
 		expect(s).toContain("worker");
 	});
-	test("mentions soly-manager as the single subagent", () => {
-		expect(s).toContain("soly-manager");
+	test("mentions worker as the main cycle rotor", () => {
+		expect(s).toContain("worker");
 	});
 	test("explains user-defined", () => {
 		expect(s).toMatch(/user[- ]?defined/i);
@@ -60,36 +60,36 @@ describe("recommendAgent", () => {
 		expect(recommendAgent("Изучи React Server Components")?.agent).toBe("researcher");
 		expect(recommendAgent("Найди инфу про Zustand")?.agent).toBe("researcher");
 	});
-	test("debug keywords → soly-manager", () => {
-		expect(recommendAgent("fix this bug")?.agent).toBe("soly-manager");
-		expect(recommendAgent("why is this crash happening")?.agent).toBe("soly-manager");
-		expect(recommendAgent("repro the failing test")?.agent).toBe("soly-manager");
-		expect(recommendAgent("Почему падает тест?")?.agent).toBe("soly-manager");
+	test("debug keywords → worker", () => {
+		expect(recommendAgent("fix this bug")?.agent).toBe("worker");
+		expect(recommendAgent("why is this crash happening")?.agent).toBe("worker");
+		expect(recommendAgent("repro the failing test")?.agent).toBe("worker");
+		expect(recommendAgent("Почему падает тест?")?.agent).toBe("worker");
 	});
-	test("refactor keywords → soly-manager", () => {
-		expect(recommendAgent("refactor this function")?.agent).toBe("soly-manager");
-		expect(recommendAgent("simplify the auth flow")?.agent).toBe("soly-manager");
-		expect(recommendAgent("Упрости эту функцию")?.agent).toBe("soly-manager");
+	test("refactor keywords → worker", () => {
+		expect(recommendAgent("refactor this function")?.agent).toBe("worker");
+		expect(recommendAgent("simplify the auth flow")?.agent).toBe("worker");
+		expect(recommendAgent("Упрости эту функцию")?.agent).toBe("worker");
 	});
-	test("test keywords → soly-manager", () => {
-		expect(recommendAgent("write tests for the parser")?.agent).toBe("soly-manager");
-		expect(recommendAgent("improve coverage")?.agent).toBe("soly-manager");
-		expect(recommendAgent("Напиши тесты для парсера")?.agent).toBe("soly-manager");
+	test("test keywords → worker", () => {
+		expect(recommendAgent("write tests for the parser")?.agent).toBe("worker");
+		expect(recommendAgent("improve coverage")?.agent).toBe("worker");
+		expect(recommendAgent("Напиши тесты для парсера")?.agent).toBe("worker");
 	});
 	test("review keywords → reviewer", () => {
 		expect(recommendAgent("review this PR")?.agent).toBe("reviewer");
 		expect(recommendAgent("audit the security")?.agent).toBe("reviewer");
 		expect(recommendAgent("Проверь этот код")?.agent).toBe("reviewer");
 	});
-	test("docs keywords → soly-manager", () => {
-		expect(recommendAgent("update the readme")?.agent).toBe("soly-manager");
-		expect(recommendAgent("add jsdoc to the function")?.agent).toBe("soly-manager");
-		expect(recommendAgent("Обнови документацию")?.agent).toBe("soly-manager");
+	test("docs keywords → worker", () => {
+		expect(recommendAgent("update the readme")?.agent).toBe("worker");
+		expect(recommendAgent("add jsdoc to the function")?.agent).toBe("worker");
+		expect(recommendAgent("Обнови документацию")?.agent).toBe("worker");
 	});
-	test("plan keywords → soly-manager", () => {
-		expect(recommendAgent("plan the migration")?.agent).toBe("soly-manager");
-		expect(recommendAgent("design the API")?.agent).toBe("soly-manager");
-		expect(recommendAgent("Спланируй миграцию")?.agent).toBe("soly-manager");
+	test("plan keywords → worker", () => {
+		expect(recommendAgent("plan the migration")?.agent).toBe("worker");
+		expect(recommendAgent("design the API")?.agent).toBe("worker");
+		expect(recommendAgent("Спланируй миграцию")?.agent).toBe("worker");
 	});
 	test("implement keywords → worker", () => {
 		expect(recommendAgent("implement the feature")?.agent).toBe("worker");

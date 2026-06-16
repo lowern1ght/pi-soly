@@ -35,12 +35,10 @@ export interface SolyConfig {
 		preferAskPro: boolean;
 		/** When soly pause is invoked, also auto-save HANDOFF.json (currently always true; knob for future). */
 		autoCheckpointOnPause: boolean;
-		/** Opt-in: install soly-manager agent config to
-		 *  ~/.pi/agent/agents/ on session_start. The single soly subagent
-		 *  is mode-switching (worker/debugger/tester/reviewer/etc. based on
-		 *  the task brief). Off by default — most users don't need a soly-
-		 *  specialized subagent since the workflow template already
-		 *  contains soly instructions. */
+		/** DEPRECATED in 1.3.0. Soly no longer ships a subagent. The LLM
+		 *  executes plans directly using the slash commands + the
+		 *  soly-framework skill. This option is kept as a no-op for
+		 *  backward compat with old config files. */
 		useSolyWorkerSubagents: boolean;
 	};
 	display: {
