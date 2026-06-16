@@ -658,12 +658,23 @@ What must the LLM do?
 			};
 
 			const picker = async (label: string) => {
-				const lines = Object.entries(subcommands).map(
-					([name, spec]) => `${name} - ${spec.description}`,
+				const entries = Object.entries(subcommands);
+				const lines = entries.map(
+					([name, spec], i) => {
+						const icons: Record<string, string> = {
+							position: "📍", state: "📄", plan: "📋", context: "💡",
+							research: "🔬", roadmap: "🗺️", progress: "📊",
+							phases: "📁", tasks: "✅", task: "🔎",
+							features: "⭐", milestone: "🎯", reload: "🔄",
+							config: "⚙️",
+						};
+						const icon = icons[name] ?? "▸";
+						return `${icon} ${name} — ${spec.description}`;
+					},
 				);
 				const choice = await ui.select(label, lines);
 				if (choice != null && typeof choice === "number") {
-					const name = Object.keys(subcommands)[choice];
+					const name = entries[choice]?.[0];
 					if (name) {
 						await subcommands[name].run([name]);
 					}
@@ -671,7 +682,12 @@ What must the LLM do?
 			};
 
 			const parts = args.trim().split(/\s+/).filter(Boolean);
-			const sub = parts[0] ?? "position";
+			const sub = parts[0] ?? "";
+
+			// /soly with no args → interactive picker with emoji + next hint
+			if (!sub) {
+				return picker("soly (esc to cancel):");
+			}
 
 			if (sub === "help" || sub === "?" || sub === "--help" || sub === "-h") {
 				return picker("soly subcommand (esc to cancel):");
