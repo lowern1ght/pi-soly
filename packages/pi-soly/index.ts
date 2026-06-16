@@ -66,7 +66,7 @@ import { loadIntentDocs, buildIntentSection, loadInlineIntentBodies, type Intent
 
 // Built-in sub-features (merged from former pi-asked, pi-agented packages):
 import piAskExtension from "./ask/index.ts";
-import piSwitchExtension from "./switch/index.ts";
+
 
 export default function solyExtension(pi: ExtensionAPI) {
 	// ============================================================================
@@ -82,19 +82,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 	let sessionCwd = "";
 
 	// ============================================================================
-	// Rotor switcher (Shift+Tab cycles through available rotors)
 	// ============================================================================
-
-	// ============================================================================
-	// Rotor switcher: REMOVED. The rotor cycler is now owned by the
-	// separate `pi-switch` extension (footer pill + Ctrl+Tab + /rotor slash).
-	// Soly no longer ships a subagent (removed in 1.3.0). The LLM does plan
-	// execution directly using slash commands + the soly-framework skill.
-	// Workflows read the current rotor from globalThis.__PI_SWITCH_ROTOR__
-	// (set by pi-switch).
-	// ============================================================================
-
-	// Config (per-project + global + defaults). Refreshed on session_start
 	// and on each session_start (the LLM can call /soly config to view).
 	let activeConfig: SolyConfig = DEFAULT_CONFIG;
 	const getActiveConfig = (): SolyConfig => activeConfig;
@@ -262,7 +250,6 @@ export default function solyExtension(pi: ExtensionAPI) {
 		const hint = buildNextHint(state);
 		const hintGroup = hint ? `${"\x1b[2m"}${hint}${"\x1b[0m"}` : "";
 
-		// Agent badge — owned by pi-switch extension (header bar + status line).
 		// Soly doesn't render the agent badge itself.
 		const agentGroup = "";
 
@@ -324,18 +311,6 @@ export default function solyExtension(pi: ExtensionAPI) {
 		refreshState: () => refreshState(),
 		getConfig: getActiveConfig,
 	});
-
-	// ============================================================================
-	// Agent switcher: Ctrl+Shift+A cycles through available subagents.
-	// (Shift+Tab is taken by pi's thinking-level cycler; Ctrl+Shift+A is unused
-	// and mnemonic for "A"gent.)
-	// ============================================================================
-	// Agent switcher REMOVED — moved to the separate `pi-switch` extension.
-	// Soly no longer owns Ctrl+Tab, the footer pill, or /rotor slash.
-	// The current agent is read by soly workflows from
-	// globalThis.__PI_SWITCH_AGENT__ (set by pi-switch), with a fallback
-	// to "worker" if pi-switch isn't installed.
-	// ============================================================================
 
 	registerWorkflows(pi, {
 		getState: () => state,

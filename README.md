@@ -4,7 +4,7 @@
 
 **The project management framework for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent).**
 
-Plans · State · Subagents · Multi-question picker · Rotor switcher · Live task list.
+Plans · State · Subagents · Multi-question picker · Live task list.
 
 One `npm install`. Zero config. Pure magic.
 
@@ -30,7 +30,7 @@ That's it. Restart pi, and you have:
 
 - **A complete project management engine** — plans, state, subagent-driven execution
 - **A multi-question picker** — `ask_pro` tool for the LLM
-- **A rotor switcher** — `Ctrl+Tab` to cycle, footer pill always visible
+- **Live task list + notifications** — see nudge + deprecation warnings as framed Box widgets
 - **A live task list** — `todo_update` tool renders in the footer
 - **7 soly agents** installed on first run
 
@@ -43,7 +43,7 @@ That's it. Restart pi, and you have:
 | Write your own planning workflow | `/plan`, `/execute`, `/resume`, `/inspect` — ready |
 | Manually dispatch subagents | `useSolyWorkerSubagents: true` — automatic routing |
 | 3 different packages for pickers/tasks/agents | One package, one config, one install |
-| Rotor name as free text in slash commands | Footer pill + `Ctrl+Tab` + `/rotor` picker |
+| Mode selection (oracle/scout/reviewer) | LLM picks via `subagent(...)` based on task brief |
 | Re-invent the state machine | `.soly/STATE.md` + auto-managed phases |
 
 ---
@@ -93,30 +93,6 @@ ask_pro({
   }]
 })
 ```
-
-### 🎛 Rotor Switcher
-
-Footer pill that's always there. `Ctrl+Tab` to cycle. No popup, no friction.
-
-```
-[model]  · ⚡ worker    · todos 2/5: write tests   ← footer, always visible
-[model]  ▶ 🐢 oracle    · todos 2/5: write tests   ← after one Ctrl+Tab
-[model]  · 🔍 scout     · todos 2/5: write tests   ← after two
-```
-
-Agents:
-- `worker` — default, full read+write
-- `oracle` — read-only decision advisor
-- `scout` — codebase reconnaissance
-- `researcher` — external docs, ecosystem
-- `planner` — architecture and decomposition
-- `context-builder` — hands off context to other agents
-- `reviewer` — adversarial code review, read-only
-- `delegate` — chains agents together
-
-### 📝 Live Task List
-
-`todo_update` tool — renders in the footer as `todos 2/5: current action`.
 
 The LLM can update its own task list mid-turn. You watch progress without re-asking.
 
@@ -171,11 +147,11 @@ todo_update({
                          ▼
                 ┌──────────────────┐
                 │  switch/         │
-                │  rotor switcher  │
+                │  (no rotors —    │
                 │                  │
                 │  Ctrl+Tab        │
                 │  footer pill     │
-                │  /rotor picker   │
+                │   removed 1.4)   │
                 └────────┬─────────┘
                          │
                          ▼
@@ -196,7 +172,7 @@ todo_update({
 
 ## 📚 Documentation
 
-- **Slash commands** — `/plan`, `/execute`, `/resume`, `/inspect`, `/discuss <N>`, `/quick <task>`, `/rotor`
+- **Slash commands** — `/plan`, `/execute`, `/resume`, `/inspect`, `/discuss <N>`, `/quick <task>`
 - **Tools** — `ask_pro(question[])` and `todo_update(todo[])`
 - **Events** — `session_start`, `before_agent_start`, `message_end`, `tool_call`, `tool_result`
 - **State files** — `.soly/STATE.md`, `.soly/ROADMAP.md`, `.soly/phases/<N>-<slug>/<N>-PLAN.md`

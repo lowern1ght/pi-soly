@@ -19,7 +19,7 @@
 //                     reading; new writes go to .agents/config.json too)
 //
 // What does NOT get moved:
-//   - .soly/.soly/agent (rotor persistence) — handled by pi-switch separately
+//   - rotor persistence (no longer used in 1.4.0)
 //   - git history — `git mv` would preserve; fs.rename loses history. We
 //     suggest the user commit beforehand.
 //

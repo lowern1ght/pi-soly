@@ -418,8 +418,8 @@ What must the LLM do?
 			};
 			const subcommands: Record<string, SolySub> = {
 				// `agent` subcommand REMOVED — moved to the separate `pi-switch`
-				// extension as the `/rotor` slash command (footer pill + Ctrl+Tab).
-				// Soly no longer owns the rotor switcher UI.
+				// extension (rotor switcher removed in 1.4.0).
+				// Soly no longer owns a rotor switcher.
 				config: {
 					description: "show merged config (per-project + global + defaults); edit .soly/config.json or ~/.soly/config.json",
 					run: () => {

@@ -47,24 +47,20 @@ function makeState(overrides: Partial<StatusState> = {}): StatusState {
 
 describe("formatStatus", () => {
 	test("includes version in header", () => {
-		const out = formatStatus(projDir, makeState(), "worker", { version: "1.3.0" });
+		const out = formatStatus(projDir, makeState(), { version: "1.3.0" });
 		expect(out).toContain("v1.3.0");
 	});
 
-	test("includes current rotor", () => {
-		const out = formatStatus(projDir, makeState(), "oracle");
-		expect(out).toContain("rotor: oracle");
-	});
 
 	test("shows project state (milestone + current)", () => {
-		const out = formatStatus(projDir, makeState(), "worker");
+		const out = formatStatus(projDir, makeState());
 		expect(out).toContain("v0.6.0");
 		expect(out).toContain("01-bootstrap");
 	});
 
 	test("handles missing .agents/ (no .soly/)", () => {
 		const empty = makeState({ exists: false, solyDir: "" });
-		const out = formatStatus(projDir, empty, "worker");
+		const out = formatStatus(projDir, empty);
 		expect(out).toContain("no .agents/");
 		expect(out).toContain("/soly-init");
 	});
@@ -82,7 +78,7 @@ describe("formatStatus", () => {
 | 2026-06-15 | third decision | reason three |
 `,
 		);
-		const out = formatStatus(projDir, makeState(), "worker");
+		const out = formatStatus(projDir, makeState());
 		expect(out).toContain("third decision");
 		expect(out).toContain("2026-06-15");
 	});
@@ -93,7 +89,7 @@ describe("formatStatus", () => {
 			rows.push(`| 2026-06-${String(i + 1).padStart(2, "0")} | decision ${i} | why ${i} |`);
 		}
 		fs.writeFileSync(path.join(projDir, ".agents", "STATE.md"), rows.join("\n"));
-		const out = formatStatus(projDir, makeState(), "worker", { recentDecisions: 3 });
+		const out = formatStatus(projDir, makeState(), { recentDecisions: 3 });
 		const decisionMatches = out.match(/decision \d+/g) ?? [];
 		// 3 most recent: decision 17, 18, 19
 		expect(decisionMatches.length).toBeLessThanOrEqual(3);
@@ -107,7 +103,7 @@ describe("formatStatus", () => {
 				body: [`body ${i}`],
 			});
 		}
-		const out = formatStatus(projDir, makeState(), "worker");
+		const out = formatStatus(projDir, makeState());
 		expect(out).toContain("nudge 2");
 		expect(out).toContain("nudge");
 	});
@@ -116,14 +112,14 @@ describe("formatStatus", () => {
 		// Use a fresh project dir so previous test notifications don't leak in
 		const freshDir = fs.mkdtempSync(path.join(tmpRoot, "fresh-"));
 		fs.mkdirSync(path.join(freshDir, ".agents"), { recursive: true });
-		const out = formatStatus(freshDir, { ...makeState(), solyDir: path.join(freshDir, ".agents") }, "worker");
+		const out = formatStatus(freshDir, { ...makeState(), solyDir: path.join(freshDir, ".agents") });
 		expect(out).toContain("none recorded");
 		fs.rmSync(freshDir, { recursive: true, force: true });
 	});
 
 	test("includes /soly-log hint when notifications present", () => {
 		appendNotification(projDir, { kind: "info", title: "x", body: [] });
-		const out = formatStatus(projDir, makeState(), "worker");
+		const out = formatStatus(projDir, makeState());
 		expect(out).toContain("/soly-log");
 	});
 });

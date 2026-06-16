@@ -40,7 +40,6 @@
     "agents-install.ts",
     "ask",
     "skills",
-    "switch",
     "workflows",
     "workflows-data"
   ],

@@ -157,7 +157,7 @@ describe("initSolyProject", () => {
 		const agents = fs.readFileSync(path.join(dir, "AGENTS.md"), "utf-8");
 		expect(agents).toContain("/plan");
 		expect(agents).toContain("/execute");
-		expect(agents).toContain("/rotor");
+		expect(agents).toContain("/plan");
 		fs.rmSync(dir, { recursive: true, force: true });
 	});
 

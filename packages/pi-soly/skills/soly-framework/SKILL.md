@@ -1,11 +1,6 @@
----
-name: soly-framework
-description: Use when the user asks how to do anything with the soly framework for pi — start a new project, plan or execute a phase, pause and resume sessions, add rules, add intent docs, write PLAN.md or SUMMARY.md, troubleshoot issues. Triggers on "how do I", "what's the command for", "soly help", "soly framework", and any practical question about using the soly extension. NOT loaded for generic code questions — only when the user is working with the soly workflow.
----
-
 # soly framework
 
-The **soly** extension adds project-management workflow to [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent): intent docs, ROADMAP/STATE/PHASE state machine, and subagent-driven plan execution. This skill is your complete reference for using it.
+The **soly** extension adds project-management workflow to [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent): intent docs, ROADMAP/STATE/PHASE state machine, and LLM-driven plan execution. This skill is your complete reference for using it.
 
 ## Quick start (read first if new)
 
@@ -22,7 +17,7 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 - A **task** is the smallest unit. Has type, description, verify, accept.
 - **Close-out**: production code commits → `SUMMARY.md` → `STATE.md` updated → ROADMAP check.
 
-## Slash commands (interactive mode)
+## Quick reference — slash commands
 
 | Command | What it does |
 |---|---|
@@ -35,9 +30,20 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 | `/quick <task>` | One-shot task that doesn't need a full plan — direct dispatch |
 | `/soly` | Project state inspection (alias for `/inspect`) |
 | `/why` | Show what context the LLM's last turn was based on |
-| `/rotor [name]` | Switch the current rotor (or open picker) |
+| `/soly-init` | Scaffold a new soly project (interactive template picker) |
+| `/soly-migrate` | Move legacy `.soly/` to `.agents/` (atomic) |
+| `/soly-status` | Comprehensive one-screen report |
+| `/soly-log [N]` | Show last N notifications from the log |
 
 `/soly <verb>` plain-text aliases also work for some verbs (legacy compat).
+
+## No rotors (removed in 1.4.0)
+
+As of 1.4.0, soly no longer ships rotors. No `/rotor` command, no `Ctrl+Tab` cycle, no footer pill. The LLM picks the right subagent based on the task brief — use `subagent(...)` with `agent: "worker"` for implementation, `"oracle"` for decisions, `"scout"` for recon, `"reviewer"` for adversarial review.
+
+**Why drop them?** Rotors were a UX shortcut (Ctrl+Tab) that pi itself doesn't support well. pi has its own subagent system (`worker`, `oracle`, `scout`, `reviewer`); wrapping it in a "cycle" was over-engineering. The LLM in the main session is the executor; pi's subagents are helpers, not cycle modes.
+
+**For soly work**, the LLM does the work itself — it reads PLAN.md, runs commands, commits, writes SUMMARY.md. It does NOT spawn a soly subagent. Use `subagent(...)` only for read-only research (e.g. `agent: "scout"` for "find all files using X").
 
 ## File structure
 
@@ -69,25 +75,18 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 │   └── .continue-here.md          # pause resume marker
 ├── .agents/                       # vendor-neutral agent config (per project)
 │   ├── rules/                     # agent rules (loaded with priority 3, after .soly/rules/)
-│   │   ├── code-style.md
-│   │   └── testing.md
 │   ├── skills/                    # project-scoped skills (pi auto-discovers)
 │   │   └── my-skill/
 │   │       └── SKILL.md
 │   ├── docs/                      # agent-specific docs (intent-style)
-│   │   └── architecture.md
 │   └── agents/                    # project-specific agent definitions
-│       ├── project-reviewer.md
-│       └── data-scientist.md
 ```
 
-**Two parallel conventions (migration in progress):** `.soly/` is the legacy soly state. `.agents/` is the new vendor-neutral home. The two work side-by-side:
+**Two parallel conventions:** `.soly/` is soly-specific state. `.agents/` is vendor-neutral agent config. The two coexist:
 
-- **Use `.agents/`** for new projects (recommended)
-- **Use `.soly/`** for legacy projects (still works, will show a deprecation warning)
+- **Use `.soly/`** for soly workflow artifacts (PLAN.md, SUMMARY.md, etc.)
+- **Use `.agents/`** for things other AI tools should also see (rules, skills, agents)
 - **Use `AGENTS.md`** for top-level project-wide agent conventions
-
-To migrate: `mv .soly .agents` — soly picks up the new location automatically. No data loss.
 
 ## Frontmatter conventions
 
@@ -200,23 +199,6 @@ The only legal sequence for finishing a plan:
 
 Once production commits exist, returning without a committed `SUMMARY.md` is an **illegal partial-plan state** — the next `/execute` will detect it and refuse to start.
 
-## Cycle rotors (4 built-in)
-
-| Rotor | Writes | Use for |
-|---|---|---|
-| `worker` | ✅ | Generic implementation, full tools |
-| `oracle` | ❌ | Decision-consistency, no file edits |
-| `scout` | ❌ | Codebase recon, read-only |
-| `reviewer` | ❌ | Adversarial code review |
-
-Switch with `/rotor <name>` or `Ctrl+Tab` (cycles through). Footer pill shows current: `· ⚡ worker` / `▶ 🐢 oracle`.
-
-**Why "rotors"?** Because they *rotate* — `Ctrl+Tab` cycles through them. The word emphasizes the cycling behavior. As of 1.3.0 there are no soly subagents — only the cycle rotors.
-
-## Subagent: none (as of 1.3.0)
-
-**Soly no longer ships a subagent.** You (the LLM) execute plans directly in the main session using the slash commands above. If you need help, use pi's built-in cycle agents (\`worker\`, \`oracle\`, \`scout\`, \`reviewer\`) or the user's custom agents in \`~/.agents/\`. Don't spawn \`soly-manager\` / \`soly-worker\` / etc. — they don't exist.
-
 ## Tools the LLM can call
 
 | Tool | Purpose |
@@ -234,51 +216,6 @@ Switch with `/rotor <name>` or `Ctrl+Tab` (cycles through). Footer pill shows cu
 | `ask_pro(questions)` | Multi-question picker (tabbed, single/multi-select, ⭐, Other…) |
 | `todo_update(todos)` | Update task list rendered in footer |
 
-## Add a new rule (most common task)
-
-Three places, in priority order:
-
-1. **Project rule** — `~/.pi/agent/agents/soly/rules/<name>.md` (version-controlled, shared with team)
-2. **User rule** — `~/.soly/rules/<name>.md` (per-user, not committed)
-3. **Phase rule** — `<phase-dir>/<plan>.md.rules/<name>.md` (active only for that plan)
-
-Use `/rulewizard` slash command to scaffold a new rule with the right frontmatter.
-
-A rule file looks like:
-
-```markdown
----
-applyTo: "src/**/*.ts"
-priority: 50
----
-
-# TypeScript style
-
-- Strict mode required
-- Never use `any`
-- Prefer `type` over `interface`
-```
-
-## Add a new intent doc
-
-Create a file in `.soly/docs/`:
-
-```markdown
-# Architecture
-
-## Goal
-
-Build a CLI tool that...
-
-## Non-obvious constraints
-
-- Must work offline (no network calls)
-- Must be a single static binary
-- Must integrate with the existing `~/.config/x` schema
-```
-
-Intent docs are 0-point — written BEFORE any plan, by humans. They define the "why", not the "how".
-
 ## Common workflows
 
 ### Start a new project
@@ -287,11 +224,11 @@ Intent docs are 0-point — written BEFORE any plan, by humans. They define the 
 2. Write 1-3 intent docs in `.soly/docs/`
 3. Optionally write `AGENTS.md` (or `agents.md`) at project root with project conventions
 4. Create `ROADMAP.md` with phase table
-5. `/plan 1` to start phase 1
+5. `/plan 1` to start the first phase
 
 ### Add project-specific agents
 
-Drop a markdown file in `.agents/<name>.md` (project) or `~/.agents/<name>.md` (user):
+Drop a markdown file in `.agents/agents/<name>.md` (project) or `~/.agents/agents/<name>.md` (user):
 
 ```markdown
 ---
@@ -310,7 +247,7 @@ You are a data scientist. ...
 3. `~/.agents/` — user vendor-neutral (preferred)
 4. `~/.pi/agent/agents/` — user pi native (legacy)
 
-`Ctrl+Tab` to see them in the cycle.
+`Ctrl+Tab` to see them in the cycle. (Removed in 1.4.0 — use `subagent(...)` directly.)
 
 ### Add a feature to an existing phase
 
@@ -332,24 +269,14 @@ If `/execute` complains about illegal partial state:
 3. If yes, finish close-out: update `STATE.md` + `ROADMAP.md`
 4. If no, either commit the SUMMARY or revert the production commits
 
-## Where to look for answers
+## When in doubt
 
-- **"What command does X"** → this skill, Slash commands section
-- **"What does PLAN.md look like"** → this skill, Frontmatter section
-- **"How to add a rule"** → this skill, Add a new rule section
-- **"Why did the LLM do Y"** → `/why`
-- **"What context is loaded"** → `soly_read(artifact: "state")` + `soly_doc_search(...)`
-- **"What was the recent conversation"** → `soly_scratchpad()`
+Call `soly_read(artifact: "state")` and `soly_read(artifact: "roadmap")` first. The system prompt has the layers, but `soly_read` gives you full content. Then check `soly_doc_search` for any other relevant docs.
 
 ## Don'ts
 
 - ❌ Edit `.soly/rules/` files you didn't write — those are project invariants
 - ❌ Skip the SUMMARY — illegal partial state
-- ❌ Spawn `soly-manager` / `soly-worker` / etc. — there are no soly subagents (removed in 1.3.0). Use pi's built-in subagents via the parent LLM's \`subagent(...)\` call.
-- ❌ Write rules in code comments — use `.soly/rules/*.md` or `.agents/rules/*.md` files
+- ❌ Spawn `soly-manager` / `soly-worker` / etc. — there are no soly subagents (removed in 1.3.0). Use pi's built-in subagents via the parent LLM's `subagent(...)` call.
 - ❌ Edit `.soly/phases/*/PLAN.md` after `status: in_progress` — create a new plan
-- ❌ Put intent docs anywhere other than `.soly/docs/` (or `.agents/docs/` for vendor-neutral)
-
-## When in doubt
-
-Call `soly_read(artifact: "state")` and `soly_read(artifact: "roadmap")` first. The system prompt has the layers, but `soly_read` gives you full content. Then check `soly_doc_search` for any other relevant docs.
+- ❌ Put intent docs anywhere other than `.soly/docs/`

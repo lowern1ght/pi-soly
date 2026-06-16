@@ -184,8 +184,6 @@ This project uses [soly](https://github.com/lowern1ght/pi-soly) for project mana
 - \`/inspect\` — see current state
 - \`/pause\` — save handoff for later
 - \`/resume\` — restore from handoff
-- \`/rotor <name>\` — switch cycle agent (or Ctrl+Tab)
-- \`Ctrl+Tab\` — cycle to next agent
 
 ## State
 

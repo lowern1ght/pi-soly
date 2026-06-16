@@ -2,8 +2,8 @@
 // status.ts — Comprehensive one-screen status report
 // =============================================================================
 //
-// Used by `/soly status` and `/soly-rotor status`. Gathers everything in
-// one place: version, current rotor, project state, recent decisions,
+// Used by `/soly-status`. Gathers everything in
+// one place: version, version, project state, recent decisions,
 // recent notifications, and (if available) token budget.
 //
 // Output is a multi-line string formatted for the TUI notify.
@@ -29,8 +29,6 @@ export interface StatusOptions {
 	recentDecisions?: number;
 	/** Show this many recent notifications. Default 5. */
 	recentNotifications?: number;
-	/** Include the rotor switcher section. Default true. */
-	includeRotors?: boolean;
 	/** Include token budget (if available). Default true. */
 	includeTokenBudget?: boolean;
 	/** Current package version (read from package.json at build time, or passed). */
@@ -41,7 +39,6 @@ export interface StatusOptions {
 export function formatStatus(
 	cwd: string,
 	state: StatusState,
-	currentRotor: string,
 	options: StatusOptions = {},
 ): string {
 	const recentDecisions = options.recentDecisions ?? 5;
@@ -51,7 +48,7 @@ export function formatStatus(
 
 	// Header
 	lines.push("╭─ soly · v" + version + " ──────────────────────────────────────╮");
-	lines.push(`│ rotor: ${currentRotor.padEnd(8)}    soly: idle                   │`);
+	lines.push(`│ soly: idle                                                  │`);
 	lines.push("╰──────────────────────────────────────────────────────────╯");
 	lines.push("");
 
