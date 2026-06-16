@@ -31,6 +31,8 @@ import {
 	type SolyState,
 } from "./core.ts";
 import type { SolyConfig } from "./config.ts";
+import { migrateSolyDir } from "./migrate.js";
+import { initSolyProject } from "./init.js";
 
 /** Minimum ui surface the command handlers actually need. */
 export interface CommandUI {
@@ -347,6 +349,30 @@ What must the LLM do?
 				confirm: (title, message) => ctx.ui.confirm(title, message),
 			};
 			await migrateSolyDir(ctx.cwd, ui, { autoYes: args.includes("--yes") });
+		},
+	});
+
+	// /soly init — scaffold new project
+	// ============================================================================
+	pi.registerCommand("soly-init", {
+		description:
+			"scaffold a new soly project (interactive: pick template — minimal/web-app/library/cli)",
+		handler: async (args, ctx) => {
+			const ui: CommandUI = {
+				notify: (t, k) => ctx.ui.notify(t, k ?? "info"),
+				select: async (label, options) => {
+					const result = await ctx.ui.select(label, options);
+					return result === undefined ? null : options.indexOf(result);
+				},
+				confirm: (title, message) => ctx.ui.confirm(title, message),
+				input: (label, placeholder) => ctx.ui.input(label, placeholder),
+			};
+			// Parse args: --template=X, --yes, --name=X
+			const template = (args.match(/--template[= ](\S+)/)?.[1] as
+				| "minimal" | "web-app" | "library" | "cli" | undefined) ?? undefined;
+			const autoYes = args.includes("--yes");
+			const projectName = args.match(/--name[= ](\S+)/)?.[1];
+			await initSolyProject(ctx.cwd, ui, { template, autoYes, projectName });
 		},
 	});
 
