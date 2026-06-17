@@ -27,8 +27,9 @@
 //   # create ~/.pi/keyrouter.json with your provider keys
 //   /reload
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import { loadConfig, configPath } from "./config.ts";
+import { notifyRotation } from "./notification.ts";
 import {
 	initKeyStates,
 	isAvailable,
@@ -46,7 +47,7 @@ interface ProviderRuntime {
 export default function keyRouterExtension(pi: ExtensionAPI): void {
 	let config: KeyRouterConfig | undefined;
 	const runtimes = new Map<string, ProviderRuntime>();
-	let notify: ((text: string, level: "info" | "warning" | "error") => void) | undefined;
+	let uiCtx: ExtensionUIContext | undefined;
 	let activationNotified = false;
 
 	/**
@@ -75,7 +76,7 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 	 */
 	async function activate(ctx: {
 		cwd: string;
-		ui: { notify: (t: string, l?: "info" | "warning" | "error") => void };
+		ui: ExtensionUIContext;
 		modelRegistry: { authStorage: { setRuntimeApiKey: (p: string, k: string) => void } };
 	}): Promise<void> {
 		// Load config once (reload clears it)
@@ -83,7 +84,7 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 			config = loadConfig(ctx.cwd);
 		}
 		if (config.providers.length === 0) return;
-		notify = (text, level) => ctx.ui.notify(text, level);
+		uiCtx = ctx.ui;
 
 		const authStorage = ctx.modelRegistry.authStorage;
 		let newlyBootstrapped = 0;
@@ -160,8 +161,8 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 		setKey(nextKey.value);
 		rt.currentIndex = nextIdx;
 
-		// Notify
-		if (notify && currentKey) {
+		// Notify with yellow box widget (falls back to plain notify)
+		if (currentKey && uiCtx) {
 			const event: RotationEvent = {
 				provider: providerName,
 				fromKey: currentKey.name,
@@ -170,11 +171,7 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 				status,
 				attempt: rt.keys.reduce((a, k) => a + k.failures, 0),
 			};
-			notify(
-				`🔑 keyrouter: ${event.provider} — ${event.fromKey} → ${event.toKey} ` +
-					`(HTTP ${event.status}, ${event.reason})`,
-				"warning",
-			);
+			notifyRotation(uiCtx, event);
 		}
 		return true;
 	}
@@ -226,9 +223,9 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 
 		if (!rotated) {
 			// All keys exhausted — let pi surface the real error.
-			if (notify) {
+			if (uiCtx) {
 				const failed = rt.keys.filter((k) => k.failures > 0).map((k) => k.name);
-				notify(
+				uiCtx.notify(
 					`🔑 keyrouter: ${providerName} — all keys exhausted (${failed.join(", ")}). ` +
 						`Letting pi surface the original error.`,
 					"error",
@@ -240,7 +237,7 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 	pi.on("session_shutdown", () => {
 		runtimes.clear();
 		config = undefined;
-		notify = undefined;
+		uiCtx = undefined;
 		activationNotified = false;
 	});
 

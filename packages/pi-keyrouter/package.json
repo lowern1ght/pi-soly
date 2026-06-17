@@ -23,6 +23,7 @@
     "index.ts",
     "config.ts",
     "rotation.ts",
+    "notification.ts",
     "types.ts"
   ],
   "keywords": [
