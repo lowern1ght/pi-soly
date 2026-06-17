@@ -1,6 +1,6 @@
 {
   "name": "pi-soly",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Project management framework for pi-coding-agent. Workflows, planning, multi-question picker, agent switcher, live task list — one npm install, zero config.",
   "type": "module",
   "main": "index.ts",
