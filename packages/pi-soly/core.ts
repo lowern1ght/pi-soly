@@ -993,6 +993,127 @@ export function formatAnalyticsFull(analytics: RuleAnalytics): string {
   return lines.join("\n");
 }
 
+// =============================================================================
+// Rules context stats — Claude-memory-style breakdown
+// =============================================================================
+//
+// Shows which rules are "always-on" (loaded every turn) vs "glob-matched"
+// (loaded only when file paths in prompt match). Useful for spotting
+// context bloat and verifying rules will actually fire.
+
+export interface RuleStat {
+  relPath: string;
+  tokens: number;
+  sourceLabel: string;
+  description?: string;
+  always: boolean;
+  globs: string[];
+  loadedLastTurn: boolean;
+}
+
+export interface RulesContextStats {
+  totalLoaded: number;
+  totalTokens: number;
+  contextBudgetPct: number;
+  alwaysOn: RuleStat[];
+  globMatched: RuleStat[];
+  disabled: RuleStat[];
+  lastTurn: {
+    promptFiles: string[];
+    matchedRulePaths: string[];
+  };
+}
+
+export function buildRulesContextStats(
+  rules: RuleFile[],
+  contextWindowTokens: number,
+  lastTurn?: { promptFiles: string[]; matchedRelPaths: string[] },
+): RulesContextStats {
+  const enabled = rules.filter((r) => r.enabled);
+  const disabled = rules.filter((r) => !r.enabled);
+  const lastTurnMatched = new Set(lastTurn?.matchedRelPaths ?? []);
+  const stat = (r: RuleFile, loadedLastTurn: boolean): RuleStat => ({
+    relPath: r.relPath,
+    tokens: estimateTokens(r.body),
+    sourceLabel: r.sourceLabel,
+    description: r.meta.description,
+    always: r.meta.always === true,
+    globs: r.meta.globs ?? [],
+    loadedLastTurn,
+  });
+  const alwaysOn: RuleStat[] = [];
+  const globMatched: RuleStat[] = [];
+  for (const r of enabled) {
+    const isAlways = r.meta.always === true;
+    const isLoadedLastTurn = lastTurnMatched.has(r.relPath) || isAlways;
+    const s = stat(r, isLoadedLastTurn);
+    if (isAlways) alwaysOn.push(s);
+    else globMatched.push(s);
+  }
+  const totalTokens = [...alwaysOn, ...globMatched].reduce((a, b) => a + b.tokens, 0);
+  return {
+    totalLoaded: enabled.length,
+    totalTokens,
+    contextBudgetPct:
+      contextWindowTokens > 0 ? (totalTokens / contextWindowTokens) * 100 : 0,
+    alwaysOn,
+    globMatched,
+    disabled: disabled.map((r) => stat(r, false)),
+    lastTurn: {
+      promptFiles: lastTurn?.promptFiles ?? [],
+      matchedRulePaths: lastTurn?.matchedRelPaths ?? [],
+    },
+  };
+}
+
+export function formatRulesContextStats(stats: RulesContextStats): string {
+  const lines: string[] = [];
+  lines.push(`📊 Rules context stats`);
+  lines.push(``);
+  const ctxWindow = stats.contextBudgetPct > 0
+    ? Math.round(stats.totalTokens / (stats.contextBudgetPct / 100))
+    : 0;
+  lines.push(
+    `Loaded: ${stats.totalLoaded} rule(s) · ${formatTok(stats.totalTokens)} · ${stats.contextBudgetPct.toFixed(1)}% of ${formatTok(ctxWindow)} context`,
+  );
+  lines.push(``);
+  if (stats.alwaysOn.length > 0) {
+    lines.push(`ALWAYS-ON (loaded every turn):`);
+    for (const r of stats.alwaysOn) {
+      const last = r.loadedLastTurn ? " ✓" : "";
+      const desc = r.description ? ` — "${r.description}"` : "";
+      lines.push(`  ● ${r.relPath}  ${formatTok(r.tokens)}${desc}${last}`);
+    }
+    lines.push(``);
+  }
+  if (stats.globMatched.length > 0) {
+    lines.push(`GLOB-MATCHED (loaded when prompt file matches):`);
+    for (const r of stats.globMatched) {
+      const last = r.loadedLastTurn ? " ✓" : "";
+      const desc = r.description ? ` — "${r.description}"` : "";
+      const globs = r.globs.length > 0 ? `  [globs: ${r.globs.join(", ")}]` : "";
+      lines.push(`  ◐ ${r.relPath}  ${formatTok(r.tokens)}${desc}${globs}${last}`);
+    }
+    lines.push(``);
+  }
+  if (stats.disabled.length > 0) {
+    lines.push(`DISABLED:`);
+    for (const r of stats.disabled) {
+      lines.push(`  ○ ${r.relPath}  ${formatTok(r.tokens)} — disabled`);
+    }
+    lines.push(``);
+  }
+  if (stats.lastTurn.promptFiles.length > 0) {
+    lines.push(`Last turn: ${stats.lastTurn.promptFiles.length} file path(s) in prompt`);
+    for (const f of stats.lastTurn.promptFiles) {
+      lines.push(`  → ${f}`);
+    }
+  } else {
+    lines.push(`Last turn: no file paths in prompt (only always-on rules loaded)`);
+  }
+  return lines.join("\n");
+}
+
 // ============================================================================
 // @import resolver (markdown only)
 // ============================================================================

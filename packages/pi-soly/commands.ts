@@ -21,9 +21,11 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
 	analyzeRules,
 	buildProgressBar,
+	buildRulesContextStats,
 	CONTEXT_WINDOW_TOKENS,
 	extractFilePathsFromPrompt,
 	formatAnalyticsFull,
+	formatRulesContextStats,
 	formatTok,
 	readIfExists,
 	solyDirFor,
@@ -70,7 +72,7 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 
 	pi.registerCommand("rules", {
 		description:
-			"manage soly rules (list, show, analytics, reload, enable, disable)",
+			"manage soly rules (list, show, stats, analytics, reload, enable, disable)",
 		handler: async (args, ctx) => {
 			const ui: CommandUI = {
 				notify: (t, k) => ctx.ui.notify(t, k ?? "info"),
@@ -126,6 +128,16 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 				const rules = getRules();
 				const analytics = analyzeRules(rules, CONTEXT_WINDOW_TOKENS);
 				ui.notify(formatAnalyticsFull(analytics), "info");
+				return;
+			}
+
+			if (sub === "stats") {
+				// Claude-memory-style breakdown: shows which rules are always-on
+				// (every turn) vs glob-matched (only when prompt has file paths).
+				// Surfaces context bloat and verifies rules will actually fire.
+				const rules = getRules();
+				const stats = buildRulesContextStats(rules, CONTEXT_WINDOW_TOKENS);
+				ui.notify(formatRulesContextStats(stats), "info");
 				return;
 			}
 

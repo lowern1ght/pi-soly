@@ -196,6 +196,17 @@ describe("E2E: /rules command", () => {
 		const handler = mockPi._commands.get("rules")!.handler;
 		await expect(handler("help", ctx as never)).resolves.toBeUndefined();
 	});
+
+	test("stats subcommand does not throw and produces output", async () => {
+		const notifs: Array<{ text: string; level?: string }> = [];
+		const ctx = makeMockCtx(projectDir);
+		ctx.ui.notify = (text: string, level?: string) => { notifs.push({ text, level }); };
+
+		const handler = mockPi._commands.get("rules")!.handler;
+		await handler("stats", ctx as never);
+		// Should show the 📊 header
+		expect(notifs.some((n) => n.text.includes("📊"))).toBe(true);
+	});
 });
 
 describe("E2E: /why command", () => {
