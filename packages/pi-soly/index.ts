@@ -128,6 +128,8 @@ export default function solyExtension(pi: ExtensionAPI) {
 	// Behavioral nudge state
 	let nudgeActiveForTask = false;
 	let editedFilesThisTurn = new Set<string>();
+	let lastEditedFiles: string[] = [];
+	let lastTurnApplicableRules: string[] = [];
 	let lastNudgePromptKey = "";
 
 	// Git context (cached, refreshed on hot reload + before_agent_start)
@@ -432,6 +434,9 @@ export default function solyExtension(pi: ExtensionAPI) {
 		nudgeActiveForTask = false;
 		lastNudgePromptKey = "";
 		sessionStats = { turns: 0, tokensEstimate: 0 };
+		editedFilesThisTurn = new Set();
+		lastEditedFiles = [];
+		lastTurnApplicableRules = [];
 
 		// Read git context (best-effort, silent on failure)
 		gitContext = await readGitContext(ctx.cwd);
@@ -715,19 +720,14 @@ export default function solyExtension(pi: ExtensionAPI) {
 		}
 
 		// Post-work rules check: surface applicable rules for files edited
-		// in this turn. Honest post-hook — doesn't pretend to detect violations,
-		// just reminds the user which rules SHOULD have been followed.
+		// in this turn. Tracking is kept silent (no chat notify — user feedback:
+		// "spammy") but data is preserved for /why to show last-turn rule context.
 		if (editedFilesThisTurn.size > 0) {
-			const applicable = rulesApplicableToFiles(
+			lastEditedFiles = [...editedFilesThisTurn];
+			lastTurnApplicableRules = rulesApplicableToFiles(
 				combinedRules(),
-				[...editedFilesThisTurn],
+				lastEditedFiles,
 			);
-			if (applicable.length > 0) {
-				ctx.ui.notify(
-					`📋 Rules check: edited ${editedFilesThisTurn.size} file(s), ${applicable.length} rule(s) applied:\n  • ${applicable.join("\n  • ")}`,
-					"info",
-				);
-			}
 			editedFilesThisTurn = new Set();
 		}
 	});
