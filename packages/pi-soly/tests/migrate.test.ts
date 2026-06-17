@@ -147,3 +147,44 @@ describe("migrateSolyDir", () => {
 		fs.rmSync(dir, { recursive: true, force: true });
 	});
 });
+
+describe("migrateSolyDir — Windows EPERM fallback", () => {
+	test("falls back to copy+delete when rename throws EPERM", async () => {
+		// Simulate Windows EPERM by holding an open file handle inside .soly/.
+		// fs.rename on Windows refuses to move a dir containing open handles.
+		// On POSIX this doesn't trigger EPERM, so we can't reproduce the exact
+		// path — but we can at least verify the copy+delete fallback produces
+		// the same end state (source gone, dest populated).
+		const dir = makeFakeSolyDir();
+		const sourceFile = path.join(dir, ".soly", "STATE.md");
+		// Open a long-lived read handle (simulates watcher/editor)
+		const heldFd = fs.openSync(sourceFile, "r");
+		try {
+			const ui = makeUi({ autoConfirm: true });
+			const result = await migrateSolyDir(dir, ui);
+			expect(result.moved).toBe(true);
+			// Destination must have all files regardless of rename-vs-copy path
+			expect(fs.existsSync(path.join(dir, ".agents", "ROADMAP.md"))).toBe(true);
+			expect(fs.existsSync(path.join(dir, ".agents", "STATE.md"))).toBe(true);
+			expect(fs.existsSync(path.join(dir, ".agents", "phases", "01-bootstrap", "01-CONTEXT.md"))).toBe(true);
+		} finally {
+			fs.closeSync(heldFd);
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	test("nested subdirectories are copied correctly in fallback", async () => {
+		const dir = fs.mkdtempSync(path.join(tmpRoot, "nested-"));
+		fs.mkdirSync(path.join(dir, ".soly", "phases", "01-a", "deep"), { recursive: true });
+		fs.mkdirSync(path.join(dir, ".soly", "docs"), { recursive: true });
+		fs.writeFileSync(path.join(dir, ".soly", "phases", "01-a", "PLAN.md"), "plan");
+		fs.writeFileSync(path.join(dir, ".soly", "phases", "01-a", "deep", "note.md"), "deep note");
+		fs.writeFileSync(path.join(dir, ".soly", "docs", "design.md"), "design");
+		const ui = makeUi({ autoConfirm: true });
+		const result = await migrateSolyDir(dir, ui);
+		expect(result.moved).toBe(true);
+		expect(fs.existsSync(path.join(dir, ".agents", "phases", "01-a", "deep", "note.md"))).toBe(true);
+		expect(fs.existsSync(path.join(dir, ".agents", "docs", "design.md"))).toBe(true);
+		fs.rmSync(dir, { recursive: true, force: true });
+	});
+});

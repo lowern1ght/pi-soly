@@ -3,8 +3,12 @@
 // =============================================================================
 //
 // Moves the legacy `.soly/` project state dir to the new vendor-neutral
-// `.agents/` location. The move is atomic via fs.renameSync (which is atomic
-// on the same filesystem). Validates after move that key files made it.
+// `.agents/` location. The move tries fs.rename first (atomic on the same
+// filesystem). On Windows, rename often fails with EPERM because soly's
+// hot-reload watcher (or an editor) holds open handles on .soly/ files.
+// We retry the rename a few times, then fall back to recursive copy +
+// delete if the handle won't release. Validates after move that key files
+// made it.
 //
 // What gets moved (everything in `.soly/`):
 //   - ROADMAP.md
@@ -31,7 +35,89 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { promisify } from "node:util";
 import { LEGACY_SOLY_DIRNAME, SOLY_DIRNAME } from "./core.js";
+
+const renameAsync = promisify(fs.rename);
+const rmAsync = promisify(fs.rm);
+
+/**
+ * Cross-platform directory move.
+ *
+ * `fs.rename` is atomic on POSIX but on Windows it fails with EPERM if any
+ * file inside the source dir has an open handle (soly hot-reload watcher,
+ * editor, antivirus, the cwd itself). We:
+ *
+ *   1. Retry rename up to 5 times with 200ms backoff — most EPERM are
+ *      transient (OS releasing a handle).
+ *   2. Fall back to recursive copy-then-delete if rename keeps failing.
+ *      Slower but works when a handle is genuinely held for the duration.
+ */
+async function moveDir(from: string, to: string): Promise<void> {
+	let lastErr: unknown;
+	for (let attempt = 0; attempt < 5; attempt++) {
+		try {
+			await renameAsync(from, to);
+			return;
+		} catch (err) {
+			lastErr = err;
+			const code = (err as NodeJS.ErrnoException).code;
+			if (code !== "EPERM" && code !== "EBUSY" && code !== "EACCES") throw err;
+			await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+		}
+	}
+	// Rename exhausted — fall back to copy + delete.
+	// This works even when handles are held because we open files read-only
+	// for the copy and the source is removed last.
+	await copyDirRecursive(from, to);
+	try {
+		await rmAsync(from, { recursive: true, force: true });
+	} catch (err) {
+		// Source dir couldn't be removed (handle still held). The migration
+		// itself succeeded — .agents/ has everything. Throw a soft warning so
+		// the caller can tell the user to delete .soly/ manually.
+		throw new Error(
+			`migrated to ${to} but could not remove ${from}: ${(err as Error).message}. ` +
+				`Delete ${from} manually after closing editors/pi.`,
+		);
+	}
+}
+
+function copyDirRecursive(src: string, dest: string): Promise<void> {
+	return new Promise((resolve, reject) => {
+		fs.mkdirSync(dest, { recursive: true });
+		const entries = fs.readdirSync(src, { withFileTypes: true });
+		let pending = entries.length;
+		if (pending === 0) return resolve();
+		let rejected = false;
+		const done = (err?: Error) => {
+			if (rejected) return;
+			if (err) {
+				rejected = true;
+				reject(err);
+				return;
+			}
+			pending -= 1;
+			if (pending === 0) resolve();
+		};
+		for (const entry of entries) {
+			const s = path.join(src, entry.name);
+			const d = path.join(dest, entry.name);
+			if (entry.isDirectory()) {
+				copyDirRecursive(s, d).then(() => done(), done);
+			} else if (entry.isSymbolicLink()) {
+				try {
+					fs.symlinkSync(fs.readlinkSync(s), d);
+					done();
+				} catch (e) {
+					done(e as Error);
+				}
+			} else {
+				fs.copyFile(s, d, (e) => done(e ? new Error(e.message) : undefined));
+			}
+		}
+	});
+}
 
 /** UI primitives needed by the migration. */
 export interface MigrateUI {
@@ -127,14 +213,17 @@ export async function migrateSolyDir(
 		}
 	}
 
-	// Do the move
+	// Do the move (with Windows EPERM retry + copy fallback)
 	try {
-		fs.renameSync(from, to);
+		await moveDir(from, to);
 	} catch (err) {
+		const msg = (err as Error).message;
+		const isPartial = msg.includes("Delete ") || msg.includes("could not remove");
 		ui.notify(
-			`soly-migrate: rename failed: ${(err as Error).message}. ` +
-				`Original .soly/ untouched.`,
-			"error",
+			isPartial
+				? `soly-migrate: ${msg}`
+				: `soly-migrate: rename failed: ${msg}. Original .soly/ untouched.`,
+			isPartial ? "warning" : "error",
 		);
 		return result;
 	}
