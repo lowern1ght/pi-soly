@@ -37,10 +37,7 @@ describe("pi-keyrouter smoke", () => {
 		expect(rotation.initKeyStates).toBeDefined();
 		expect(rotation.pickNextKey).toBeDefined();
 		expect(rotation.markBad).toBeDefined();
-	});
-
-	test("fetch-wrapper module loads", async () => {
-		const fw = await import("../fetch-wrapper.ts");
-		expect(fw.installKeyRouter).toBeDefined();
+		expect(rotation.markOk).toBeDefined();
+		expect(rotation.matchProvider).toBeDefined();
 	});
 });

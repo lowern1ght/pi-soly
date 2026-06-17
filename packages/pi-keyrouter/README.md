@@ -2,7 +2,7 @@
 
 **API key rotation for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent).**
 
-Multiple keys per provider · automatic 429/401 fallback · recursion-safe.
+Multiple keys per provider · automatic 429/401 fallback · native integration.
 
 ```bash
 pi install npm:pi-keyrouter
@@ -10,7 +10,7 @@ pi install npm:pi-keyrouter
 /reload
 ```
 
-When your model returns 429 (rate-limited) or 401 (unauthorized), the next key is picked automatically. pi sees a single successful response — retries are transparent.
+When your model returns 429 (rate-limited) or 401 (unauthorized), the next key is set via pi's native `authStorage.setRuntimeApiKey()`. pi's built-in retry then uses the new key automatically.
 
 ---
 
@@ -43,25 +43,40 @@ Add your provider config to `~/.pi/keyrouter.json`:
 
 ---
 
-## 🎯 How it works
+## 🎯 How it works (native integration)
 
-1. **Install** — extension loads, reads config, wraps `fetch`.
-2. **Request** — URL matches a provider → key picked, `Authorization: Bearer <key>` set.
-3. **On 429 / 401** — current key marked bad (cooldown `cooldownMs`), next key tried.
-4. **On 200** — response returned, key marked OK.
-5. **After `maxRetries`** — last failed response returned (so pi sees the real error).
+This extension uses pi's **native API key resolution** — no fetch hacks, no header manipulation.
 
-Recursion is bounded by `maxRetries` (default 3). No infinite loops.
+From the [pi SDK docs](https://github.com/nicobailon/pi-coding-agent):
+
+> API key resolution priority (handled by AuthStorage):
+> 1. **Runtime overrides (via `setRuntimeApiKey`, not persisted)** ← we use this
+> 2. Stored credentials in `auth.json`
+> 3. Environment variables
+> 4. Fallback resolver
+
+Flow:
+
+1. **session_start** — extension loads config, calls `authStorage.setRuntimeApiKey(provider, firstKey)` for each managed provider. Runtime override takes priority over auth.json.
+2. **Request** — pi makes the HTTP call with the runtime-overridden key.
+3. **after_provider_response (429/401/403)** — extension fires, calls `setRuntimeApiKey(provider, nextKey)`.
+4. **pi's built-in retry** — pi's retry logic (the "Retrying 3/3" you see in the UI) makes the next attempt, which now picks up the new runtime key.
+5. **Success or exhaustion** — if all keys fail, runtime override is cleared and pi surfaces the real error.
+
+### Why not fetch wrapping?
+
+An earlier version wrapped `globalThis.fetch`. It didn't work because the OpenAI SDK (used by pi-ai for z.ai and others) captures the `fetch` reference at client creation time, before extensions load. The SDK kept calling the original fetch, ignoring the wrapper.
+
+The native `setRuntimeApiKey` approach is cleaner: pi owns the HTTP layer, we only swap the key between attempts. No monkey-patching, no timing issues.
 
 ### What gets rotated
 
 | Status | Action |
 |---|---|
-| 200 | Return response, mark key OK |
-| 429 | Mark key `rate-limited` (cooldown), try next |
-| 401 / 403 | Mark key `unauthorized` (cooldown), try next |
-| 5xx / network | Don't mark key bad — try next, but no cooldown |
-| `maxRetries` exhausted | Return last failed response |
+| 200 | Key marked OK |
+| 429 | Current key marked `rate-limited` (cooldown), `setRuntimeApiKey(nextKey)` |
+| 401 / 403 | Current key marked `unauthorized` (cooldown), `setRuntimeApiKey(nextKey)` |
+| All keys exhausted | Runtime override cleared, pi surfaces real error |
 
 ---
 
@@ -142,7 +157,7 @@ API keys live in plain text in `keyrouter.json`. **Don't commit it.** Options:
 ## 🛠 Development
 
 ```bash
-bun test          # 34 tests
+bun test          # 33 tests
 bun run typecheck # tsc --noEmit
 ```
 
@@ -150,16 +165,15 @@ Monorepo layout:
 
 ```
 packages/pi-keyrouter/
-├── index.ts          — extension entry point
+├── index.ts          — extension entry point (native setRuntimeApiKey)
 ├── rotation.ts       — pure key-pick logic
-├── fetch-wrapper.ts  — fetch interceptor with retry
 ├── config.ts         — config loader
 ├── types.ts          — shared types
 └── tests/
-    ├── rotation.test.ts      — pure logic
-    ├── fetch-wrapper.test.ts — integration with mocked fetch
-    ├── config.test.ts        — config loader
-    └── smoke.test.ts         — load-time smoke test
+    ├── rotation.test.ts              — pure logic
+    ├── provider-resolution.test.ts   — provider name mapping
+    ├── config.test.ts                — config loader
+    └── smoke.test.ts                 — load-time smoke test
 ```
 
 ---

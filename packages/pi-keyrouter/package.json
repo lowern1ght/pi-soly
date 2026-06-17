@@ -23,7 +23,6 @@
     "index.ts",
     "config.ts",
     "rotation.ts",
-    "fetch-wrapper.ts",
     "types.ts"
   ],
   "keywords": [
