@@ -1,6 +1,6 @@
 {
   "name": "pi-keyrouter",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "API key rotation for pi-coding-agent. Multiple keys per provider, automatic 429/401 fallback, max-retries guard.",
   "type": "module",
   "main": "index.ts",
