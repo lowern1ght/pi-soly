@@ -51,6 +51,7 @@ export interface CommandUI {
 	notify: (text: string, kind?: "info" | "warning" | "error") => void;
 	select: (label: string, options: string[]) => Promise<number | null>;
 	confirm: (title: string, message: string) => Promise<boolean>;
+	input?: (label: string, placeholder?: string) => Promise<string | undefined>;
 }
 
 export interface CommandsDeps {
@@ -430,7 +431,13 @@ What must the LLM do?
 				| "minimal" | "web-app" | "library" | "cli" | undefined) ?? undefined;
 			const autoYes = args.includes("--yes");
 			const projectName = args.match(/--name[= ](\S+)/)?.[1];
-			await initSolyProject(ctx.cwd, ui, { template, autoYes, projectName });
+			const initUi = {
+				notify: (t: string, k?: "info" | "warning" | "error") => ctx.ui.notify(t, k ?? "info"),
+				select: async (label: string, options: string[]) => ctx.ui.select(label, options),
+				confirm: (title: string, message: string) => ctx.ui.confirm(title, message),
+				input: (label: string, placeholder?: string) => ctx.ui.input(label, placeholder),
+			};
+			await initSolyProject(ctx.cwd, initUi, { template, autoYes, projectName });
 		},
 	});
 

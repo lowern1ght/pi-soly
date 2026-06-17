@@ -26,8 +26,8 @@
 //   - clearNotification(ui, key) — manual clear
 // =============================================================================
 
-import { Box, Spacer, Text } from "@earendil-works/pi-tui";
-import type { ExtensionUIContext, Theme, TUI } from "@earendil-works/pi-coding-agent";
+import { Box, Spacer, Text, type TUI } from "@earendil-works/pi-tui";
+import type { ExtensionUIContext, Theme } from "@earendil-works/pi-coding-agent";
 import { appendNotification } from "./notifications-log.ts";
 
 /** Theme background color names (subset of ThemeBg). */

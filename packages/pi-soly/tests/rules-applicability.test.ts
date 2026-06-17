@@ -14,7 +14,7 @@ const makeRule = (overrides: Partial<RuleFile> = {}): RuleFile => ({
 	raw: "",
 	enabled: true,
 	mtimeMs: 0,
-	source: "project",
+	source: "project-soly",
 	sourceLabel: "local",
 	priority: 0,
 	interactiveOnly: false,

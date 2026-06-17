@@ -26,7 +26,10 @@ import * as path from "node:path";
 export type RuleSource =
   | "project-soly"
   | "global-soly"
-  | "phase-soly";
+  | "phase-soly"
+  | "project-agents"
+  | "global-agents"
+  | "phase-agents";
 
 export interface RuleFrontmatter {
   description?: string;
@@ -59,7 +62,7 @@ export interface RuleFile {
   enabled: boolean;
   mtimeMs: number;
   source: RuleSource;
-  sourceLabel: "soly" | "phase" | "local";
+  sourceLabel: "soly" | "phase" | "local" | "agents";
   priority: number; // higher wins on relPath collision
   /** Phase number for phase-scoped rules; undefined otherwise. */
   phaseNumber?: number;
@@ -70,7 +73,7 @@ export interface RuleFile {
 export interface SourceSpec {
   dir: string;
   source: RuleSource;
-  sourceLabel: "soly" | "phase" | "local";
+  sourceLabel: "soly" | "phase" | "local" | "agents";
   priority: number; // higher wins on relPath collision
   /** Optional phase number (for phase-scoped sources). */
   phaseNumber?: number;

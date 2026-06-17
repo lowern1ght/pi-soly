@@ -14,7 +14,7 @@ const makeRule = (overrides: Partial<RuleFile> = {}): RuleFile => ({
 	raw: "---\nalways: true\ndescription: test rule\n---\nAlways use strict mode.",
 	enabled: true,
 	mtimeMs: 0,
-	source: "project",
+	source: "project-soly",
 	sourceLabel: "local",
 	priority: 0,
 	interactiveOnly: false,

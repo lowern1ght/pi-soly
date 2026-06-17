@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "cd packages/pi-soly && bun x tsc --noEmit && cd ../pi-keyrouter && bun x tsc --noEmit",
     "ci": "bun run test && bun run typecheck"
   },
   "devDependencies": {

@@ -1,0 +1,57 @@
+{
+  "name": "pi-keyrouter",
+  "version": "0.1.0",
+  "description": "API key rotation for pi-coding-agent. Multiple keys per provider, automatic 429/401 fallback, max-retries guard.",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bun x tsc --noEmit"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.78.1",
+    "@types/node": "^25.9.1",
+    "bun-types": "^1.3.14",
+    "typescript": "^6.0.3"
+  },
+  "files": [
+    "README.md",
+    "index.ts",
+    "config.ts",
+    "rotation.ts",
+    "fetch-wrapper.ts",
+    "types.ts"
+  ],
+  "keywords": [
+    "pi",
+    "pi-extension",
+    "pi-package",
+    "api-key",
+    "key-rotation",
+    "rate-limit",
+    "fallback",
+    "ai-coding"
+  ],
+  "license": "MIT",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "homepage": "https://github.com/lowern1ght/pi-soly#readme",
+  "bugs": {
+    "url": "https://github.com/lowern1ght/pi-soly/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lowern1ght/pi-soly.git",
+    "directory": "packages/pi-keyrouter"
+  }
+}

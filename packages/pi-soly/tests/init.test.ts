@@ -28,8 +28,8 @@ function makeUi(opts: {
 	const calls: Array<{ type: string; text: string }> = [];
 	return {
 		calls,
-		notify: (text) => { calls.push({ type: "notify", text }); },
-		select: async (_label, options) => opts.template ?? options[0] ?? null,
+		notify: (text: string) => { calls.push({ type: "notify", text }); },
+		select: async (_label: string, options: string[]) => opts.template ?? options[0] ?? null,
 		confirm: async () => opts.confirm ?? true,
 		input: async () => null,
 	} as never;
