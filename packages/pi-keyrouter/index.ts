@@ -49,16 +49,22 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 	let notify: ((text: string, level: "info" | "warning" | "error") => void) | undefined;
 	let activationNotified = false;
 
-	function ensureRuntime(providerName: string, cfg: KeyRouterConfig): ProviderRuntime | undefined {
-		let rt = runtimes.get(providerName);
+	/**
+	 * Get-or-create the runtime for a provider. Keyed by the RESOLVED
+	 * name (the authStorage id, e.g. "zai"), but populated from the
+	 * provider config passed in directly (avoids name-mismatch bugs).
+	 */
+	function ensureRuntime(
+		resolvedName: string,
+		providerCfg: { keys: ReadonlyArray<{ name: string; value: string }> },
+	): ProviderRuntime {
+		let rt = runtimes.get(resolvedName);
 		if (rt) return rt;
-		const providerCfg = cfg.providers.find((p) => p.name === providerName);
-		if (!providerCfg) return undefined;
 		rt = {
 			keys: initKeyStates(providerCfg.keys),
 			currentIndex: -1,
 		};
-		runtimes.set(providerName, rt);
+		runtimes.set(resolvedName, rt);
 		return rt;
 	}
 
@@ -82,15 +88,15 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 		const authStorage = ctx.modelRegistry.authStorage;
 		let newlyBootstrapped = 0;
 		for (const p of config.providers) {
-			const providerName = resolveProviderName(p.name);
+			const resolvedName = resolveProviderName(p.name);
 			// Skip providers we've already bootstrapped
-			if (runtimes.has(providerName)) continue;
-			if (bootstrap(providerName)) {
-				const rt = runtimes.get(providerName);
+			if (runtimes.has(resolvedName)) continue;
+			if (bootstrap(resolvedName, p)) {
+				const rt = runtimes.get(resolvedName);
 				if (rt && rt.currentIndex >= 0) {
 					const key = rt.keys[rt.currentIndex];
 					if (key) {
-						authStorage.setRuntimeApiKey(providerName, key.value);
+						authStorage.setRuntimeApiKey(resolvedName, key.value);
 						newlyBootstrapped++;
 					}
 				}
@@ -107,11 +113,11 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 	}
 
 	/** Set the initial key for a provider on first use. */
-	function bootstrap(providerName: string): boolean {
-		const cfg = config;
-		if (!cfg) return false;
-		const rt = ensureRuntime(providerName, cfg);
-		if (!rt) return false;
+	function bootstrap(
+		resolvedName: string,
+		providerCfg: { keys: ReadonlyArray<{ name: string; value: string }> },
+	): boolean {
+		const rt = ensureRuntime(resolvedName, providerCfg);
 		if (rt.currentIndex >= 0) return true; // already bootstrapped
 		const idx = pickNextKey(rt.keys, 0, Date.now());
 		if (idx < 0) return false;
