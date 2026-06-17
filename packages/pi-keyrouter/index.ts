@@ -28,7 +28,7 @@
 //   /reload
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { loadConfig } from "./config.ts";
+import { loadConfig, configPath } from "./config.ts";
 import {
 	initKeyStates,
 	isAvailable,
@@ -237,8 +237,8 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 				}
 				if (!config || runtimes.size === 0) {
 					ctx.ui.notify(
-						"🔑 keyrouter: not active — no providers in ~/.pi/keyrouter.json " +
-							"(checked cwd/.soly, cwd/.pi, cwd, ~/.soly, ~/.pi, ~)",
+						`🔑 keyrouter: not active — no ~/.pi/keyrouter.json found ` +
+							`(expected at ${configPath()}). Config is user-level only, never project-scoped.`,
 						"warning",
 					);
 					return;

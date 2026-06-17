@@ -110,7 +110,15 @@ Every key switch notifies the user with a Box widget:
 
 ## 🔧 Config
 
-`~/.pi/keyrouter.json` (or `<cwd>/.soly/keyrouter.json`, `<cwd>/.pi/keyrouter.json`).
+**`~/.pi/keyrouter.json` only** (user-level, never project-scoped).
+
+- Windows: `%USERPROFILE%\.pi\keyrouter.json`
+- macOS/Linux: `~/.pi/keyrouter.json`
+
+Config is global because API keys are personal credentials — they do not
+belong inside a project directory. Project-local `keyrouter.json` files are
+**deliberately ignored** (security: prevents a malicious repo from overriding
+your real keys).
 
 ```json5
 {
