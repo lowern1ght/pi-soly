@@ -125,6 +125,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 
 	// Behavioral nudge state
 	let nudgeActiveForTask = false;
+	let rulesEditNotifyShown = false;
 	let lastNudgePromptKey = "";
 
 	// Git context (cached, refreshed on hot reload + before_agent_start)
@@ -426,6 +427,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 		rulesLoaded = [];
 		lastRulesTokens = 0;
 		nudgeActiveForTask = false;
+		rulesEditNotifyShown = false;
 		lastNudgePromptKey = "";
 		sessionStats = { turns: 0, tokensEstimate: 0 };
 
@@ -709,6 +711,21 @@ export default function solyExtension(pi: ExtensionAPI) {
 		if (rulesChanged || stateChanged) {
 			updateStatus(ctx);
 		}
+	});
+
+	// ============================================================================
+	// tool_call: rules reinforcement — fire a brief notify to the user when
+	// the LLM is about to edit/write a file that has applicable rules.
+	// This doesn't block the tool — it's a visibility signal so the user
+	// can spot when the LLM is editing without checking rules.
+	// ============================================================================
+	pi.on("tool_call", async (event, _ctx) => {
+		if (event.toolName !== "edit" && event.toolName !== "write") return;
+		const activeRules = combinedRules();
+		if (activeRules.length === 0) return;
+		// Don't spam — only notify once per session
+		if (rulesEditNotifyShown) return;
+		rulesEditNotifyShown = true;
 	});
 
 	// Mount built-in sub-features
