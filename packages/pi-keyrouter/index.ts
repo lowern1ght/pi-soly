@@ -47,6 +47,7 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 	let config: KeyRouterConfig | undefined;
 	const runtimes = new Map<string, ProviderRuntime>();
 	let notify: ((text: string, level: "info" | "warning" | "error") => void) | undefined;
+	let activationNotified = false;
 
 	function ensureRuntime(providerName: string, cfg: KeyRouterConfig): ProviderRuntime | undefined {
 		let rt = runtimes.get(providerName);
@@ -59,6 +60,50 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 		};
 		runtimes.set(providerName, rt);
 		return rt;
+	}
+
+	/**
+	 * Activate the router: load config (once), bootstrap all providers.
+	 * Idempotent — safe to call on every before_agent_start. Only runs
+	 * the bootstrap the FIRST time for each provider.
+	 */
+	async function activate(ctx: {
+		cwd: string;
+		ui: { notify: (t: string, l?: "info" | "warning" | "error") => void };
+		modelRegistry: { authStorage: { setRuntimeApiKey: (p: string, k: string) => void } };
+	}): Promise<void> {
+		// Load config once (reload clears it)
+		if (!config) {
+			config = loadConfig(ctx.cwd);
+		}
+		if (config.providers.length === 0) return;
+		notify = (text, level) => ctx.ui.notify(text, level);
+
+		const authStorage = ctx.modelRegistry.authStorage;
+		let newlyBootstrapped = 0;
+		for (const p of config.providers) {
+			const providerName = resolveProviderName(p.name);
+			// Skip providers we've already bootstrapped
+			if (runtimes.has(providerName)) continue;
+			if (bootstrap(providerName)) {
+				const rt = runtimes.get(providerName);
+				if (rt && rt.currentIndex >= 0) {
+					const key = rt.keys[rt.currentIndex];
+					if (key) {
+						authStorage.setRuntimeApiKey(providerName, key.value);
+						newlyBootstrapped++;
+					}
+				}
+			}
+		}
+		// Only notify on first activation (when we bootstrapped at least one)
+		if (newlyBootstrapped > 0 && !activationNotified) {
+			activationNotified = true;
+			ctx.ui.notify(
+				`🔑 keyrouter: active (${config.providers.length} provider(s), ${config.providers.reduce((a, p) => a + p.keys.length, 0)} keys)`,
+				"info",
+			);
+		}
 	}
 
 	/** Set the initial key for a provider on first use. */
@@ -129,34 +174,14 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 	}
 
 	pi.on("session_start", async (_event, ctx) => {
-		config = loadConfig(ctx.cwd);
-		if (config.providers.length === 0) {
-			return; // nothing to do
-		}
-		notify = (text, level) => ctx.ui.notify(text, level);
+		await activate(ctx);
+	});
 
-		// Bootstrap all providers: set the first key as runtime override
-		const authStorage = ctx.modelRegistry.authStorage;
-		let bootstrapped = 0;
-		for (const p of config.providers) {
-			const providerName = resolveProviderName(p.name);
-			if (bootstrap(providerName)) {
-				const rt = runtimes.get(providerName);
-				if (rt && rt.currentIndex >= 0) {
-					const key = rt.keys[rt.currentIndex];
-					if (key) {
-						authStorage.setRuntimeApiKey(providerName, key.value);
-						bootstrapped++;
-					}
-				}
-			}
-		}
-		if (bootstrapped > 0) {
-			ctx.ui.notify(
-				`🔑 keyrouter: active (${bootstrapped} provider(s), ${config.providers.reduce((a, p) => a + p.keys.length, 0)} keys)`,
-				"info",
-			);
-		}
+	// Lazy bootstrap: also fire on every turn. This handles /reload (which
+	// does NOT re-fire session_start) and config changes mid-session.
+	// activate() is idempotent — only bootstraps once per provider.
+	pi.on("before_agent_start", async (_event, ctx) => {
+		await activate(ctx);
 	});
 
 	pi.on("after_provider_response", async (event, ctx) => {
@@ -196,6 +221,7 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 		runtimes.clear();
 		config = undefined;
 		notify = undefined;
+		activationNotified = false;
 	});
 
 	pi.registerCommand("keyrouter", {
@@ -203,8 +229,18 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 		handler: async (args, ctx) => {
 			const sub = args.trim().split(/\s+/)[0] ?? "status";
 			if (sub === "status") {
+				// On-demand activation in case session_start/before_agent_start
+				// haven't fired yet (e.g. user ran /keyrouter status right after
+				// /reload without sending a prompt).
 				if (!config || runtimes.size === 0) {
-					ctx.ui.notify("🔑 keyrouter: not active", "info");
+					await activate(ctx);
+				}
+				if (!config || runtimes.size === 0) {
+					ctx.ui.notify(
+						"🔑 keyrouter: not active — no providers in ~/.pi/keyrouter.json " +
+							"(checked cwd/.soly, cwd/.pi, cwd, ~/.soly, ~/.pi, ~)",
+						"warning",
+					);
 					return;
 				}
 				const lines: string[] = [`🔑 keyrouter: active`];
@@ -226,6 +262,7 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 			if (sub === "reload") {
 				config = loadConfig(ctx.cwd);
 				runtimes.clear();
+				activationNotified = false;
 				ctx.ui.notify(
 					`🔑 keyrouter: reloaded (${config.providers.length} provider(s))`,
 					"info",
