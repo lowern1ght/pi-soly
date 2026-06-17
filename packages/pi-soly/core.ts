@@ -1614,3 +1614,33 @@ export function buildDriftReminder(turnsSinceLastVerb: number): string | null {
 	const when = turnsSinceLastVerb === 1 ? "1 turn" : `${turnsSinceLastVerb} turns`;
 	return `soly drift hint: ${when} since last soly verb. Consider \`${verb}\` to sync state (pause saves HANDOFF for resume across compactions).`;
 }
+
+// =============================================================================
+// Post-work rules check: which rules apply to a set of edited files?
+// =============================================================================
+//
+// Used by the turn_end hook to surface a checklist of rules that SHOULD have
+// been followed during this turn. Honest post-hook — does not claim to detect
+// violations, just lists what was applicable so the user can verify.
+
+export function rulesApplicableToFiles(
+  rules: RuleFile[],
+  editedFiles: string[],
+): string[] {
+  const applicable = new Set<string>();
+  for (const filePath of editedFiles) {
+    for (const rule of rules) {
+      if (!rule.enabled) continue;
+      const globs = rule.meta.globs;
+      const always = rule.meta.always === true;
+      if (always) {
+        applicable.add(rule.relPath);
+        continue;
+      }
+      if (globs && globs.some((g) => matchesGlob(filePath, g))) {
+        applicable.add(rule.relPath);
+      }
+    }
+  }
+  return [...applicable];
+}

@@ -36,6 +36,8 @@ import {
 	loadAllRules,
 	loadPhaseRules,
 	loadProjectState,
+	matchesGlob,
+	rulesApplicableToFiles,
 	STATUS_ID,
 	solyDirFor,
 	isLegacySolyDir,
@@ -125,7 +127,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 
 	// Behavioral nudge state
 	let nudgeActiveForTask = false;
-	let rulesEditNotifyShown = false;
+	let editedFilesThisTurn = new Set<string>();
 	let lastNudgePromptKey = "";
 
 	// Git context (cached, refreshed on hot reload + before_agent_start)
@@ -427,7 +429,6 @@ export default function solyExtension(pi: ExtensionAPI) {
 		rulesLoaded = [];
 		lastRulesTokens = 0;
 		nudgeActiveForTask = false;
-		rulesEditNotifyShown = false;
 		lastNudgePromptKey = "";
 		sessionStats = { turns: 0, tokensEstimate: 0 };
 
@@ -711,21 +712,35 @@ export default function solyExtension(pi: ExtensionAPI) {
 		if (rulesChanged || stateChanged) {
 			updateStatus(ctx);
 		}
+
+		// Post-work rules check: surface applicable rules for files edited
+		// in this turn. Honest post-hook — doesn't pretend to detect violations,
+		// just reminds the user which rules SHOULD have been followed.
+		if (editedFilesThisTurn.size > 0) {
+			const applicable = rulesApplicableToFiles(
+				combinedRules(),
+				[...editedFilesThisTurn],
+			);
+			if (applicable.length > 0) {
+				ctx.ui.notify(
+					`📋 Rules check: edited ${editedFilesThisTurn.size} file(s), ${applicable.length} rule(s) applied:\n  • ${applicable.join("\n  • ")}`,
+					"info",
+				);
+			}
+			editedFilesThisTurn = new Set();
+		}
 	});
 
 	// ============================================================================
-	// tool_call: rules reinforcement — fire a brief notify to the user when
-	// the LLM is about to edit/write a file that has applicable rules.
-	// This doesn't block the tool — it's a visibility signal so the user
-	// can spot when the LLM is editing without checking rules.
+	// tool_call: track files edited in this turn. Used at turn_end to surface
+	// applicable rules as a post-work checklist ("did the agent follow them?").
 	// ============================================================================
 	pi.on("tool_call", async (event, _ctx) => {
 		if (event.toolName !== "edit" && event.toolName !== "write") return;
-		const activeRules = combinedRules();
-		if (activeRules.length === 0) return;
-		// Don't spam — only notify once per session
-		if (rulesEditNotifyShown) return;
-		rulesEditNotifyShown = true;
+		const input = event.input as { path?: string };
+		if (input?.path) {
+			editedFilesThisTurn.add(input.path);
+		}
 	});
 
 	// Mount built-in sub-features
