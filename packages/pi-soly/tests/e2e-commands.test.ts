@@ -117,6 +117,7 @@ function makeMockDeps(cwd: string) {
 			nudge: { nonTrivialEnabled: true, researchHeavyEnabled: true },
 			codeMap: { maxFiles: 200, maxDepth: 5 },
 		}),
+		getIntentDocs: () => [],
 	};
 }
 
@@ -206,6 +207,44 @@ describe("E2E: /rules command", () => {
 		await handler("stats", ctx as never);
 		// Should show the 📊 header
 		expect(notifs.some((n) => n.text.includes("📊"))).toBe(true);
+	});
+});
+
+describe("E2E: /docs command", () => {
+	const mockPi = makeMockPi();
+
+	beforeAll(() => {
+		registerCommands(mockPi, makeMockDeps(projectDir) as never);
+	});
+
+	test("command is registered", () => {
+		expect(mockPi._commands.has("docs")).toBe(true);
+	});
+
+	test("stats subcommand does not throw", async () => {
+		const ctx = makeMockCtx(projectDir);
+		const handler = mockPi._commands.get("docs")!.handler;
+		await expect(handler("stats", ctx as never)).resolves.toBeUndefined();
+	});
+
+	test("stats subcommand produces 📚 header", async () => {
+		const notifs: Array<{ text: string; level?: string }> = [];
+		const ctx = makeMockCtx(projectDir);
+		ctx.ui.notify = (text: string, level?: string) => { notifs.push({ text, level }); };
+
+		const handler = mockPi._commands.get("docs")!.handler;
+		await handler("stats", ctx as never);
+		expect(notifs.some((n) => n.text.includes("📚"))).toBe(true);
+	});
+
+	test("empty docs shows 'No intent docs found' message", async () => {
+		const notifs: Array<{ text: string; level?: string }> = [];
+		const ctx = makeMockCtx(projectDir);
+		ctx.ui.notify = (text: string, level?: string) => { notifs.push({ text, level }); };
+
+		const handler = mockPi._commands.get("docs")!.handler;
+		await handler("stats", ctx as never);
+		expect(notifs.some((n) => n.text.includes("No intent docs found"))).toBe(true);
 	});
 });
 

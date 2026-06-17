@@ -307,6 +307,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 		refreshState: () => refreshState(),
 		updateStatus: (ui) => updateStatus(ui),
 		getConfig: getActiveConfig,
+		getIntentDocs: () => intentDocs,
 	});
 
 	registerTools(pi, {

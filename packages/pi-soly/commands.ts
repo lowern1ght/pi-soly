@@ -3,7 +3,8 @@
 // =============================================================================
 //
 // Registers slash commands (via pi.registerCommand):
-//   - /rules         manage soly rules (list/show/analytics/reload/enable/disable/add/new)
+//   - /rules         manage soly rules (list/show/stats/analytics/reload/enable/disable/add/new)
+//   - /docs          manage soly intent docs (stats — context breakdown)
 //   - /soly          project state inspection (position/plan/phases/tasks/...)
 //                    subcommands: position, state, plan, context, research, roadmap,
 //                                 progress, phases, tasks, task <id>, features,
@@ -32,6 +33,13 @@ import {
 	type RuleFile,
 	type SolyState,
 } from "./core.ts";
+import {
+	buildIntentStats,
+	formatIntentStats,
+	loadInlineIntentBodies,
+	type IntentDoc,
+	type IntentInlineDoc,
+} from "./intent.ts";
 import type { SolyConfig } from "./config.ts";
 import { migrateSolyDir } from "./migrate.js";
 import { initSolyProject } from "./init.js";
@@ -53,6 +61,7 @@ export interface CommandsDeps {
 	refreshState: () => void;
 	updateStatus: (ui: CommandUI) => void;
 	getConfig: () => SolyConfig;
+	getIntentDocs: () => IntentDoc[];
 }
 
 export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
@@ -64,6 +73,7 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 		refreshState,
 		updateStatus,
 		getConfig,
+		getIntentDocs,
 	} = deps;
 
 	// ============================================================================
@@ -345,6 +355,40 @@ What must the LLM do?
 			"error",
 		);
 	},
+	});
+
+	// ============================================================================
+	// /docs — manage soly intent docs (stats subcommand shows context usage)
+	// ============================================================================
+	pi.registerCommand("docs", {
+		description:
+			"manage soly intent docs (stats — show context breakdown)",
+		handler: async (args, ctx) => {
+			const ui: CommandUI = {
+				notify: (t, k) => ctx.ui.notify(t, k ?? "info"),
+				select: async (label, options) => {
+					const result = await ctx.ui.select(label, options);
+					return result === undefined ? null : options.indexOf(result);
+				},
+				confirm: (title, message) => ctx.ui.confirm(title, message),
+			};
+			const parts = args.trim().split(/\s+/);
+			const sub = parts[0] ?? "stats";
+
+			if (sub === "stats") {
+				const docs = getIntentDocs();
+				const inlineBodies: IntentInlineDoc[] = loadInlineIntentBodies(docs);
+				const stats = buildIntentStats(docs, inlineBodies);
+				ui.notify(formatIntentStats(stats), "info");
+				return;
+			}
+
+			ui.notify(
+				`Usage: /docs stats — show context breakdown for intent docs\n` +
+				`Found ${getIntentDocs().length} doc(s) loaded.`,
+				"info",
+			);
+		},
 	});
 
 	// ============================================================================

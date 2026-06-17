@@ -301,3 +301,109 @@ export function loadInlineIntentBodies(intent: IntentDoc[]): IntentInlineDoc[] {
 	}
 	return out;
 }
+
+// =============================================================================
+// Intent stats — Claude-memory-style breakdown for docs
+// =============================================================================
+//
+// Shows how docs consume context. Most docs are preview-only (cheap),
+// only `inline: true` docs inject their full body (expensive).
+
+export interface IntentDocStat {
+  relPath: string;
+  kind: "md" | "html";
+  title: string;
+  tokens: number;       // full file tokens (what would be loaded if inline)
+  previewTokens: number; // preview tokens (what's actually loaded by default)
+  inline: boolean;      // true if `inline: true` frontmatter — body is injected
+  oversized: boolean;
+  phaseNumber?: number;
+}
+
+export interface IntentStats {
+  totalDocs: number;
+  totalInlineTokens: number;     // tokens from inline: true docs (full body)
+  totalPreviewTokens: number;    // tokens from preview-only docs (always loaded)
+  totalPerTurnTokens: number;    // sum of what's actually in system prompt
+  inlineDocs: IntentDocStat[];
+  previewDocs: IntentDocStat[];
+  phaseSpecificDocs: IntentDocStat[];
+}
+
+export function buildIntentStats(
+  docs: IntentDoc[],
+  inlineBodies: IntentInlineDoc[],
+): IntentStats {
+  const inlineRelPaths = new Set(inlineBodies.map((d) => d.relPath));
+  const inlineBodyTokens = new Map(inlineBodies.map((d) => [d.relPath, d.tokens]));
+  const stat = (d: IntentDoc): IntentDocStat => ({
+    relPath: d.relPath,
+    kind: d.kind,
+    title: d.title,
+    tokens: d.tokens,
+    previewTokens: Math.ceil(d.preview.length / 4),
+    inline: inlineRelPaths.has(d.relPath),
+    oversized: d.oversized,
+    phaseNumber: d.phaseNumber,
+  });
+  const all = docs.map(stat);
+  const inlineDocs = all.filter((d) => d.inline);
+  const previewDocs = all.filter((d) => !d.inline);
+  const phaseSpecificDocs = all.filter((d) => d.phaseNumber != null);
+  const totalInlineTokens = inlineDocs.reduce(
+    (a, b) => a + (inlineBodyTokens.get(b.relPath) ?? b.tokens),
+    0,
+  );
+  const totalPreviewTokens = previewDocs.reduce((a, b) => a + b.previewTokens, 0);
+  return {
+    totalDocs: all.length,
+    totalInlineTokens,
+    totalPreviewTokens,
+    totalPerTurnTokens: totalInlineTokens + totalPreviewTokens,
+    inlineDocs,
+    previewDocs,
+    phaseSpecificDocs,
+  };
+}
+
+export function formatIntentStats(stats: IntentStats): string {
+  const lines: string[] = [];
+  lines.push(`📚 Docs context stats`);
+  lines.push(``);
+  lines.push(
+    `Loaded: ${stats.totalDocs} doc(s) · ${stats.totalPerTurnTokens} tok every turn`,
+  );
+  lines.push(
+    `  (${stats.totalInlineTokens} from inline bodies + ${stats.totalPreviewTokens} from previews)`,
+  );
+  lines.push(``);
+  if (stats.inlineDocs.length > 0) {
+    lines.push(`INLINE (full body loaded every turn):`);
+    for (const d of stats.inlineDocs) {
+      const title = d.title ? ` — "${d.title}"` : "";
+      lines.push(`  ● ${d.relPath}  ${d.tokens} tok${title}`);
+    }
+    lines.push(``);
+  }
+  if (stats.previewDocs.length > 0) {
+    lines.push(`PREVIEW-ONLY (only title + 180-char preview loaded):`);
+    for (const d of stats.previewDocs) {
+      const title = d.title ? ` — "${d.title}"` : "";
+      const size = d.oversized ? " (oversized)" : "";
+      lines.push(`  ○ ${d.relPath}  ${d.previewTokens} tok preview${title}${size}`);
+    }
+    lines.push(``);
+  }
+  if (stats.phaseSpecificDocs.length > 0) {
+    lines.push(`PHASE-SPECIFIC (only loaded for matching phase):`);
+    for (const d of stats.phaseSpecificDocs) {
+      const title = d.title ? ` — "${d.title}"` : "";
+      lines.push(`  ◐ phase ${d.phaseNumber}: ${d.relPath}${title}`);
+    }
+    lines.push(``);
+  }
+  if (stats.totalDocs === 0) {
+    lines.push(`No intent docs found in .soly/docs/ or ~/.soly/docs/`);
+  }
+  return lines.join("\n");
+}
