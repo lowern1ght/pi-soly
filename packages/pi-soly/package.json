@@ -1,7 +1,7 @@
 {
   "name": "pi-soly",
   "version": "1.9.1",
-  "description": "Project management framework for pi-coding-agent. Workflows, planning, multi-question picker, agent switcher, live task list — one npm install, zero config.",
+  "description": "Project management + workflow engine for pi-coding-agent. Plans, state, MANDATORY rules, multi-question picker — one npm install, zero config. LLM is the executor (no subagent layer).",
   "type": "module",
   "main": "index.ts",
   "scripts": {
@@ -49,11 +49,10 @@
     "pi-package",
     "project-management",
     "planning",
-    "subagents",
     "multi-question",
-    "agent-switcher",
-    "task-list",
     "workflow-engine",
+    "rules-engine",
+    "intent-docs",
     "ai-coding"
   ],
   "license": "MIT",

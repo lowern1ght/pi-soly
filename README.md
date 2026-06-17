@@ -2,11 +2,9 @@
 
 # ⚡ pi-soly
 
-**The project management framework for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent).**
+**The project management + workflow engine for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent).**
 
-Plans · State · Subagents · Multi-question picker · Live task list.
-
-One `npm install`. Zero config. Pure magic.
+Plans · State · Rules · Multi-question picker. One `npm install`. Zero config.
 
 [![npm version](https://img.shields.io/npm/v/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
 [![npm downloads](https://img.shields.io/npm/dm/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
@@ -14,9 +12,11 @@ One `npm install`. Zero config. Pure magic.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/lowern1ght/pi-soly/blob/master/LICENSE)
 [![Built with Bun](https://img.shields.io/badge/Built_with-Bun-f9f1e1?logo=bun)](https://bun.sh)
 
-[Install](#-install) · [Features](#-features) · [Docs](#-documentation) · [Architecture](#-architecture) · [Releases](#-releases)
+[Install](#-install) · [Commands](#-commands) · [Rules & Docs](#-rules--docs) · [Releases](#-releases)
 
 </div>
+
+See **[packages/pi-soly/README.md](packages/pi-soly/README.md)** for the full package documentation.
 
 ---
 
@@ -26,161 +26,35 @@ One `npm install`. Zero config. Pure magic.
 pi install npm:pi-soly
 ```
 
-That's it. Restart pi, and you have:
+Restart pi (`/reload`), and you have:
 
-- **A complete project management engine** — plans, state, subagent-driven execution
-- **A multi-question picker** — `ask_pro` tool for the LLM
-- **Live task list + notifications** — see nudge + deprecation warnings as framed Box widgets
-- **A live task list** — `todo_update` tool renders in the footer
-- **7 soly agents** installed on first run
+- **Project management** — plans, state, phases, decisions
+- **Workflow engine** — `/plan`, `/execute`, `/resume`, `/inspect`, `/discuss`, `/quick`
+- **Mandatory rules** — strict-mode directives injected every turn
+- **Multi-question picker** — `ask_pro` tool for the LLM
+- **Skill-based execution** — LLM reads the `soly-framework` skill on demand
+
+No agents, no rotors, no mode cycling. The LLM is the executor. You focus on the work.
 
 ---
 
-## 🎯 Why pi-soly?
+## 📋 Quick command reference
 
-| Without pi-soly | With pi-soly |
+| Command | What it does |
 |---|---|
-| Write your own planning workflow | `/plan`, `/execute`, `/resume`, `/inspect` — ready |
-| Manually dispatch subagents | `useSolyWorkerSubagents: true` — automatic routing |
-| 3 different packages for pickers/tasks/agents | One package, one config, one install |
-| Mode selection (oracle/scout/reviewer) | LLM picks via `subagent(...)` based on task brief |
-| Re-invent the state machine | `.soly/STATE.md` + auto-managed phases |
+| `/plan` / `/execute` / `/resume` / `/inspect` | Core workflow |
+| `/soly` | Interactive state picker |
+| `/rules stats` | Context breakdown for rules |
+| `/docs stats` | Context breakdown for intent docs |
+| `/soly-init` / `/soly-migrate` / `/soly-status` | Setup |
+| `/why` | Rules + state that grounded the last turn |
+| `/rulewizard` | Rule vs .editorconfig vs linter |
+
+See [packages/pi-soly/README.md](packages/pi-soly/README.md) for full details.
 
 ---
 
-## 🔥 Features
-
-### 📋 Project Management Engine
-
-GSD-inspired planning and execution. State is the source of truth, not vibes.
-
-```bash
-/plan            # generate PLAN.md for the current phase
-/execute         # execute plan directly (LLM does the work)
-/resume          # pick up a paused session
-/inspect         # show current state summary
-/discuss 3       # talk through decisions before planning phase 3
-```
-
-State lives in `.soly/` — portable, git-friendly, human-readable.
-
-```
-.soly/
-├── ROADMAP.md           # phase table
-├── STATE.md             # current position + decisions log
-├── docs/                # 0-point intent docs (your vision, locked)
-└── phases/
-    └── 01-foundation/
-        ├── 01-CONTEXT.md    # domain + decisions for this phase
-        ├── 01-RESEARCH.md   # what we looked up
-        └── 01-PLAN.md       # ordered steps to execute
-```
-
-### 🎤 Multi-Question Picker
-
-Multi-question picker `ask_pro` for the LLM. Tabbed UI: single-select, multi-select, recommended ⭐, free-text Other.
-
-```ts
-ask_pro({
-  questions: [{
-    header: "Auth",
-    question: "How should we store the OAuth refresh token?",
-    options: [
-      { label: "Encrypted in SQLite",  description: "Survives restart, single-device.", recommended: true },
-      { label: "OS keychain",          description: "Native, multi-device via iCloud." },
-      { label: "Plain env var",         description: "Simplest, dev only." }
-    ]
-  }]
-})
-```
-
-The LLM can update its own task list mid-turn. You watch progress without re-asking.
-
-```ts
-todo_update({
-  todos: [
-    { content: "Read existing config", status: "completed", priority: "high" },
-    { content: "Write new schema",     status: "in_progress", priority: "high" },
-    { content: "Add migration",        status: "pending",     priority: "medium" },
-    { content: "Update tests",         status: "pending",     priority: "medium" },
-    { content: "Run typecheck",        status: "pending",     priority: "low" }
-  ]
-})
-```
-
----
-
-## 🏗 Architecture
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                   pi-coding-agent (peer dep)                  │
-└────────────────────────┬─────────────────────────────────────┘
-                         │
-        ┌────────────────┴────────────────┐
-        │                                 │
-        ▼                                 ▼
-  ┌────────────┐                  ┌─────────────┐
-  │  ask_pro   │                  │  todo_      │
-  │  picker    │                  │  update     │
-  │  (tool)    │                  │  (tool)     │
-  └────────────┘                  └─────────────┘
-        │                                 │
-        └─────────────────┬───────────────┘
-                          │
-                          ▼
-                ┌──────────────────┐
-                │  Workflow engine │
-                │                  │
-                │  /plan /execute  │
-                │  /resume /inspect│
-                │  /discuss /quick │
-                └────────┬─────────┘
-                         │
-            ┌────────────┼────────────┐
-            ▼            ▼            ▼
-       .soly/STATE  phases/<N>/   iterations/
-       (current     CONTEXT,      (per-exec
-        position)   PLAN,         context
-                    RESEARCH)     bundle)
-                         │
-                         ▼
-                ┌──────────────────┐
-                │  switch/         │
-                │  (no rotors —    │
-                │                  │
-                │  Ctrl+Tab        │
-                │  footer pill     │
-                │   removed 1.4)   │
-                └────────┬─────────┘
-                         │
-                         ▼
-                ┌──────────────────┐
-                │  7 soly agents   │
-                │                  │
-                │  worker (cycle)     │
-                │  soly-debugger   │
-                │  soly-tester     │
-                │  soly-reviewer   │
-                │  soly-refactor   │
-                │  soly-documenter │
-                │  soly-oracle     │
-                └──────────────────┘
-```
-
----
-
-## 📚 Documentation
-
-- **Slash commands** — `/plan`, `/execute`, `/resume`, `/inspect`, `/discuss <N>`, `/quick <task>`
-- **Tools** — `ask_pro(question[])` and `todo_update(todo[])`
-- **Events** — `session_start`, `before_agent_start`, `message_end`, `tool_call`, `tool_result`
-- **State files** — `.soly/STATE.md`, `.soly/ROADMAP.md`, `.soly/phases/<N>-<slug>/<N>-PLAN.md`
-- **Soly agents** — installed to `~/.pi/agent/agents/soly-*.md` on first run
-
----
-
-## 🛠 Development
+## 🛠 Development (monorepo)
 
 ### Requirements
 
@@ -198,7 +72,7 @@ bun install
 ### Test + typecheck
 
 ```bash
-bun test          # 288 tests
+bun test          # 366 tests across 24 files
 bun run typecheck # tsc --noEmit
 bun run ci        # both
 ```
@@ -217,10 +91,9 @@ pi install ./packages/pi-soly
 Tag-based, fully automated. Push a `pi-soly-v*` tag, get a publish.
 
 ```bash
-./scripts/release.sh pi-soly 0.5.9
-git push origin master
+./scripts/release.sh pi-soly 1.9.1
 git push github master
-git push github pi-soly-v0.5.9 --force
+git push github pi-soly-v1.9.1 --force
 ```
 
 CI runs on a self-hosted GitHub Actions runner:
