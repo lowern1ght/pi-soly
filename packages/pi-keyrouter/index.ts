@@ -190,9 +190,27 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 		await activate(ctx);
 	});
 
-	pi.on("after_provider_response", async (event, ctx) => {
+	pi.on("message_end", async (event, ctx) => {
 		if (!config) return;
-		if (event.status !== 429 && event.status !== 401 && event.status !== 403) return;
+		const msg = event.message;
+		// Only intercept assistant error messages
+		if (msg.role !== "assistant" || msg.stopReason !== "error") return;
+		const errMsg = msg.errorMessage ?? "";
+		if (!errMsg) return;
+
+		// Detect error type from the message string.
+		// pi's error messages look like: "429 Usage limit reached..."
+		// or "401 Unauthorized" / "403 Forbidden".
+		let reason: "rate-limited" | "unauthorized" | null = null;
+		let status = 0;
+		if (/\b429\b|rate.?limit|too many requests/i.test(errMsg)) {
+			reason = "rate-limited";
+			status = 429;
+		} else if (/\b40[13]\b|unauthorized|forbidden/i.test(errMsg)) {
+			reason = "unauthorized";
+			status = errMsg.includes("401") ? 401 : 403;
+		}
+		if (!reason) return; // not a rotatable error
 
 		// Determine provider from current model
 		const model = ctx.model;
@@ -201,22 +219,18 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 		const rt = runtimes.get(providerName);
 		if (!rt) return; // not a managed provider
 
-		const reason: "rate-limited" | "unauthorized" =
-			event.status === 429 ? "rate-limited" : "unauthorized";
-
 		const authStorage = ctx.modelRegistry.authStorage;
-		const rotated = rotate(providerName, reason, event.status, (key) => {
+		const rotated = rotate(providerName, reason, status, (key) => {
 			authStorage.setRuntimeApiKey(providerName, key);
 		});
 
 		if (!rotated) {
-			// All keys exhausted — clear runtime override so pi falls back to auth.json
-			// (which has the user's original key). pi will surface the real error.
+			// All keys exhausted — let pi surface the real error.
 			if (notify) {
 				const failed = rt.keys.filter((k) => k.failures > 0).map((k) => k.name);
 				notify(
 					`🔑 keyrouter: ${providerName} — all keys exhausted (${failed.join(", ")}). ` +
-						`Letting pi surface the original HTTP ${event.status}.`,
+						`Letting pi surface the original error.`,
 					"error",
 				);
 			}
