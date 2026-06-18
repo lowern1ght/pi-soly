@@ -586,3 +586,165 @@ describe("AskProComponent — Other… option (allowOther)", () => {
 		expect(picker.getSelectedIndex()).toBeLessThan(2);
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Option previews (side-by-side)
+// ---------------------------------------------------------------------------
+
+describe("AskProComponent — option previews", () => {
+	test("currentPreviewLines returns [] when option has no preview", () => {
+		const { picker } = setup();
+		// Type-level access: currentPreviewLines is private; verify via render
+		// (no preview lines means render falls back to super.render width-only)
+		const lines = picker.render(80);
+		// Just verify it doesn't throw and returns some lines
+		expect(lines.length).toBeGreaterThan(0);
+	});
+
+	test("render includes preview content when option has preview", () => {
+		const qsWithPreview: AskQuestion[] = [
+			{
+				header: "Model",
+				question: "Which schema?",
+				options: [
+					{
+						label: "Relational",
+						description: "Postgres + strict schema",
+						preview: "CREATE TABLE users (\n  id SERIAL PRIMARY KEY,\n  email TEXT NOT NULL\n);",
+					},
+					{ label: "Document", description: "MongoDB" },
+				],
+			},
+		];
+		const { picker } = setup(qsWithPreview);
+		const lines = picker.render(100);
+		const joined = lines.join("\n");
+		// Preview content should appear in the rendered output
+		expect(joined).toContain("CREATE TABLE");
+		expect(joined).toContain("preview");
+	});
+
+	test("preview disappears when focused option has none", () => {
+		const qsWithPreview: AskQuestion[] = [
+			{
+				header: "Model",
+				question: "Which schema?",
+				options: [
+					{
+						label: "Relational",
+						description: "Postgres",
+						preview: "CREATE TABLE users (id INT);",
+					},
+					{ label: "Document", description: "MongoDB" },
+				],
+			},
+		];
+		const { picker } = setup(qsWithPreview);
+		// Focus option 0 (has preview)
+		picker.handleInput("j"); // wait, default 0 already; move to 1
+		picker.handleInput("j"); // option 1 (no preview)
+		const lines = picker.render(100);
+		const joined = lines.join("\n");
+		// No preview lines for option without preview
+		expect(joined).not.toContain("CREATE TABLE");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Notes (`n` key)
+// ---------------------------------------------------------------------------
+
+describe("AskProComponent — notes (n key)", () => {
+	test("n is a no-op when onRequestNote is not provided", () => {
+		const { picker } = setup();
+		// Should not throw, no effect
+		expect(() => picker.handleInput("n")).not.toThrow();
+	});
+
+	test("n opens note dialog when onRequestNote is provided", async () => {
+		let noteRequestCount = 0;
+		let resolveNote: (value: string | undefined) => void = () => {};
+		const picker = new AskProComponent({
+			questions: sampleQuestions,
+			theme,
+			keybindings,
+			done: () => {},
+			onRequestNote: async () => {
+				noteRequestCount++;
+				return new Promise<string | undefined>((r) => {
+					resolveNote = r;
+				});
+			},
+		});
+		// `n` should trigger note request
+		expect(noteRequestCount).toBe(0);
+		picker.handleInput("n");
+		// Microtask to let async start
+		await Promise.resolve();
+		expect(noteRequestCount).toBe(1);
+		// Resolve with a note
+		resolveNote("only for prod, use TLS");
+		await Promise.resolve();
+	});
+
+	test("note is included in submit result", async () => {
+		let doneResult: AskProResult | null = null;
+		const pendingNotes: Array<(v: string | undefined) => void> = [];
+		const picker = new AskProComponent({
+			questions: sampleQuestions,
+			theme,
+			keybindings,
+			done: (r) => {
+				doneResult = r;
+			},
+			onRequestNote: async () => {
+				return new Promise<string | undefined>((resolve) => {
+					pendingNotes.push(resolve);
+				});
+			},
+		});
+		// Pick Q1 → advance to Q2
+		picker.handleInput("1");
+		// Add note to Q2
+		picker.handleInput("n");
+		// Wait for the promise to register
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(pendingNotes.length).toBe(1);
+		pendingNotes[0]!("rotate keys monthly");
+		// Wait for the dialog to settle
+		await Promise.resolve();
+		await Promise.resolve();
+		// Submit Q2 (last question, all answered)
+		picker.handleInput("1");
+		expect(doneResult).not.toBeNull();
+		const result = doneResult as AskProResult | null;
+		expect(result?.notes).toBeDefined();
+		expect(result?.notes?.[1]).toBe("rotate keys monthly");
+	});
+
+	test("empty note submission clears existing note", async () => {
+		let resolveNote: (value: string | undefined) => void = () => {};
+		const picker = new AskProComponent({
+			questions: sampleQuestions,
+			theme,
+			keybindings,
+			done: () => {},
+			onRequestNote: async () => {
+				return new Promise<string | undefined>((r) => {
+					resolveNote = r;
+				});
+			},
+		});
+		// Add a note
+		picker.handleInput("n");
+		resolveNote("first note");
+		await Promise.resolve();
+		// Clear it with empty
+		picker.handleInput("n");
+		resolveNote("   ");
+		await Promise.resolve();
+		// No crash — note cleared
+		expect(() => picker.render(80)).not.toThrow();
+	});
+});

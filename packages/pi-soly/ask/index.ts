@@ -165,6 +165,11 @@ export default function piAskExtension(pi: ExtensionAPI) {
 							if (!ctx.hasUI) return undefined;
 							return (await ctx.ui.input(req.title, req.placeholder)) ?? undefined;
 						},
+						// Bridge for the `n` note dialog. Reuses the same text-input UI.
+						onRequestNote: async (req) => {
+							if (!ctx.hasUI) return undefined;
+							return (await ctx.ui.input(req.title, req.placeholder)) ?? undefined;
+						},
 						title: `pi-ask — ${params.questions.length} question${params.questions.length > 1 ? "s" : ""}`,
 					});
 				},
@@ -184,14 +189,16 @@ export default function piAskExtension(pi: ExtensionAPI) {
 			}
 
 			const answers = result.answers ?? {};
+			const notes = result.notes ?? {};
 			// Pretty-print for the LLM
 			const out: string[] = ["User answers:"];
 			for (let i = 0; i < params.questions.length; i++) {
 				const q = params.questions[i];
 				if (!q) continue;
 				const a = answers[i];
+				let line: string;
 				if (a === undefined) {
-					out.push(`  Q${i + 1} (${q.header}): (no answer)`);
+					line = `  Q${i + 1} (${q.header}): (no answer)`;
 				} else if (Array.isArray(a)) {
 					const parts: string[] = [];
 					for (const item of a) {
@@ -201,17 +208,22 @@ export default function piAskExtension(pi: ExtensionAPI) {
 							parts.push(`"${item}"`);
 						}
 					}
-					out.push(`  Q${i + 1} (${q.header}) [multi]: ${parts.join(", ")}`);
+					line = `  Q${i + 1} (${q.header}) [multi]: ${parts.join(", ")}`;
 				} else if (typeof a === "number") {
-					out.push(`  Q${i + 1} (${q.header}): ${q.options[a]?.label ?? `?${a}`}`);
+					line = `  Q${i + 1} (${q.header}): ${q.options[a]?.label ?? `?${a}`}`;
 				} else {
-					out.push(`  Q${i + 1} (${q.header}) [Other]: "${a}"`);
+					line = `  Q${i + 1} (${q.header}) [Other]: "${a}"`;
 				}
+				// Append note if present
+				if (notes[i]) {
+					line += `  // note: "${notes[i]}"`;
+				}
+				out.push(line);
 			}
 
 			return {
 				content: [{ type: "text", text: out.join("\n") }],
-				details: { answers },
+				details: { answers, notes: Object.keys(notes).length > 0 ? notes : undefined },
 			};
 		},
 	});

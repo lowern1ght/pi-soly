@@ -30,8 +30,12 @@ DON'T use it for:
 - When the user already gave a clear answer — don't second-guess
 - Trivial clarifications — use plain text first, escalate to \`ask_pro\` only if the answer matters
 
-Keyboard in the picker: \`↑↓\` navigate, \`1-N\` instant-pick, \`Tab\` next question, \`Space\` toggle (multi-select only), \`Enter\` confirm/advance/submit, \`Esc\` cancel.
+Keyboard in the picker: \`↑↓\` navigate, \`1-N\` instant-pick, \`Tab\` next question, \`Space\` toggle (multi-select only), \`Enter\` confirm/advance/submit, \`n\` add a free-text note to the current question, \`Esc\` cancel.
 
-Schema reminder: \`questions: [{ header, question, options: [{label, description?, recommended?}], multiSelect? }]\`. Mark exactly one option \`recommended: true\` per question when you have a default.
+Schema reminder: \`questions: [{ header, question, options: [{label, description?, recommended?, preview?}], multiSelect? }]\`. Mark exactly one option \`recommended: true\` per question when you have a default.
+
+**Option previews:** \`option.preview\` (markdown/plain string) shows in a side panel next to the option list while that option is focused. Use it when the question is about a code structure, API shape, or concrete example — show a small snippet of what each option entails so the user can decide without asking follow-ups. Example: when asking "how should we model auth?", each option's preview can show the relevant type signature.
+
+**Notes:** the user can press \`n\` after picking an answer to attach a free-text note (edge cases, constraints, reasoning). The note is returned to you as \`// note: \"...\"\` next to the chosen answer. Treat it as a hard constraint.
 `;
 }

@@ -31,6 +31,13 @@ export interface AskOption {
 	label: string;
 	description?: string;
 	recommended?: boolean;
+	/** Optional preview content shown in a side panel when this option is
+	 *  focused. Use markdown or plain text to show code snippets, structure
+	 *  examples, or elaboration of what the option entails.
+	 *
+	 *  Example:
+	 *    preview: "```ts\nclass Auth {\n  token: string\n}\n```" */
+	preview?: string;
 }
 
 export interface AskQuestion {
@@ -59,6 +66,10 @@ export interface AskProResult {
 	cancelled?: boolean;
 	/** Map of question index → answer. Single: number | string. Multi: (number | string)[] */
 	answers?: Record<number, AskAnswer | AskMultiAnswer>;
+	/** Optional free-text notes the user added to specific questions.
+	 *  Keyed by question index. Added when the user pressed `n` after
+	 *  picking an option and typed a note. */
+	notes?: Record<number, string>;
 }
 
 /** Options for the text-input dialog opened when "Other…" is picked. */
@@ -80,6 +91,10 @@ interface AskProComponentDeps {
 	 *  option is hidden even when `allowOther: true` (caller should ensure
 	 *  the dependency is present if it advertises allowOther). */
 	onRequestInput?: (req: AskProInputRequest) => Promise<string | undefined>;
+	/** Open a text-input dialog for adding a note to the current question
+	 *  (triggered by pressing `n`). Returns the typed text, or undefined
+	 *  if cancelled. If omitted, the `n` shortcut is a no-op. */
+	onRequestNote?: (req: AskProInputRequest) => Promise<string | undefined>;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,12 +122,15 @@ export class AskProComponent extends Container {
 	private keybindings: KeybindingsManager;
 	private done: (result: AskProResult) => void;
 	private onRequestInput?: (req: AskProInputRequest) => Promise<string | undefined>;
+	private onRequestNote?: (req: AskProInputRequest) => Promise<string | undefined>;
 	private title: string;
 
 	private currentIndex = 0;
 	private selectedIndex = 0;
 	/** answers[questionIdx] = AskAnswer (single) or AskMultiAnswer (multi). */
 	private answers = new Map<number, AskAnswer | AskMultiAnswer>();
+	/** notes[questionIdx] = free-text note added by user (via `n` key). */
+	private notes = new Map<number, string>();
 	/** Set true once `done` is called — further input is ignored. */
 	private completed = false;
 	/** Set while a text-input dialog is awaiting the user's reply. */
@@ -120,6 +138,7 @@ export class AskProComponent extends Container {
 
 	private tabsText!: Text;
 	private bodyContainer!: Container;
+	private previewText!: Text;
 	private footerText!: Text;
 
 	constructor(deps: AskProComponentDeps) {
@@ -129,6 +148,7 @@ export class AskProComponent extends Container {
 		this.keybindings = deps.keybindings;
 		this.done = deps.done;
 		this.onRequestInput = deps.onRequestInput;
+		this.onRequestNote = deps.onRequestNote;
 		this.title = deps.title ?? "pi-ask";
 
 		const titleText = new Text(this.theme.fg("accent", this.theme.bold(this.title)), 1, 0);
@@ -193,6 +213,11 @@ export class AskProComponent extends Container {
 		this.bodyContainer.clear();
 		const q = this.questions[this.currentIndex];
 		if (!q) return;
+
+		// Compute the current preview (from the option under the cursor).
+		// Shown side-by-side with the option list via pad-right.
+		const currentPreview = this.currentPreviewLines();
+		const hasPreview = currentPreview.length > 0;
 
 		// Question line: "Q1 of 3: <question>"
 		this.bodyContainer.addChild(
@@ -397,6 +422,12 @@ export class AskProComponent extends Container {
 			// Single-select: Enter is the action key
 			parts.push(this.theme.fg("accent", isLast ? "⏎ submit" : "⏎ next"));
 		}
+		// `n` hint: add/edit note (only if dep is wired)
+		if (this.onRequestNote) {
+			const hasNote = this.notes.has(this.currentIndex);
+			const hint = hasNote ? "n ✓note" : "n note";
+			parts.push(this.theme.fg(hasNote ? "success" : "dim", hint));
+		}
 		parts.push(this.theme.fg("dim", "esc cancel"));
 		return parts.join("   ");
 	}
@@ -565,6 +596,13 @@ export class AskProComponent extends Container {
 			}
 			return;
 		}
+
+		// `n` — add/edit a free-text note for the current question.
+		// Requires onRequestNote dep; otherwise ignored.
+		if (keyData === "n" && this.onRequestNote) {
+			void this.requestNoteInput();
+			return;
+		}
 	}
 
 	private handlePick(optionIdx: number): void {
@@ -659,14 +697,54 @@ export class AskProComponent extends Container {
 		}
 	}
 
+	/** Open a text-input dialog to add/edit a note for the current question.
+	 *  Triggered by the `n` key. Pre-fills with any existing note so the
+	 *  user can edit it. An empty submission clears the note. */
+	private async requestNoteInput(): Promise<void> {
+		if (!this.onRequestNote) return;
+		const q = this.questions[this.currentIndex];
+		if (!q) return;
+		this.awaitingInput = true;
+		const existing = this.notes.get(this.currentIndex) ?? "";
+		const text = await this.onRequestNote({
+			title: q.header,
+			prompt: `Add a note to your answer for: ${q.question}`,
+			placeholder: existing || "Add context, edge cases, or reasoning…",
+		});
+		this.awaitingInput = false;
+		if (text === undefined) {
+			// Cancelled — keep existing note, just redraw
+			this.repaint();
+			return;
+		}
+		const trimmed = text.trim();
+		if (trimmed === "") {
+			// Empty submission clears the note
+			this.notes.delete(this.currentIndex);
+		} else {
+			this.notes.set(this.currentIndex, trimmed);
+		}
+		this.repaint();
+	}
+
 	private submit(): void {
 		if (!this.allAnswered()) return;
 		const answers: Record<number, AskAnswer | AskMultiAnswer> = {};
 		for (let i = 0; i < this.questions.length; i++) {
 			answers[i] = this.answers.get(i) as AskAnswer | AskMultiAnswer;
 		}
+		// Include notes only if at least one was added
+		const notes: Record<number, string> = {};
+		let hasNotes = false;
+		for (let i = 0; i < this.questions.length; i++) {
+			const n = this.notes.get(i);
+			if (n) {
+				notes[i] = n;
+				hasNotes = true;
+			}
+		}
 		this.completed = true;
-		this.done({ answers });
+		this.done(hasNotes ? { answers, notes } : { answers });
 	}
 
 	// -------------------------------------------------------------------------
@@ -677,6 +755,103 @@ export class AskProComponent extends Container {
 	dispose(): void {
 		this.completed = true;
 		this.awaitingInput = false;
+	}
+
+	// -----------------------------------------------------------------------
+	// Side-by-side render: stack picker column (left) with preview column
+	// (right) row-by-row. Each visible body row gets padded to SPLIT_COL and
+	// the matching preview row is appended. If no preview is set, the left
+	// column takes the full width (no padding).
+	// -----------------------------------------------------------------------
+	private static readonly SPLIT_COL = 60; // picker column width when preview is present
+	private static readonly PREVIEW_COL = 60; // preview column width
+
+	/** Lines of preview content for the option currently under the cursor.
+	 *  Returns [] when no option is focused or the option has no preview. */
+	private currentPreviewLines(): string[] {
+		const q = this.questions[this.currentIndex];
+		if (!q) return [];
+		// Only real options carry previews (not "Other…")
+		if (this.selectedIndex < 0 || this.selectedIndex >= q.options.length) return [];
+		const opt = q.options[this.selectedIndex];
+		if (!opt?.preview) return [];
+		// Trim and split on newlines; drop leading/trailing blank lines.
+		const lines = opt.preview
+			.replace(/\r\n/g, "\n")
+			.split("\n")
+			.map((l) => l.trimEnd());
+		while (lines.length > 0 && lines[0]?.trim() === "") lines.shift();
+		while (lines.length > 0 && lines[lines.length - 1]?.trim() === "") lines.pop();
+		return lines;
+	}
+
+	/** Override render to produce a side-by-side layout when a preview is
+	 *  present. Falls back to default Container render otherwise. */
+	render(width: number): string[] {
+		const superLines = super.render(width);
+		const previewLines = this.currentPreviewLines();
+		if (previewLines.length === 0) return superLines;
+
+		// We need to find which body lines belong to the option list and
+		// merge the preview next to them. Simpler approach: append a preview
+		// block below the picker body, styled as a framed right-aligned panel.
+		// True side-by-side would require row index tracking which Container
+		// doesn't expose; the framed block is visually distinct and avoids
+		// fragile index math.
+		const splitCol = Math.min(AskProComponent.SPLIT_COL, Math.floor(width * 0.6));
+		const previewWidth = Math.max(30, width - splitCol - 3);
+		const border = this.theme.fg("dim", "│");
+
+		// Wrap preview lines to previewWidth
+		const wrapped: string[] = [];
+		for (const line of previewLines) {
+			if (line.length === 0) {
+				wrapped.push("");
+				continue;
+			}
+			// Simple greedy word wrap
+			const words = line.split(" ");
+			let cur = "";
+			for (const w of words) {
+				if (cur.length === 0) {
+					cur = w;
+				} else if (cur.length + 1 + w.length <= previewWidth) {
+					cur += " " + w;
+				} else {
+					wrapped.push(cur);
+					cur = w;
+				}
+			}
+			if (cur) wrapped.push(cur);
+		}
+
+		// Insert preview as a side panel: pad each picker line to splitCol,
+		// then add a vertical border and the matching preview line.
+		// We do this for ALL super lines so the preview spans the picker's
+		// full height.
+		const result: string[] = [];
+		// Header row above the preview content
+		result.push("".padEnd(splitCol) + " " + border + " " + this.theme.fg("dim", "— preview —"));
+		for (let i = 0; i < superLines.length; i++) {
+			const superLine = superLines[i] ?? "";
+			// Strip ANSI for width measurement
+			const visibleLen = superLine.replace(/\x1b\[[0-9;]*m/g, "").length;
+			const pad = Math.max(1, splitCol - visibleLen);
+			let row = superLine + " ".repeat(pad) + border + " ";
+			const pLine = wrapped[i];
+			if (pLine !== undefined) {
+				row += this.theme.fg("text", pLine);
+			}
+			result.push(row);
+		}
+		// If preview has more lines than the picker, append them below
+		if (wrapped.length > superLines.length) {
+			for (let i = superLines.length; i < wrapped.length; i++) {
+				const pLine = wrapped[i] ?? "";
+				result.push(" ".repeat(splitCol + 1) + border + " " + this.theme.fg("text", pLine));
+			}
+		}
+		return result;
 	}
 }
 
