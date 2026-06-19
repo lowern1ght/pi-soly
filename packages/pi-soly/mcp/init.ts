@@ -1,4 +1,4 @@
-import type { ExtensionAPI, ExtensionContext, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, ExtensionUIContext, ThemeColor } from "@earendil-works/pi-coding-agent";
 import type { McpExtensionState } from "./state.ts";
 import type { ToolMetadata } from "./types.ts";
 import { existsSync } from "node:fs";
@@ -139,7 +139,7 @@ export async function initializeMcp(
       });
 
   if (ctx.hasUI && startupServers.length > 0) {
-    ctx.ui.setStatus("mcp", `MCP: connecting to ${startupServers.length} servers...`);
+    ctx.ui.setStatus("mcp", `connecting ${startupServers.length} server${startupServers.length === 1 ? "" : "s"}…`);
   }
 
   const results = await parallelLimit(startupServers, 10, async ([name, definition]) => {
@@ -295,13 +295,40 @@ export function flushMetadataCache(state: McpExtensionState): void {
 export function updateStatusBar(state: McpExtensionState): void {
   const ui = state.ui;
   if (!ui) return;
-  const total = Object.keys(state.config.mcpServers).length;
-  if (total === 0) {
+  const serverNames = Object.keys(state.config.mcpServers);
+  if (serverNames.length === 0) {
     ui.setStatus("mcp", undefined);
     return;
   }
-  const connectedCount = state.manager.getAllConnections().size;
-  ui.setStatus("mcp", ui.theme.fg("accent", `MCP: ${connectedCount}/${total} servers`));
+  // Build compact per-server list: "unreal ✓ · github ✗"
+  // Status icon reflects current state:
+  //   ✓  connected
+  //   ✗  failed (in failureTracker, with active backoff)
+  //   ⚠  needs-auth (OAuth)
+  //   ○  not connected / closed
+  const theme = ui.theme;
+  const fg = (color: ThemeColor, text: string): string => theme.fg(color, text);
+  const parts: string[] = [];
+  for (const name of serverNames) {
+    const connection = state.manager.getConnection(name);
+    let icon: string;
+    let color: ThemeColor;
+    if (connection?.status === "connected") {
+      icon = "✓";
+      color = "success";
+    } else if (connection?.status === "needs-auth") {
+      icon = "⚠";
+      color = "warning";
+    } else if (state.failureTracker.has(name)) {
+      icon = "✗";
+      color = "error";
+    } else {
+      icon = "○";
+      color = "dim";
+    }
+    parts.push(`${name} ${fg(color, icon)}`);
+  }
+  ui.setStatus("mcp", parts.join(" · "));
 }
 
 export function getFailureAgeSeconds(state: McpExtensionState, serverName: string): number | null {
@@ -330,7 +357,7 @@ export async function lazyConnect(state: McpExtensionState, serverName: string):
 
   try {
     if (state.ui) {
-      state.ui.setStatus("mcp", `MCP: connecting to ${serverName}...`);
+      state.ui.setStatus("mcp", `connecting ${serverName}…`);
     }
     const newConnection = await state.manager.connect(serverName, definition);
     if (newConnection.status === "needs-auth") {
