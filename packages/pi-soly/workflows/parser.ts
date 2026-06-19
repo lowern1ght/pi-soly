@@ -18,7 +18,7 @@
 /** Verbs currently supported by the workflow handlers. */
 export type WorkflowVerb =
 	| "execute" | "pause" | "compact" | "resume" | "status" | "log" | "diff"
-	| "plan" | "discuss" | "help" | "doctor" | "iterations" | "phase" | "todos" | "verify";
+	| "plan" | "discuss" | "help" | "doctor" | "iterations" | "phase" | "todos" | "verify" | "migrate";
 
 export interface SolyCommand {
 	verb: WorkflowVerb;
@@ -67,7 +67,8 @@ export function parseSolyCommand(text: string): SolyCommand | null {
 		verb !== "iterations" &&
 		verb !== "phase" &&
 		verb !== "todos" &&
-		verb !== "verify"
+		verb !== "verify" &&
+		verb !== "migrate"
 	) {
 		return null;
 	}

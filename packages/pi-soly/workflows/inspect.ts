@@ -211,6 +211,20 @@ export function showDoctor(_cmd: unknown, state: SolyState, ui: InspectUI, confi
 		});
 	}
 
+	// 12. project layout (suggest migration to the unified phase=tasks model)
+	if (state.exists) {
+		const legacy =
+			state.phases.some((p) => p.plans.length > 0 && (!p.tasks || p.tasks.length === 0)) ||
+			state.features.length > 0;
+		checks.push({
+			name: "project layout",
+			status: legacy ? "info" : "pass",
+			detail: legacy
+				? "legacy plans/features detected — run `soly migrate` to move to phases/<N>/tasks/"
+				: "unified model (phase = group of tasks)",
+		});
+	}
+
 	// Render
 	const symbol = { pass: "✓", warn: "⚠", fail: "✗", info: "ℹ" };
 	const color = { pass: "pass", warn: "warning", fail: "fail", info: "info" } as const;

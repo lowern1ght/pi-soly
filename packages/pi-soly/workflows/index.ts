@@ -24,6 +24,7 @@ import { showStatus, showLog, showDiff } from "./quick.ts";
 import { showDoctor, showIterations, showDiffIterations, showPhaseDelete, showTodos } from "./inspect.ts";
 import { buildPlanTransform, buildDiscussTransform } from "./planning.ts";
 import { createVerifyLoop, type VerifyState } from "./verify.ts";
+import { buildMigrateTransform } from "./migrate.ts";
 import type { ContextManager } from "../context-manager.ts";
 import type { SolyState } from "../core.js";
 import type { SolyConfig } from "../config.js";
@@ -144,6 +145,12 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 			return { action: "transform", text: result.transformedText };
 		}
 
+		if (cmd.verb === "migrate") {
+			const result = buildMigrateTransform(state);
+			if (!result.handled || !result.transformedText) return;
+			return { action: "transform", text: result.transformedText };
+		}
+
 		if (cmd.verb === "verify") {
 			const sub = (cmd.args[0] ?? "").toLowerCase();
 			if (sub === "stop" || sub === "off") {
@@ -177,6 +184,9 @@ Quick info (no LLM round-trip):
   iterations [N]      — recent iteration bundles
   todos               — pi-todo live list
   phase delete <N>    — soft-delete a phase
+
+Maintenance:
+  migrate             — convert a legacy layout (NN-PLAN files / features/) to phases/<N>/tasks/
 
 State inspection lives on the slash form — \`/soly <sub>\`:
   position · state · plan · roadmap · progress · phases · tasks · task <id> ·
