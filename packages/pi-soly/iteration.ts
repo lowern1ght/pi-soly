@@ -579,16 +579,8 @@ export function buildIterationContent(input: IterationInput): string {
 	}
 
 	if ((input.kind === "plan" || input.kind === "exec") && phaseDir) {
-		// Section 3: Phase CONTEXT
-		const ctxPath = findPhaseContextPath(phaseDir);
-		sections.push("## 3. Phase CONTEXT");
-		sections.push("");
-		sections.push(`_Source: \`${ctxPath ? rel(projectRoot, ctxPath) : "(missing)"}\`_`);
-		sections.push("");
-		sections.push(loadPhaseContext(phaseDir, SECTION_BUDGETS.context));
-		sections.push("");
-
 		// Section 4: Phase RESEARCH
+		// (Section 3 Phase CONTEXT is emitted by the plan|exec|discuss block above.)
 		const resPath = findPhaseResearchPath(phaseDir);
 		sections.push("## 4. Phase RESEARCH");
 		sections.push("");
