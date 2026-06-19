@@ -21,7 +21,7 @@ import { formatElapsed, formatTokens } from "./format.ts";
 
 /** Default snowflake spinner frames + interval (user-chosen). */
 export const SPINNER_FRAMES = ["❄", "❅", "❆", "✻", "✼", "✽", "✼", "✻", "❆", "❅"] as const;
-export const SPINNER_INTERVAL_MS = 90;
+export const SPINNER_INTERVAL_MS = 180;
 
 export type WorkingTelemetry = {
 	/** Leading word, e.g. "Working". */

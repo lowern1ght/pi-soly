@@ -67,6 +67,7 @@ import { buildCodeMap, buildCodeMapSection, type CodeMap } from "./codemap.ts";
 import { loadIntentDocs, buildIntentSection, loadInlineIntentBodies, type IntentDoc } from "./intent.ts";
 
 import { createChrome, readWelcomeMeta } from "./visual/index.ts";
+import { createContextManager } from "./context-manager.ts";
 
 // Built-in sub-features (merged from former pi-asked, pi-agented packages):
 import piAskExtension from "./ask/index.ts";
@@ -167,6 +168,10 @@ export default function solyExtension(pi: ExtensionAPI) {
 
 	// Visual chrome (top bar + custom footer + working spinner). Config-gated.
 	const chrome = createChrome(() => getActiveConfig().chrome);
+
+	// Single owner of pi's `context` channel (used by the /verify fresh-context
+	// mode; future context strategies plug in here too).
+	const contextManager = createContextManager(pi);
 
 	// ============================================================================
 	// Loaders
@@ -369,6 +374,15 @@ export default function solyExtension(pi: ExtensionAPI) {
 		getActiveTools: () => pi.getActiveTools(),
 		getConfig: getActiveConfig,
 		onWorkflowUsed: resetSolyDrift,
+		contextManager,
+		onVerifyState: (s) => {
+			chrome.data.verbLabel = s.active ? (s.iteration > 0 ? `verify ${s.iteration}/${s.max}` : "verify") : null;
+			chrome.poke();
+		},
+		setVerbLabel: (verb) => {
+			chrome.data.verbLabel = verb;
+			chrome.poke();
+		},
 	});
 
 	// ============================================================================

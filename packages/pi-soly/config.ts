@@ -77,6 +77,18 @@ export interface SolyConfig {
 		/** Hex gradient stops for the welcome banner (empty → accent color). */
 		bannerColors: string[];
 	};
+	verify: {
+		/** Max self-review passes before the loop stops on its own. */
+		maxIterations: number;
+		/** Strip prior review iterations from context each pass ("fresh eyes"). */
+		freshContext: boolean;
+		/** Review prompt re-injected each pass. */
+		prompt: string;
+		/** Regex (case-insensitive) signaling "nothing left to fix" → exit. */
+		exitPatterns: string[];
+		/** Regex signaling issues were fixed → keep looping despite an exit phrase. */
+		issuesFixedPatterns: string[];
+	};
 }
 
 export const DEFAULT_CONFIG: SolyConfig = {
@@ -110,9 +122,21 @@ export const DEFAULT_CONFIG: SolyConfig = {
 		enabled: true,
 		ascii: false,
 		spinnerFrames: ["❄", "❅", "❆", "✻", "✼", "✽", "✼", "✻", "❆", "❅"],
-		spinnerIntervalMs: 90,
+		spinnerIntervalMs: 180,
 		telemetry: true,
 		bannerColors: [], // empty → gradient derived from the theme accent
+	},
+	verify: {
+		maxIterations: 7,
+		freshContext: false,
+		prompt:
+			"Review the work from this session with fresh eyes. Re-read any relevant plan, " +
+			"spec, or PRD first. Look for bugs, missed edge cases, missing error handling, and " +
+			"inconsistencies with the project rules. If you find problems, fix them, then end your " +
+			'reply with: "Fixed N issue(s). Ready for another review." If you find nothing, end with ' +
+			'exactly: "No issues found."',
+		exitPatterns: ["no issues found", "no further issues", "nothing to fix"],
+		issuesFixedPatterns: ["fixed \\d+ issue", "ready for another review", "issues? fixed"],
 	},
 };
 
@@ -188,6 +212,16 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 		if (Array.isArray(over.chrome.bannerColors)) {
 			merged.chrome.bannerColors = over.chrome.bannerColors.filter((c) => typeof c === "string");
 		}
+	}
+	if (over.verify) {
+		if (typeof over.verify.maxIterations === "number" && over.verify.maxIterations > 0)
+			merged.verify.maxIterations = over.verify.maxIterations;
+		if (typeof over.verify.freshContext === "boolean") merged.verify.freshContext = over.verify.freshContext;
+		if (typeof over.verify.prompt === "string" && over.verify.prompt.trim()) merged.verify.prompt = over.verify.prompt;
+		if (Array.isArray(over.verify.exitPatterns))
+			merged.verify.exitPatterns = over.verify.exitPatterns.filter((p) => typeof p === "string");
+		if (Array.isArray(over.verify.issuesFixedPatterns))
+			merged.verify.issuesFixedPatterns = over.verify.issuesFixedPatterns.filter((p) => typeof p === "string");
 	}
 	return merged;
 }

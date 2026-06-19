@@ -449,7 +449,7 @@ describe("config.chrome defaults", () => {
 	test("ships enabled with the snowflake spinner", () => {
 		expect(DEFAULT_CONFIG.chrome.enabled).toBe(true);
 		expect(DEFAULT_CONFIG.chrome.spinnerFrames.length).toBe(10);
-		expect(DEFAULT_CONFIG.chrome.spinnerIntervalMs).toBe(90);
+		expect(DEFAULT_CONFIG.chrome.spinnerIntervalMs).toBe(180);
 		expect(DEFAULT_CONFIG.chrome.telemetry).toBe(true);
 	});
 });

@@ -23,6 +23,8 @@ import { buildResumeTransform } from "./resume.ts";
 import { showStatus, showLog, showDiff } from "./quick.ts";
 import { showDoctor, showIterations, showDiffIterations, showPhaseDelete, showTodos } from "./inspect.ts";
 import { buildPlanTransform, buildDiscussTransform } from "./planning.ts";
+import { createVerifyLoop, type VerifyState } from "./verify.ts";
+import type { ContextManager } from "../context-manager.ts";
 import type { SolyState } from "../core.js";
 import type { SolyConfig } from "../config.js";
 
@@ -39,10 +41,27 @@ export interface WorkflowsDeps {
 	/** Fired when a recognized soly verb is parsed (handled OR transformed).
 	 *  Used by the parent extension to reset drift counters etc. */
 	onWorkflowUsed?: () => void;
+	/** Shared owner of pi's `context` channel (for /verify fresh-context mode). */
+	contextManager: ContextManager;
+	/** Fired when the verify loop's state changes (drives the chrome top bar). */
+	onVerifyState?: (state: VerifyState) => void;
+	/** Set/clear the active workflow-mode label shown in the chrome top bar. */
+	setVerbLabel?: (verb: string | null) => void;
 }
+
+/** Verbs that put the session into a visible "mode" (shown in the chrome top bar). */
+const MODE_VERBS: readonly string[] = ["execute", "plan", "discuss", "resume"];
 
 export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 	const { getState, getInteractiveRules, getActiveTools, getConfig, onWorkflowUsed } = deps;
+
+	// Self-review loop ("soly verify"). Owns its own agent_end + input hooks;
+	// fresh-context mode rewrites the next LLM call through the context manager.
+	const verifyLoop = createVerifyLoop(pi, {
+		contextManager: deps.contextManager,
+		getConfig: () => getConfig().verify,
+		onState: (state) => deps.onVerifyState?.(state),
+	});
 	// The current agent is owned by the separate `pi-switch` extension.
 	// It writes `globalThis.__PI_SWITCH_AGENT__` (in-process) and
 	// `.soly/agent` (persisted). We read the in-process value first (fresh);
@@ -65,8 +84,14 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 		if (event.source !== "interactive") return;
 		if (event.text.trim().startsWith("/")) return;
 
+		// Any interactive input ends the previous workflow mode; a mode verb
+		// below re-sets it. Verify manages its own label via onVerifyState.
+		deps.setVerbLabel?.(null);
+
 		const cmd = parseSolyCommand(event.text);
 		if (!cmd) return;
+
+		if (MODE_VERBS.includes(cmd.verb)) deps.setVerbLabel?.(cmd.verb);
 
 		// Notify the parent extension that a soly verb was used
 		// (resets the drift counter, etc.). Fires for BOTH "handled"
@@ -111,6 +136,18 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 			return { action: "transform", text: result.transformedText };
 		}
 
+		if (cmd.verb === "verify") {
+			const sub = (cmd.args[0] ?? "").toLowerCase();
+			if (sub === "stop" || sub === "off") {
+				verifyLoop.stop(ctx, "stopped");
+			} else {
+				const maxArg = cmd.args.find((a) => /^\d+$/.test(a));
+				const fresh = cmd.args.some((a) => a === "fresh" || a === "--fresh");
+				verifyLoop.start(ctx, { max: maxArg ? parseInt(maxArg, 10) : undefined, fresh: fresh || undefined });
+			}
+			return { action: "handled" };
+		}
+
 		if (cmd.verb === "help") {
 			return {
 				action: "transform",
@@ -140,6 +177,7 @@ Available verbs (all start with \`soly <verb>\` or use \`/soly <verb>\` in slash
   plan <N>       — produce PLAN.md for phase N
   discuss <N>    — interactive discussion of phase N
   execute <N>    — execute all plans in phase N (or \`execute N.MM\` for one plan)
+  verify [N] [fresh] — self-review loop until "no issues" (max N, optional fresh context); \`verify stop\` to exit
   pause          — write HANDOFF.json + .continue-here.md
   compact        — pause + auto-compact session
   resume [N]     — restore from handoff (scoped to phase N if given)
