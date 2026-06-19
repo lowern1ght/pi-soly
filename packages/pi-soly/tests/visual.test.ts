@@ -53,9 +53,13 @@ describe("format", () => {
 		expect(narrow.length).toBeLessThanOrEqual(6);
 	});
 
-	test("formatElapsed floors to seconds", () => {
+	test("formatElapsed: seconds → minutes → hours", () => {
 		expect(formatElapsed(8400)).toBe("8s");
 		expect(formatElapsed(-10)).toBe("0s");
+		expect(formatElapsed(59_000)).toBe("59s");
+		expect(formatElapsed(590_000)).toBe("9m50s");
+		expect(formatElapsed(605_000)).toBe("10m05s");
+		expect(formatElapsed(3_700_000)).toBe("1h01m");
 	});
 });
 

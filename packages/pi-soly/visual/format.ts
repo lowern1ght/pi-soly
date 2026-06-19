@@ -56,7 +56,16 @@ export function fitPath(cwd: string, home: string | undefined, maxWidth: number)
 	return base.slice(0, Math.max(1, maxWidth - 1)) + "…";
 }
 
-/** Whole-second elapsed label, e.g. `8s`. Clamped at 0. */
+/**
+ * Compact elapsed label: `8s` under a minute, `9m50s` under an hour, `1h02m`
+ * beyond. Clamped at 0.
+ */
 export function formatElapsed(ms: number): string {
-	return `${Math.max(0, Math.floor(ms / 1000))}s`;
+	const total = Math.max(0, Math.floor(ms / 1000));
+	if (total < 60) return `${total}s`;
+	const h = Math.floor(total / 3600);
+	const m = Math.floor((total % 3600) / 60);
+	const s = total % 60;
+	if (h > 0) return `${h}h${String(m).padStart(2, "0")}m`;
+	return `${m}m${String(s).padStart(2, "0")}s`;
 }
