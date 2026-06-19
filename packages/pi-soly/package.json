@@ -48,6 +48,7 @@
     "workflows",
     "workflows-data",
     "mcp",
+    "visual",
     "notification.ts",
     "notifications-log.ts",
     "status.ts",

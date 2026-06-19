@@ -63,6 +63,20 @@ export interface SolyConfig {
 		/** $EDITOR command for opening files (e.g. "code", "vim", "cursor"). */
 		command: string;
 	};
+	chrome: {
+		/** Install soly's status chrome (top bar + custom footer + spinner). */
+		enabled: boolean;
+		/** Use ASCII fallbacks instead of Nerd-Font glyphs. */
+		ascii: boolean;
+		/** Working-spinner animation frames (rendered verbatim by pi). */
+		spinnerFrames: string[];
+		/** Working-spinner frame interval in ms. */
+		spinnerIntervalMs: number;
+		/** Show live telemetry (elapsed · ↑↓ tokens · tok/s) in the working line. */
+		telemetry: boolean;
+		/** Hex gradient stops for the welcome banner (empty → accent color). */
+		bannerColors: string[];
+	};
 }
 
 export const DEFAULT_CONFIG: SolyConfig = {
@@ -91,6 +105,14 @@ export const DEFAULT_CONFIG: SolyConfig = {
 	},
 	editor: {
 		command: "code",
+	},
+	chrome: {
+		enabled: true,
+		ascii: false,
+		spinnerFrames: ["❄", "❅", "❆", "✻", "✼", "✽", "✼", "✻", "❆", "❅"],
+		spinnerIntervalMs: 90,
+		telemetry: true,
+		bannerColors: [], // empty → gradient derived from the theme accent
 	},
 };
 
@@ -152,6 +174,20 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 	}
 	if (over.editor && typeof over.editor.command === "string") {
 		merged.editor.command = over.editor.command;
+	}
+	if (over.chrome) {
+		if (typeof over.chrome.enabled === "boolean") merged.chrome.enabled = over.chrome.enabled;
+		if (typeof over.chrome.ascii === "boolean") merged.chrome.ascii = over.chrome.ascii;
+		if (Array.isArray(over.chrome.spinnerFrames)) {
+			const frames = over.chrome.spinnerFrames.filter((f) => typeof f === "string");
+			if (frames.length > 0) merged.chrome.spinnerFrames = frames;
+		}
+		if (typeof over.chrome.spinnerIntervalMs === "number" && over.chrome.spinnerIntervalMs > 0)
+			merged.chrome.spinnerIntervalMs = over.chrome.spinnerIntervalMs;
+		if (typeof over.chrome.telemetry === "boolean") merged.chrome.telemetry = over.chrome.telemetry;
+		if (Array.isArray(over.chrome.bannerColors)) {
+			merged.chrome.bannerColors = over.chrome.bannerColors.filter((c) => typeof c === "string");
+		}
 	}
 	return merged;
 }

@@ -22,7 +22,7 @@
 import * as os from "node:os";
 import * as path from "node:path";
 import * as fs from "node:fs";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import {
 	analyzeRules,
@@ -66,8 +66,19 @@ import { detectEnv, buildEnvSection, type EnvSummary } from "./env.ts";
 import { buildCodeMap, buildCodeMapSection, type CodeMap } from "./codemap.ts";
 import { loadIntentDocs, buildIntentSection, loadInlineIntentBodies, type IntentDoc } from "./intent.ts";
 
+import { createChrome, readWelcomeMeta } from "./visual/index.ts";
+
 // Built-in sub-features (merged from former pi-asked, pi-agented packages):
 import piAskExtension from "./ask/index.ts";
+
+/** Compact phase label for the chrome top bar, e.g. "plan 2/5". Null when idle. */
+function phaseLabelFromState(s: SolyState): string | null {
+	if (!s.exists) return null;
+	const cur = s.currentPhase;
+	const total = s.phases.length;
+	if (cur) return total > 0 ? `${cur.slug || cur.name} ${cur.number}/${total}` : `${cur.slug || cur.name}`;
+	return null;
+}
 
 
 export default function solyExtension(pi: ExtensionAPI) {
@@ -153,6 +164,9 @@ export default function solyExtension(pi: ExtensionAPI) {
 	// Project intent (zero-point docs from .soly/docs/) — always loaded
 	let intentDocs: IntentDoc[] = [];
 	let lastIntentSection = "";
+
+	// Visual chrome (top bar + custom footer + working spinner). Config-gated.
+	const chrome = createChrome(() => getActiveConfig().chrome);
 
 	// ============================================================================
 	// Loaders
@@ -295,6 +309,34 @@ export default function solyExtension(pi: ExtensionAPI) {
 			setStatus(STATUS_ID, fullLine || undefined);
 			lastStatusLine = fullLine;
 		}
+	};
+
+	// Refresh the chrome's live data snapshot (cwd, model, ctx%, git, phase)
+	// from the current context + project state, then request a re-render.
+	const updateChromeData = (ctx: ExtensionContext) => {
+		if (!getActiveConfig().chrome.enabled) return;
+		const d = chrome.data;
+		d.cwd = sessionCwd || ctx.cwd || "";
+		d.home = os.homedir();
+		const model = ctx.model as { id?: string; provider?: string; reasoning?: boolean } | undefined;
+		d.modelId = model?.id ?? null;
+		d.modelProvider = model?.provider ?? null;
+		d.reasoning = Boolean(model?.reasoning);
+		try {
+			d.thinkingLevel = pi.getThinkingLevel();
+		} catch {
+			d.thinkingLevel = null;
+		}
+		const usage = ctx.getContextUsage();
+		d.ctxPercent = usage?.percent ?? null;
+		d.ctxTokens = usage?.tokens ?? null;
+		d.contextWindow = usage?.contextWindow ?? null;
+		d.gitDirty = gitContext.statusShort
+			? gitContext.statusShort.split(/\r?\n/).filter(Boolean).length
+			: 0;
+		d.rulesActive = combinedRules().length;
+		d.phaseLabel = phaseLabelFromState(state);
+		chrome.poke();
 	};
 
 	// ============================================================================
@@ -534,19 +576,45 @@ export default function solyExtension(pi: ExtensionAPI) {
 		}
 
 		updateStatus(ctx);
+
+		// Install the visual chrome (top bar + custom footer + snowflake spinner).
+		chrome.install(ctx.ui);
+		updateChromeData(ctx);
+
+		// Startup header snapshot (version + recent changes + project state).
+		try {
+			const extRoot = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
+			const meta = readWelcomeMeta(extRoot);
+			chrome.setWelcome({
+				version: meta.version,
+				hasProject: state.exists,
+				phaseLabel: phaseLabelFromState(state),
+				nextHint: buildNextHint(state) || null,
+				rulesActive: combinedRules().length,
+				docsCount: intentDocs.length,
+				recent: meta.recent,
+			});
+		} catch {
+			/* header is best-effort; never block session start */
+		}
 	});
 
-	pi.on("session_shutdown", async (_event, _ctx) => {
+	pi.on("session_shutdown", async (_event, ctx) => {
 		// Stop hot-reload watcher — fs.watch handles hold OS resources
 		if (hotReload) {
 			hotReload.stop();
 			hotReload = null;
 		}
+		// Restore pi's native footer/widgets/indicator before teardown
+		chrome.dispose(ctx.ui);
 		// Persist rule mtimes so the next session can show the diff
 		persistRuleMtimes();
 	});
 
 	pi.on("before_agent_start", async (event, ctx) => {
+		// Keep the chrome (ctx%, model, phase) current for the upcoming turn.
+		updateChromeData(ctx);
+
 		const sections: string[] = [];
 		let totalRulesTokens = 0;
 
@@ -719,6 +787,9 @@ export default function solyExtension(pi: ExtensionAPI) {
 			updateStatus(ctx);
 		}
 
+		// Chrome reflects fresh ctx%, session tokens, git dirty count, phase.
+		updateChromeData(ctx);
+
 		// Post-work rules check: surface applicable rules for files edited
 		// in this turn. Tracking is kept silent (no chat notify — user feedback:
 		// "spammy") but data is preserved for /why to show last-turn rule context.
@@ -742,6 +813,30 @@ export default function solyExtension(pi: ExtensionAPI) {
 		if (input?.path) {
 			editedFilesThisTurn.add(input.path);
 		}
+	});
+
+	// ============================================================================
+	// Chrome: working-indicator telemetry lifecycle + reactive data refresh
+	// ============================================================================
+	pi.on("agent_start", async (_event, ctx) => {
+		updateChromeData(ctx); // snapshot ctx tokens (↑) before generation starts
+		chrome.startWorking(ctx.ui);
+	});
+
+	pi.on("message_update", async (event, ctx) => {
+		const msg = event.message as { role?: string; usage?: { output?: number } };
+		if (msg.role === "assistant" && typeof msg.usage?.output === "number") {
+			chrome.updateWorking(ctx.ui, msg.usage.output);
+		}
+	});
+
+	pi.on("agent_end", async (_event, ctx) => {
+		chrome.stopWorking(ctx.ui);
+		updateChromeData(ctx);
+	});
+
+	pi.on("model_select", async (_event, ctx) => {
+		updateChromeData(ctx);
 	});
 
 	// Mount built-in sub-features
