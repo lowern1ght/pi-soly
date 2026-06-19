@@ -16,10 +16,15 @@
   "devDependencies": {
     "@earendil-works/pi-ai": "0.78.1",
     "@earendil-works/pi-coding-agent": "0.78.1",
+    "@modelcontextprotocol/ext-apps": "^1.7.4",
+    "@modelcontextprotocol/sdk": "1.27.1",
     "@types/node": "^25.9.1",
     "bun-types": "^1.3.14",
+    "open": "^11.0.0",
+    "recheck": "^4.5.0",
     "typebox": "1.1.38",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "zod": "^4.4.3"
   },
   "files": [
     "README.md",
@@ -41,7 +46,16 @@
     "ask",
     "skills",
     "workflows",
-    "workflows-data"
+    "workflows-data",
+    "mcp",
+    "notification.ts",
+    "notifications-log.ts",
+    "status.ts",
+    "init.ts",
+    "migrate.ts",
+    "codemap.ts",
+    "state.ts",
+    "hotreload.ts"
   ],
   "keywords": [
     "pi",
@@ -53,6 +67,9 @@
     "workflow-engine",
     "rules-engine",
     "intent-docs",
+    "mcp",
+    "model-context-protocol",
+    "session-recovery",
     "ai-coding"
   ],
   "license": "MIT",

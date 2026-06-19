@@ -159,17 +159,6 @@ export default function piAskExtension(pi: ExtensionAPI) {
 						theme: askTheme,
 						keybindings,
 						done,
-						// Bridge to the parent's UI for the "Other…" text input.
-						// The picker stays decoupled from ExtensionContext.
-						onRequestInput: async (req) => {
-							if (!ctx.hasUI) return undefined;
-							return (await ctx.ui.input(req.title, req.placeholder)) ?? undefined;
-						},
-						// Bridge for the `n` note dialog. Reuses the same text-input UI.
-						onRequestNote: async (req) => {
-							if (!ctx.hasUI) return undefined;
-							return (await ctx.ui.input(req.title, req.placeholder)) ?? undefined;
-						},
 						title: `pi-ask — ${params.questions.length} question${params.questions.length > 1 ? "s" : ""}`,
 					});
 				},

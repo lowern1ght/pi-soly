@@ -13,20 +13,16 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "noUncheckedIndexedAccess": false,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "noEmitOnError": false
   },
   "include": [
-    "ask/**/*.ts",
-    "ask/tests/**/*.ts",
-    "workflows/**/*.ts",
-    "tests/**/*.ts",
     "*.ts",
-    "mcp/**/*.ts"
+    "mcp-only/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "mcp/__tests__",
-    "mcp/examples",
-    "mcp/vitest.config.ts"
+    "__tests__",
+    "vitest.config.ts"
   ]
 }

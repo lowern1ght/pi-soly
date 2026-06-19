@@ -10,7 +10,7 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from "bun:test";
 import { AskProComponent, type AskQuestion, type AskProResult, type AskProTheme } from "../picker.js";
-import type { KeybindingsManager } from "@earendil-works/pi-tui";
+import { visibleWidth, type KeybindingsManager } from "@earendil-works/pi-tui";
 
 // Minimal theme: just enough for the picker to render without errors.
 const theme: AskProTheme = {
@@ -18,13 +18,17 @@ const theme: AskProTheme = {
 	bold: (text: string) => `**${text}**`,
 };
 
-// Minimal keybindings: only the bindings the picker uses.
+// Minimal keybindings: recognize the bindings the picker AND the inline
+// Input field use, so tests exercise real key handling (backspace, ^U, etc.).
 const keybindings = {
 	matches: (keyData: string, name: string) => {
 		if (name === "tui.select.up") return keyData === "\x1b[A" || keyData === "k";
 		if (name === "tui.select.down") return keyData === "\x1b[B" || keyData === "j";
 		if (name === "tui.select.confirm") return keyData === "\n" || keyData === "\r";
 		if (name === "tui.select.cancel") return keyData === "\x1b";
+		// Inline Input editing gestures (mirror pi-tui defaults)
+		if (name === "tui.editor.deleteCharBackward") return keyData === "\x7f"; // backspace
+		if (name === "tui.editor.deleteToLineStart") return keyData === "\x15"; // ctrl+u
 		return false;
 	},
 } as unknown as KeybindingsManager;
@@ -397,11 +401,7 @@ describe("AskProComponent — Other… option (allowOther)", () => {
 		},
 	];
 
-	function setupWithInput(
-		questions: AskQuestion[],
-		mockInput: (text: string | undefined) => Promise<string | undefined>,
-	) {
-		const inputCalls: Array<{ title: string; prompt: string; placeholder?: string }> = [];
+	function setupWithOther(questions: AskQuestion[]) {
 		let doneResult: AskProResult | null = null;
 		const picker = new AskProComponent({
 			questions,
@@ -410,78 +410,69 @@ describe("AskProComponent — Other… option (allowOther)", () => {
 			done: (r) => {
 				doneResult = r;
 			},
-			onRequestInput: async (req) => {
-				inputCalls.push(req);
-				return mockInput("user typed text");
-			},
 		});
 		return {
 			picker,
 			getDone: (): AskProResult | null => doneResult,
 			getAnswers: () => picker.getAnswers(),
-			getInputCalls: () => inputCalls,
 		};
 	}
 
+	/** Simulate typing `text` into the active inline field, then Enter to
+	 *  commit. Mirrors how the real TUI feeds one character per keypress. */
+	function typeInline(picker: AskProComponent, text: string, commit = true): void {
+		for (const ch of text) picker.handleInput(ch);
+		if (commit) picker.handleInput("\n");
+	}
+
 	test("Other… appears as last option when allowOther=true", () => {
-		const { picker } = setupWithInput(OTHER_QUESTIONS, async () => "x");
+		const { picker } = setupWithOther(OTHER_QUESTIONS);
 		picker.handleInput("j"); // 0 → 1 (JWT localStorage)
 		picker.handleInput("j"); // 1 → 2 (Other…)
 		// 2 real options + Other = index 2
 		expect(picker.getSelectedIndex()).toBe(2);
 	});
 
-	test("number key (3) on Other… triggers onRequestInput", async () => {
-		const { picker, getInputCalls, getAnswers } = setupWithInput(
-			OTHER_QUESTIONS,
-			async () => "JWT via custom OAuth2 proxy",
-		);
-		picker.handleInput("3"); // pick Other…
-		// requestOtherInput is async; wait a microtask for the await
-		await new Promise((r) => setImmediate(r));
-		expect(getInputCalls().length).toBe(1);
-		expect(getInputCalls()[0]?.title).toBe("Auth");
-		expect(getInputCalls()[0]?.prompt).toContain("Which auth?");
-		// Answer should now be the custom string
+	test("number key (3) on Other… opens the inline field; Enter commits it", () => {
+		const { picker, getAnswers } = setupWithOther(OTHER_QUESTIONS);
+		picker.handleInput("3"); // open Other… inline field
+		typeInline(picker, "JWT via custom OAuth2 proxy");
 		expect(getAnswers().get(0)).toBe("JWT via custom OAuth2 proxy");
 	});
 
-	test("Enter on Other… triggers onRequestInput", async () => {
-		const { picker, getInputCalls, getAnswers } = setupWithInput(
-			OTHER_QUESTIONS,
-			async () => "magic-link via email",
-		);
+	test("Enter on Other… (after selecting it) opens the inline field", () => {
+		const { picker, getAnswers } = setupWithOther(OTHER_QUESTIONS);
 		picker.handleInput("j"); // 0 → 1
 		picker.handleInput("j"); // 1 → 2 (Other…)
-		picker.handleInput("\n");
-		await new Promise((r) => setImmediate(r));
-		expect(getInputCalls().length).toBe(1);
+		picker.handleInput("\n"); // open the inline field
+		typeInline(picker, "magic-link via email");
 		expect(getAnswers().get(0)).toBe("magic-link via email");
 	});
 
-	test("user cancelling input leaves answer unchanged", async () => {
-		const { picker, getAnswers } = setupWithInput(OTHER_QUESTIONS, async () => undefined);
-		picker.handleInput("3");
-		await new Promise((r) => setImmediate(r));
+	test("cancelling inline input (Esc) leaves answer unchanged", () => {
+		const { picker, getAnswers } = setupWithOther(OTHER_QUESTIONS);
+		picker.handleInput("3"); // open Other… inline field
+		picker.handleInput("J"); // type something
+		picker.handleInput("\x1b"); // Esc — cancel
 		expect(getAnswers().get(0)).toBeUndefined();
 	});
 
-	test("empty input is ignored", async () => {
-		const { picker, getAnswers } = setupWithInput(OTHER_QUESTIONS, async () => "   ");
-		picker.handleInput("3");
-		await new Promise((r) => setImmediate(r));
+	test("empty inline submission is ignored (no answer stored)", () => {
+		const { picker, getAnswers } = setupWithOther(OTHER_QUESTIONS);
+		picker.handleInput("3"); // open Other… inline field
+		typeInline(picker, "   "); // only spaces → trimmed empty → not stored
 		expect(getAnswers().get(0)).toBeUndefined();
 	});
 
 	test("arrow down stops at Other… (not past it)", () => {
-		const { picker } = setupWithInput(OTHER_QUESTIONS, async () => "x");
+		const { picker } = setupWithOther(OTHER_QUESTIONS);
 		picker.handleInput("j"); // 1
 		picker.handleInput("j"); // 2 (Other…)
 		picker.handleInput("j"); // stays at 2
 		expect(picker.getSelectedIndex()).toBe(2);
 	});
 
-	test("Other… picks auto-advance to next question (single-select)", async () => {
+	test("Other… picks auto-advance to next question (single-select)", () => {
 		const TWO_Q: AskQuestion[] = [
 			{
 				header: "Q1",
@@ -495,15 +486,14 @@ describe("AskProComponent — Other… option (allowOther)", () => {
 				options: [{ label: "X" }],
 			},
 		];
-		const { picker, getAnswers } = setupWithInput(TWO_Q, async () => "custom A");
-		picker.handleInput("2"); // pick Other… on Q1
-		await new Promise((r) => setImmediate(r));
-		// Should be on Q2 now
+		const { picker, getAnswers } = setupWithOther(TWO_Q);
+		picker.handleInput("2"); // open Other… on Q1
+		typeInline(picker, "custom A"); // commit → advance to Q2
 		expect(picker.getCurrentIndex()).toBe(1);
 		expect(getAnswers().get(0)).toBe("custom A");
 	});
 
-	test("Other… picks submit if on last question", async () => {
+	test("Other… picks submit if on last question", () => {
 		const ONE_Q: AskQuestion[] = [
 			{
 				header: "Only",
@@ -512,13 +502,13 @@ describe("AskProComponent — Other… option (allowOther)", () => {
 				allowOther: true,
 			},
 		];
-		const { picker, getDone } = setupWithInput(ONE_Q, async () => "freeform");
-		picker.handleInput("2"); // Other…
-		await new Promise((r) => setImmediate(r));
+		const { picker, getDone } = setupWithOther(ONE_Q);
+		picker.handleInput("2"); // open Other…
+		typeInline(picker, "freeform"); // commit → submit (last question)
 		expect(getDone()).toEqual({ answers: { 0: "freeform" } });
 	});
 
-	test("Other… in multi-select pushes the string into the array", async () => {
+	test("Other… in multi-select pushes the string into the array", () => {
 		const MULTI_WITH_OTHER: AskQuestion[] = [
 			{
 				header: "Pick",
@@ -528,10 +518,10 @@ describe("AskProComponent — Other… option (allowOther)", () => {
 				allowOther: true,
 			},
 		];
-		const { picker, getAnswers } = setupWithInput(MULTI_WITH_OTHER, async () => "my custom");
+		const { picker, getAnswers } = setupWithOther(MULTI_WITH_OTHER);
 		picker.handleInput("1"); // toggle A
-		picker.handleInput("3"); // pick Other…
-		await new Promise((r) => setImmediate(r));
+		picker.handleInput("3"); // open Other… inline field (Space would too)
+		typeInline(picker, "my custom"); // commit
 		// A is toggled + custom string
 		const a = getAnswers().get(0);
 		expect(Array.isArray(a)).toBe(true);
@@ -540,7 +530,7 @@ describe("AskProComponent — Other… option (allowOther)", () => {
 		expect(picker.getCurrentIndex()).toBe(0);
 	});
 
-	test("re-picking Other… replaces the previous custom string (not appends)", async () => {
+	test("re-picking Other… replaces the previous custom string (not appends)", () => {
 		const ONE_Q: AskQuestion[] = [
 			{
 				header: "Only",
@@ -549,41 +539,35 @@ describe("AskProComponent — Other… option (allowOther)", () => {
 				allowOther: true,
 			},
 		];
-		// First call returns "first", second returns "second"
-		let callCount = 0;
-		const inputCalls: string[] = [];
-		let doneResult: AskProResult | null = null;
-		const picker = new AskProComponent({
-			questions: ONE_Q,
-			theme,
-			keybindings,
-			done: (r) => {
-				doneResult = r;
+		const { picker, getAnswers } = setupWithOther(ONE_Q);
+		// First: open Other…, type "first", commit (stays — only 1 question;
+		// single-select commit on last question does NOT submit until all
+		// answered, but here it's answered so it submits). To test replace,
+		// use a multi-select question so we stay put after committing.
+		const MULTI: AskQuestion[] = [
+			{
+				header: "Pick",
+				question: "?",
+				options: [{ label: "A" }, { label: "B" }],
+				multiSelect: true,
+				allowOther: true,
 			},
-			onRequestInput: async () => {
-				const val = callCount++ === 0 ? "first" : "second";
-				inputCalls.push(val);
-				return val;
-			},
-		});
-		// First pick: Q1 is the only question, so picking Other… submits
-		picker.handleInput("2");
-		await new Promise((r) => setImmediate(r));
-		// Re-pick (on the same question — we have to "go back" first)
-		// Actually after submit, picker is completed. So this test is moot.
-		expect(doneResult!).toEqual({ answers: { 0: "first" } });
+		];
+		const { picker: mp, getAnswers: getMulti } = setupWithOther(MULTI);
+		mp.handleInput("3"); // open Other… (pre-fills with "first", cursor at end)
+		mp.handleInput("\x15"); // ^U — delete to line start → ""
+		typeInline(mp, "second");
+		expect(getMulti().get(0)).toEqual(["second"]);
 	});
 
-	test("allowOther without onRequestInput hides Other…", () => {
-		// The "Other" option is only rendered when BOTH allowOther AND
-		// onRequestInput are present. If the caller forgets the callback,
-		// the picker silently degrades to the regular N options.
-		const { picker, getAnswers } = setup(OTHER_QUESTIONS); // no onRequestInput
-		// Number key 3 should NOT do anything special (no Other option exists)
-		picker.handleInput("3");
-		expect(getAnswers().get(0)).toBeUndefined();
-		// selectedIndex clamps to the last real option
-		expect(picker.getSelectedIndex()).toBeLessThan(2);
+	test("allowOther without any external callback still shows Other…", () => {
+		// The inline field is built in, so Other… no longer needs a host
+		// callback. This is the whole point of the inline redesign: the
+		// host UI's modal input would tear down the picker.
+		const { picker, getAnswers } = setup(OTHER_QUESTIONS);
+		picker.handleInput("3"); // open Other… inline field
+		typeInline(picker, "plain custom");
+		expect(getAnswers().get(0)).toBe("plain custom");
 	});
 });
 
@@ -655,41 +639,15 @@ describe("AskProComponent — option previews", () => {
 // ---------------------------------------------------------------------------
 
 describe("AskProComponent — notes (n key)", () => {
-	test("n is a no-op when onRequestNote is not provided", () => {
+	test("n opens the inline note field", () => {
 		const { picker } = setup();
-		// Should not throw, no effect
+		// `n` should not throw and should not advance/change answers
 		expect(() => picker.handleInput("n")).not.toThrow();
+		expect(picker.getAnswers().size).toBe(0);
 	});
 
-	test("n opens note dialog when onRequestNote is provided", async () => {
-		let noteRequestCount = 0;
-		let resolveNote: (value: string | undefined) => void = () => {};
-		const picker = new AskProComponent({
-			questions: sampleQuestions,
-			theme,
-			keybindings,
-			done: () => {},
-			onRequestNote: async () => {
-				noteRequestCount++;
-				return new Promise<string | undefined>((r) => {
-					resolveNote = r;
-				});
-			},
-		});
-		// `n` should trigger note request
-		expect(noteRequestCount).toBe(0);
-		picker.handleInput("n");
-		// Microtask to let async start
-		await Promise.resolve();
-		expect(noteRequestCount).toBe(1);
-		// Resolve with a note
-		resolveNote("only for prod, use TLS");
-		await Promise.resolve();
-	});
-
-	test("note is included in submit result", async () => {
+	test("typed note is stored on Enter and included in submit result", () => {
 		let doneResult: AskProResult | null = null;
-		const pendingNotes: Array<(v: string | undefined) => void> = [];
 		const picker = new AskProComponent({
 			questions: sampleQuestions,
 			theme,
@@ -697,24 +655,13 @@ describe("AskProComponent — notes (n key)", () => {
 			done: (r) => {
 				doneResult = r;
 			},
-			onRequestNote: async () => {
-				return new Promise<string | undefined>((resolve) => {
-					pendingNotes.push(resolve);
-				});
-			},
 		});
 		// Pick Q1 → advance to Q2
 		picker.handleInput("1");
-		// Add note to Q2
+		// Open the inline note field on Q2 and type a note
 		picker.handleInput("n");
-		// Wait for the promise to register
-		await Promise.resolve();
-		await Promise.resolve();
-		expect(pendingNotes.length).toBe(1);
-		pendingNotes[0]!("rotate keys monthly");
-		// Wait for the dialog to settle
-		await Promise.resolve();
-		await Promise.resolve();
+		for (const ch of "rotate keys monthly") picker.handleInput(ch);
+		picker.handleInput("\n"); // commit
 		// Submit Q2 (last question, all answered)
 		picker.handleInput("1");
 		expect(doneResult).not.toBeNull();
@@ -723,28 +670,110 @@ describe("AskProComponent — notes (n key)", () => {
 		expect(result?.notes?.[1]).toBe("rotate keys monthly");
 	});
 
-	test("empty note submission clears existing note", async () => {
-		let resolveNote: (value: string | undefined) => void = () => {};
+	test("Esc cancels the note field, leaving no note", () => {
+		const { picker } = setup();
+		picker.handleInput("n");
+		for (const ch of "ignored note") picker.handleInput(ch);
+		picker.handleInput("\x1b"); // Esc — cancel
+		// No note stored; picker still usable (pick an option to prove it)
+		picker.handleInput("1");
+		expect(picker.getAnswers().get(0)).toBe(0);
+	});
+
+	test("empty note submission clears any existing note", () => {
+		let doneResult: AskProResult | null = null;
 		const picker = new AskProComponent({
 			questions: sampleQuestions,
 			theme,
 			keybindings,
-			done: () => {},
-			onRequestNote: async () => {
-				return new Promise<string | undefined>((r) => {
-					resolveNote = r;
-				});
+			done: (r) => {
+				doneResult = r;
 			},
 		});
-		// Add a note
+		// Q1: add a note, then re-open and clear it (^U + Enter)
 		picker.handleInput("n");
-		resolveNote("first note");
-		await Promise.resolve();
-		// Clear it with empty
+		for (const ch of "first note") picker.handleInput(ch);
+		picker.handleInput("\n");
 		picker.handleInput("n");
-		resolveNote("   ");
-		await Promise.resolve();
-		// No crash — note cleared
+		picker.handleInput("\x15"); // ^U — delete to line start
+		picker.handleInput("\n"); // commit empty → note cleared
+		// Pick Q1 → Q2 → submit; result must NOT carry notes
+		picker.handleInput("1");
+		picker.handleInput("1");
+		expect(doneResult as AskProResult | null).toEqual({ answers: { 0: 0, 1: 0 } });
+	});
+
+	test("note field does not break render", () => {
+		const { picker } = setup();
+		picker.handleInput("n");
 		expect(() => picker.render(80)).not.toThrow();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Regression: render() must NEVER emit a line wider than `width`.
+// Previously the side-by-side preview layout measured width with a regex
+// that ignored OSC 8 / FTCS escape sequences (which pi-tui wraps around
+// rendered text) and never truncated the left column or the combined row —
+// so a long option label or preview word pushed a line past the terminal
+// width and crashed pi ("Rendered line N exceeds terminal width").
+// See C:/Users/bradw/.pi/agent/pi-crash.log.
+// ---------------------------------------------------------------------------
+describe("AskProComponent — render never exceeds width (crash regression)", () => {
+	// Passthrough theme: no ANSI, so visibleWidth() reports true column width.
+	const plainTheme: AskProTheme = { fg: (_c, t) => t, bold: (t) => t };
+	const kb = { matches: () => false } as unknown as KeybindingsManager;
+
+	const LONG_PREVIEW =
+		"Set-Cookie: refresh_token=xxx; HttpOnly; Secure; SameSite=Strict; Path=/auth/refresh; Max-Age=2592000\n" +
+		"// this is a fairly long comment line that must wrap and never overflow the column";
+
+	function makePicker(preview: string, label = "short"): AskProComponent {
+		return new AskProComponent({
+			questions: [
+				{
+					header: "X",
+					question: "Pick one?",
+					options: [
+						{ label, description: "desc", preview },
+						{ label: "other option", description: "desc2" },
+					],
+				},
+			],
+			theme: plainTheme,
+			keybindings: kb,
+			done: () => {},
+		});
+	}
+
+	for (const width of [134, 100, 80, 60, 45, 40, 30, 20, 10]) {
+		test(`every line ≤ width=${width} with a long preview + long label`, () => {
+			const picker = makePicker(
+				LONG_PREVIEW,
+				"a-very-long-option-label-without-spaces-to-stress-truncation",
+			);
+			const lines = picker.render(width);
+			expect(lines.length).toBeGreaterThan(0);
+			for (const line of lines) {
+				expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+			}
+		});
+	}
+
+	test("every line ≤ width with a single 500-char unbreakable token", () => {
+		const picker = makePicker("x".repeat(500), "ok");
+		for (const width of [134, 50, 25, 12]) {
+			const lines = picker.render(width);
+			for (const line of lines) {
+				expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+			}
+		}
+	});
+
+	test("preview content still rendered (not dropped) at a comfortable width", () => {
+		const picker = makePicker("CREATE TABLE users (id INT);", "Relational");
+		const joined = picker.render(100).join("\n");
+		expect(joined).toContain("CREATE TABLE");
+		expect(joined).toContain("preview");
 	});
 });

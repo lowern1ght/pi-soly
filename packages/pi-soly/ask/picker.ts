@@ -17,6 +17,8 @@ import {
 	Container,
 	Text,
 	Spacer,
+	Input,
+	truncateToWidth,
 	type Component,
 	type KeybindingsManager,
 } from "@earendil-works/pi-tui";
@@ -72,13 +74,6 @@ export interface AskProResult {
 	notes?: Record<number, string>;
 }
 
-/** Options for the text-input dialog opened when "Other…" is picked. */
-export interface AskProInputRequest {
-	title: string;
-	prompt: string;
-	placeholder?: string;
-}
-
 interface AskProComponentDeps {
 	questions: AskQuestion[];
 	theme: AskProTheme;
@@ -86,15 +81,6 @@ interface AskProComponentDeps {
 	done: (result: AskProResult) => void;
 	/** Optional title shown above the tabs. */
 	title?: string;
-	/** Open a text-input dialog for the "Other…" option. Returns the typed
-	 *  text, or undefined if the user cancelled. If omitted, the "Other…"
-	 *  option is hidden even when `allowOther: true` (caller should ensure
-	 *  the dependency is present if it advertises allowOther). */
-	onRequestInput?: (req: AskProInputRequest) => Promise<string | undefined>;
-	/** Open a text-input dialog for adding a note to the current question
-	 *  (triggered by pressing `n`). Returns the typed text, or undefined
-	 *  if cancelled. If omitted, the `n` shortcut is a no-op. */
-	onRequestNote?: (req: AskProInputRequest) => Promise<string | undefined>;
 }
 
 // ---------------------------------------------------------------------------
@@ -114,6 +100,18 @@ const KEY_LEFT = "\x1b[D";
 const KEY_SHIFT_TAB = "\x1b[Z";
 const KEY_BACKSPACE = "\x7f";
 
+/** Active inline text-input mode. When non-null, the picker renders an
+ *  embedded single-line `Input` field below the option list and routes
+ *  keystrokes to it until Enter (commit) or Esc (cancel).
+ *
+ *  Why inline: the previous design called out to the host UI's modal input
+ *  dialog (`ctx.ui.input()`), which clears `editorContainer` to show itself
+ *  and restores the *default* editor on close — destroying the live picker.
+ *  Inline input keeps the picker alive and self-contained. */
+type InputMode =
+	| { kind: "note" }
+	| { kind: "other"; isMulti: boolean; input: Input };
+
 /** A standalone picker component. Extends Container so it composes in the
  *  editor area like any other TUI widget. */
 export class AskProComponent extends Container {
@@ -121,8 +119,6 @@ export class AskProComponent extends Container {
 	private theme: AskProTheme;
 	private keybindings: KeybindingsManager;
 	private done: (result: AskProResult) => void;
-	private onRequestInput?: (req: AskProInputRequest) => Promise<string | undefined>;
-	private onRequestNote?: (req: AskProInputRequest) => Promise<string | undefined>;
 	private title: string;
 
 	private currentIndex = 0;
@@ -133,12 +129,15 @@ export class AskProComponent extends Container {
 	private notes = new Map<number, string>();
 	/** Set true once `done` is called — further input is ignored. */
 	private completed = false;
-	/** Set while a text-input dialog is awaiting the user's reply. */
-	private awaitingInput = false;
+	/** Active inline text-input mode (note or Other…). When set, all keys
+	 *  except Enter/Esc are routed to the embedded Input. */
+	private inputMode: InputMode | null = null;
+	/** Note Input used while inputMode.kind === "note". Kept on the instance
+	 *  so the `n`-flow can reuse a single field across open/close cycles. */
+	private noteInput: Input | null = null;
 
 	private tabsText!: Text;
 	private bodyContainer!: Container;
-	private previewText!: Text;
 	private footerText!: Text;
 
 	constructor(deps: AskProComponentDeps) {
@@ -147,8 +146,6 @@ export class AskProComponent extends Container {
 		this.theme = deps.theme;
 		this.keybindings = deps.keybindings;
 		this.done = deps.done;
-		this.onRequestInput = deps.onRequestInput;
-		this.onRequestNote = deps.onRequestNote;
 		this.title = deps.title ?? "pi-ask";
 
 		const titleText = new Text(this.theme.fg("accent", this.theme.bold(this.title)), 1, 0);
@@ -272,8 +269,9 @@ export class AskProComponent extends Container {
 			}
 		}
 
-		// Synthetic "Other…" option (when allowOther=true)
-		if (allowOther && this.onRequestInput) {
+		// Synthetic "Other…" option (when allowOther=true). The inline text
+		// field is built in, so this no longer depends on any external callback.
+		if (allowOther) {
 			const otherIndex = q.options.length;
 			const isOtherSelected = this.selectedIndex === otherIndex;
 			const customStr = this.getCustomString(currentAns);
@@ -345,6 +343,30 @@ export class AskProComponent extends Container {
 				),
 			);
 		}
+
+		// Inline text field for note / Other…. Shown below the option list when
+		// inputMode is active; owns the keyboard (Enter commits, Esc cancels).
+		this.renderInlineField();
+	}
+
+	/** Append the active inline text field to bodyContainer. No-op when no
+	 *  inline mode is active. */
+	private renderInlineField(): void {
+		const mode = this.inputMode;
+		if (!mode) return;
+		const q = this.questions[this.currentIndex];
+		const label =
+			mode.kind === "note"
+				? this.theme.fg("dim", "Note:")
+				: this.theme.fg("dim", "Custom answer:");
+		this.bodyContainer.addChild(new Spacer(1));
+		this.bodyContainer.addChild(new Text(label + " " + this.theme.fg("dim", "(enter ⏎ confirm · esc cancel)"), 1, 0));
+		this.bodyContainer.addChild(new Spacer(1));
+		if (mode.kind === "other") {
+			this.bodyContainer.addChild(mode.input);
+		} else if (this.noteInput) {
+			this.bodyContainer.addChild(this.noteInput);
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -379,7 +401,7 @@ export class AskProComponent extends Container {
 		const q = this.questions[this.currentIndex];
 		if (!q) return 0;
 		const allowOther = q.allowOther ?? false;
-		return q.options.length + (allowOther && this.onRequestInput ? 1 : 0);
+		return q.options.length + (allowOther ? 1 : 0);
 	}
 
 	// -------------------------------------------------------------------------
@@ -396,14 +418,25 @@ export class AskProComponent extends Container {
 		const totalOptions = this.totalOptionsForCurrent();
 
 		const parts: string[] = [];
+
+		// When the inline text field is open, it owns the keyboard — show
+		// only its affordances, not the navigation hints.
+		if (this.inputMode !== null) {
+			parts.push(this.theme.fg("accent", "⏎ confirm"));
+			parts.push(this.theme.fg("dim", "esc cancel"));
+			return parts.join("   ");
+		}
+
 		parts.push(this.theme.fg("dim", "↑↓ navigate"));
 		parts.push(this.theme.fg("dim", `1-${totalOptions} pick`));
 		if (this.currentIndex > 0) parts.push(this.theme.fg("dim", "tab/← prev"));
 		if (this.currentIndex < this.questions.length - 1) {
 			parts.push(this.theme.fg("dim", "tab/→ next"));
 		}
-		// "Other…" hint: single-select uses Enter, multi-select uses Space
-		if (allowOther && this.onRequestInput && this.selectedIndex === otherIndex) {
+		// "Other…" hint: single-select uses Enter to open inline input,
+		// multi-select uses Space. (The inline field is always available now;
+		// no external dependency required.)
+		if (allowOther && this.selectedIndex === otherIndex) {
 			parts.push(this.theme.fg("accent", isMulti ? "␣ type" : "⏎ type"));
 		} else if (isMulti) {
 			// Multi-select: Space toggles, Enter advances/submits
@@ -422,12 +455,11 @@ export class AskProComponent extends Container {
 			// Single-select: Enter is the action key
 			parts.push(this.theme.fg("accent", isLast ? "⏎ submit" : "⏎ next"));
 		}
-		// `n` hint: add/edit note (only if dep is wired)
-		if (this.onRequestNote) {
-			const hasNote = this.notes.has(this.currentIndex);
-			const hint = hasNote ? "n ✓note" : "n note";
-			parts.push(this.theme.fg(hasNote ? "success" : "dim", hint));
-		}
+		// `n` hint: add/edit an inline note. Always available now (inline
+		// field, no external dependency).
+		const hasNote = this.notes.has(this.currentIndex);
+		const noteHint = hasNote ? "n ✓note" : "n note";
+		parts.push(this.theme.fg(hasNote ? "success" : "dim", noteHint));
 		parts.push(this.theme.fg("dim", "esc cancel"));
 		return parts.join("   ");
 	}
@@ -451,9 +483,17 @@ export class AskProComponent extends Container {
 	// -------------------------------------------------------------------------
 
 	handleInput(keyData: string): void {
-		if (this.completed || this.awaitingInput) return;
+		if (this.completed) return;
 
-		// Esc — cancel
+		// --- Inline text-input mode (note / Other…) --------------------------
+		// When active, all keys route to the embedded Input except the
+		// confirm/cancel gestures, which we intercept to commit or abort.
+		if (this.inputMode !== null) {
+			this.handleInputModeKey(keyData);
+			return;
+		}
+
+		// Esc — cancel the whole picker
 		if (keyData === KEY_ESC) {
 			this.completed = true;
 			this.done({ cancelled: true });
@@ -525,13 +565,13 @@ export class AskProComponent extends Container {
 		}
 
 		// Space — toggle in multi-select.
-		// On "Other…", opens the input dialog (or toggles existing custom string).
+		// On "Other…", opens the inline text field (or toggles existing custom string).
 		// In single-select, Space is a no-op (Enter is the action key there).
 		if (keyData === KEY_SPACE) {
 			if (!isMulti) return;
-			// On Other… → open input dialog (or re-toggle existing custom string)
-			if (allowOther && this.onRequestInput && this.selectedIndex === otherIndex) {
-				void this.requestOtherInput();
+			// On Other… → open inline field (or re-toggle existing custom string)
+			if (allowOther && this.selectedIndex === otherIndex) {
+				this.openOtherInput();
 				return;
 			}
 			const cur = (this.answers.get(this.currentIndex) as AskMultiAnswer | undefined) ?? [];
@@ -552,16 +592,11 @@ export class AskProComponent extends Container {
 			keyData === KEY_ENTER ||
 			keyData === KEY_ENTER_CR
 		) {
-			// If "Other…" is the selected option in single-select, open
-			// the input dialog. In multi-select, Enter on Other… just
-			// advances (use Space to toggle/type a custom answer).
-			if (
-				allowOther &&
-				this.onRequestInput &&
-				this.selectedIndex === otherIndex &&
-				!isMulti
-			) {
-				void this.requestOtherInput();
+			// If "Other…" is the selected option in single-select, open the
+			// inline field. In multi-select, Enter on Other… just advances
+			// (use Space to toggle/type a custom answer).
+			if (allowOther && this.selectedIndex === otherIndex && !isMulti) {
+				this.openOtherInput();
 				return;
 			}
 
@@ -597,10 +632,10 @@ export class AskProComponent extends Container {
 			return;
 		}
 
-		// `n` — add/edit a free-text note for the current question.
-		// Requires onRequestNote dep; otherwise ignored.
-		if (keyData === "n" && this.onRequestNote) {
-			void this.requestNoteInput();
+	// `n` — add/edit a free-text note for the current question via the
+		// inline field. Always available (no external dependency).
+		if (keyData === "n") {
+			this.openNoteInput();
 			return;
 		}
 	}
@@ -612,9 +647,9 @@ export class AskProComponent extends Container {
 		const allowOther = q.allowOther ?? false;
 		const otherIndex = allowOther ? q.options.length : -1;
 
-		// "Other…" picked via number key
-		if (allowOther && this.onRequestInput && optionIdx === otherIndex) {
-			void this.requestOtherInput();
+		// "Other…" picked via number key → open inline field
+		if (allowOther && optionIdx === otherIndex) {
+			this.openOtherInput();
 			return;
 		}
 
@@ -642,89 +677,120 @@ export class AskProComponent extends Container {
 		}
 	}
 
-	/**
-	 * Open the text-input dialog for the "Other…" option. Awaits the user's
-	 * reply asynchronously. While awaiting, the picker ignores further input.
-	 * If the user types text, the answer is stored (string for single, pushed
-	 * to the multi-select array for multi). If the user cancels, the answer
-	 * is unchanged.
-	 */
-	private async requestOtherInput(): Promise<void> {
-		if (!this.onRequestInput) return;
+	/** Create a fresh inline Input pre-filled with `value`, cursor at the
+	 *  end so the user can immediately extend or backspace-edit it.
+	 *  (Input.setValue leaves the cursor at min(prevCursor, len) which is 0
+	 *  for a fresh field — typing the prefill char-by-char puts the cursor
+	 *  at the end naturally.) */
+	private makeInput(value: string): Input {
+		const input = new Input();
+		for (const ch of value) input.handleInput(ch);
+		return input;
+	}
+
+	/** Open the inline field for the "Other…" option on the current
+	 *  question. Pre-fills with any existing custom string so it can be
+	 *  edited. While open, all keys route to the field except Enter/Esc. */
+	private openOtherInput(): void {
 		const q = this.questions[this.currentIndex];
 		if (!q) return;
-		this.awaitingInput = true;
 		const isMulti = q.multiSelect ?? false;
+		const currentAns = this.answers.get(this.currentIndex);
+		const existing = this.getCustomString(currentAns);
+		this.inputMode = { kind: "other", isMulti, input: this.makeInput(existing) };
+		this.repaint();
+	}
 
-		const text = await this.onRequestInput({
-			title: q.header,
-			prompt: `Custom answer for: ${q.question}`,
-			placeholder: "Type your answer…",
-		});
-		this.awaitingInput = false;
+	/** Open the inline field for a note on the current question. Pre-fills
+	 *  with any existing note so it can be edited. */
+	private openNoteInput(): void {
+		if (!this.questions[this.currentIndex]) return;
+		const existing = this.notes.get(this.currentIndex) ?? "";
+		this.noteInput = this.makeInput(existing);
+		this.inputMode = { kind: "note" };
+		this.repaint();
+	}
 
-		if (text === undefined) {
-			// User cancelled — leave answer as-is, just redraw
+	/** Route a keystroke to the active inline field, intercepting Enter
+	 *  (commit) and Esc (cancel). Mirrors the Enter-on-last / advance /
+	 *  submit flow that the old async path had. */
+	private handleInputModeKey(keyData: string): void {
+		const mode = this.inputMode;
+		if (!mode) return;
+
+		// Esc — cancel inline input, return to option navigation
+		if (keyData === KEY_ESC) {
+			this.closeInput(false);
+			return;
+		}
+		// Enter — commit
+		if (
+			this.keybindings.matches(keyData, "tui.select.confirm") ||
+			keyData === KEY_ENTER ||
+			keyData === KEY_ENTER_CR
+		) {
+			this.closeInput(true);
+			return;
+		}
+		// Everything else (typing, arrows, backspace, etc.) → the field
+		const input = mode.kind === "other" ? mode.input : this.noteInput!;
+		input.handleInput(keyData);
+		this.repaint();
+	}
+
+	/** Commit (commit=true) or discard the active inline field, then return
+	 *  to normal option navigation. */
+	private closeInput(commit: boolean): void {
+		const mode = this.inputMode;
+		if (!mode) return;
+		this.inputMode = null;
+
+		if (mode.kind === "note") {
+			const text = this.noteInput?.getValue() ?? "";
+			this.noteInput = null;
+			if (commit) {
+				const trimmed = text.trim();
+				if (trimmed === "") {
+					this.notes.delete(this.currentIndex);
+				} else {
+					this.notes.set(this.currentIndex, trimmed);
+				}
+			}
 			this.repaint();
 			return;
 		}
-		const trimmed = text.trim();
-		if (trimmed === "") {
-			this.repaint();
-			return;
-		}
 
-		if (isMulti) {
-			const cur = (this.answers.get(this.currentIndex) as AskMultiAnswer | undefined) ?? [];
-			// Replace existing custom string (if any) so user can edit
-			const existingIdx = cur.findIndex((a) => typeof a === "string");
-			if (existingIdx >= 0) cur[existingIdx] = trimmed;
-			else cur.push(trimmed);
-			this.answers.set(this.currentIndex, cur);
-			this.repaint();
-		} else {
-			// Single-select: set custom string, advance or submit
-			this.answers.set(this.currentIndex, trimmed);
+		// kind === "other"
+		const isMulti = mode.isMulti;
+		const text = mode.input.getValue();
+		const trimmed = commit ? text.trim() : "";
+		if (commit && trimmed !== "") {
+			if (isMulti) {
+				const cur =
+					(this.answers.get(this.currentIndex) as AskMultiAnswer | undefined) ?? [];
+				// Replace existing custom string (if any) so user can edit
+				const existingIdx = cur.findIndex((a) => typeof a === "string");
+				if (existingIdx >= 0) cur[existingIdx] = trimmed;
+				else cur.push(trimmed);
+				this.answers.set(this.currentIndex, cur);
+			} else {
+				this.answers.set(this.currentIndex, trimmed);
+			}
+		}
+		this.repaint();
+
+		// Single-select: a committed custom answer advances or submits,
+		// matching the old async behavior. Multi-select stays put (user
+		// may toggle more options). Cancellation never advances.
+		if (commit && !isMulti && trimmed !== "") {
 			if (this.currentIndex < this.questions.length - 1) {
 				this.currentIndex++;
 				this.selectedIndex = 0;
 				this.repaint();
 			} else if (this.allAnswered()) {
 				this.submit();
-			} else {
-				this.repaint();
 			}
 		}
-	}
-
-	/** Open a text-input dialog to add/edit a note for the current question.
-	 *  Triggered by the `n` key. Pre-fills with any existing note so the
-	 *  user can edit it. An empty submission clears the note. */
-	private async requestNoteInput(): Promise<void> {
-		if (!this.onRequestNote) return;
-		const q = this.questions[this.currentIndex];
-		if (!q) return;
-		this.awaitingInput = true;
-		const existing = this.notes.get(this.currentIndex) ?? "";
-		const text = await this.onRequestNote({
-			title: q.header,
-			prompt: `Add a note to your answer for: ${q.question}`,
-			placeholder: existing || "Add context, edge cases, or reasoning…",
-		});
-		this.awaitingInput = false;
-		if (text === undefined) {
-			// Cancelled — keep existing note, just redraw
-			this.repaint();
-			return;
-		}
-		const trimmed = text.trim();
-		if (trimmed === "") {
-			// Empty submission clears the note
-			this.notes.delete(this.currentIndex);
-		} else {
-			this.notes.set(this.currentIndex, trimmed);
-		}
-		this.repaint();
 	}
 
 	private submit(): void {
@@ -754,17 +820,24 @@ export class AskProComponent extends Container {
 
 	dispose(): void {
 		this.completed = true;
-		this.awaitingInput = false;
+		this.inputMode = null;
+		this.noteInput = null;
 	}
 
 	// -----------------------------------------------------------------------
-	// Side-by-side render: stack picker column (left) with preview column
-	// (right) row-by-row. Each visible body row gets padded to SPLIT_COL and
-	// the matching preview row is appended. If no preview is set, the left
-	// column takes the full width (no padding).
+	// Side-by-side render: picker column (left) + preview column (right).
+	//
+	// HARD GUARANTEE: every emitted line is capped to `width` visible columns
+	// via truncateToWidth(). The previous implementation measured width with a
+	// hand-rolled regex that ignored OSC 8 hyperlinks / FTCS marks (which pi-tui
+	// wraps around rendered text) and never truncated the left column or the
+	// combined row — so a long option label or preview word pushed a line past
+	// the terminal width and crashed pi ("Rendered line N exceeds terminal
+	// width"). See C:/Users/bradw/.pi/agent/pi-crash.log.
 	// -----------------------------------------------------------------------
-	private static readonly SPLIT_COL = 60; // picker column width when preview is present
-	private static readonly PREVIEW_COL = 60; // preview column width
+	private static readonly SPLIT_COL = 60; // max picker column width when a preview is present
+	private static readonly SEP = " │ "; // 3-col gutter between the two columns
+	private static readonly MIN_COL = 16; // minimum useful width for either column
 
 	/** Lines of preview content for the option currently under the cursor.
 	 *  Returns [] when no option is focused or the option has no preview. */
@@ -785,70 +858,102 @@ export class AskProComponent extends Container {
 		return lines;
 	}
 
+	/** Greedy word-wrap one source line to `maxWidth`, hard-truncating any
+	 *  single word longer than `maxWidth`. Returns 1+ lines, each ≤ maxWidth
+	 *  visible columns. Uses .length here only as a fast upper bound — the
+	 *  caller still hard-caps the final row, so a miscount can never overflow. */
+	private wrapPreviewLine(line: string, maxWidth: number): string[] {
+		if (maxWidth <= 0) return [""];
+		if (line.length === 0) return [""];
+		const words = line.split(" ");
+		const out: string[] = [];
+		let cur = "";
+		for (const w of words) {
+			const word = w.length > maxWidth ? truncateToWidth(w, maxWidth, "") : w;
+			if (cur.length === 0) {
+				cur = word;
+			} else if (cur.length + 1 + word.length <= maxWidth) {
+				cur += " " + word;
+			} else {
+				out.push(cur);
+				cur = word;
+			}
+		}
+		out.push(cur);
+		return out;
+	}
+
 	/** Override render to produce a side-by-side layout when a preview is
-	 *  present. Falls back to default Container render otherwise. */
+	 *  present. Falls back to default Container render otherwise. Every
+	 *  returned line is guaranteed ≤ `width` visible columns. */
 	render(width: number): string[] {
 		const superLines = super.render(width);
 		const previewLines = this.currentPreviewLines();
 		if (previewLines.length === 0) return superLines;
 
-		// We need to find which body lines belong to the option list and
-		// merge the preview next to them. Simpler approach: append a preview
-		// block below the picker body, styled as a framed right-aligned panel.
-		// True side-by-side would require row index tracking which Container
-		// doesn't expose; the framed block is visually distinct and avoids
-		// fragile index math.
-		const splitCol = Math.min(AskProComponent.SPLIT_COL, Math.floor(width * 0.6));
-		const previewWidth = Math.max(30, width - splitCol - 3);
 		const border = this.theme.fg("dim", "│");
+		const sepLen = AskProComponent.SEP.length; // 3
 
-		// Wrap preview lines to previewWidth
+		// Column allocation. Picker gets ~55% (capped at SPLIT_COL); the rest
+		// goes to preview. If there isn't room for two usable columns, fall
+		// back to a stacked layout (picker full-width, preview underneath).
+		const splitCol = Math.min(
+			AskProComponent.SPLIT_COL,
+			Math.max(AskProComponent.MIN_COL, Math.floor(width * 0.55)),
+		);
+		const previewWidth = width - splitCol - sepLen;
+		if (previewWidth < AskProComponent.MIN_COL) {
+			return this.renderPreviewStacked(width, superLines, previewLines, border);
+		}
+
+		// Wrap each preview source line to previewWidth (a long line may
+		// produce several wrapped rows).
 		const wrapped: string[] = [];
 		for (const line of previewLines) {
-			if (line.length === 0) {
-				wrapped.push("");
-				continue;
-			}
-			// Simple greedy word wrap
-			const words = line.split(" ");
-			let cur = "";
-			for (const w of words) {
-				if (cur.length === 0) {
-					cur = w;
-				} else if (cur.length + 1 + w.length <= previewWidth) {
-					cur += " " + w;
-				} else {
-					wrapped.push(cur);
-					cur = w;
-				}
-			}
-			if (cur) wrapped.push(cur);
+			for (const w of this.wrapPreviewLine(line, previewWidth)) wrapped.push(w);
 		}
 
-		// Insert preview as a side panel: pad each picker line to splitCol,
-		// then add a vertical border and the matching preview line.
-		// We do this for ALL super lines so the preview spans the picker's
-		// full height.
 		const result: string[] = [];
-		// Header row above the preview content
-		result.push("".padEnd(splitCol) + " " + border + " " + this.theme.fg("dim", "— preview —"));
-		for (let i = 0; i < superLines.length; i++) {
+		// Header row for the preview column (aligned under it), hard-capped.
+		result.push(
+			truncateToWidth(
+				"".padEnd(splitCol) + " " + border + " " + this.theme.fg("dim", "— preview —"),
+				width,
+				"",
+				false,
+			),
+		);
+		const rows = Math.max(superLines.length, wrapped.length);
+		for (let i = 0; i < rows; i++) {
 			const superLine = superLines[i] ?? "";
-			// Strip ANSI for width measurement
-			const visibleLen = superLine.replace(/\x1b\[[0-9;]*m/g, "").length;
-			const pad = Math.max(1, splitCol - visibleLen);
-			let row = superLine + " ".repeat(pad) + border + " ";
 			const pLine = wrapped[i];
-			if (pLine !== undefined) {
-				row += this.theme.fg("text", pLine);
-			}
-			result.push(row);
+			// Left: exactly splitCol wide — truncate long option lines and pad
+			// short ones. truncateToWidth preserves ANSI/OSC styling.
+			const left = truncateToWidth(superLine, splitCol, "", true);
+			let row = left + " " + border + " ";
+			if (pLine !== undefined) row += this.theme.fg("text", pLine);
+			// Hard cap — the guarantee that prevents the terminal-width crash.
+			result.push(truncateToWidth(row, width, "", false));
 		}
-		// If preview has more lines than the picker, append them below
-		if (wrapped.length > superLines.length) {
-			for (let i = superLines.length; i < wrapped.length; i++) {
-				const pLine = wrapped[i] ?? "";
-				result.push(" ".repeat(splitCol + 1) + border + " " + this.theme.fg("text", pLine));
+		return result;
+	}
+
+	/** Stacked fallback for narrow terminals: picker lines at full width,
+	 *  then a framed preview block below. Every line ≤ width. */
+	private renderPreviewStacked(
+		width: number,
+		superLines: string[],
+		previewLines: string[],
+		border: string,
+	): string[] {
+		const result: string[] = [];
+		for (const l of superLines) result.push(truncateToWidth(l, width, "", false));
+		result.push(
+			truncateToWidth(this.theme.fg("dim", `${border} — preview —`), width, "", false),
+		);
+		for (const line of previewLines) {
+			for (const w of this.wrapPreviewLine(line, width)) {
+				result.push(truncateToWidth(this.theme.fg("text", w), width, "", false));
 			}
 		}
 		return result;
