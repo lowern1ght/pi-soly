@@ -233,7 +233,7 @@ Hard rules:
 \`
 })
 
-When the subagent completes, synthesize the result. Do not re-execute its work.`;
+When the subagent completes, synthesize the result. Do not re-execute its work. Then suggest \`soly verify\` to self-review the change with fresh eyes before calling it done.`;
 		return { handled: true, transformedText: instruction };
 	}
 
@@ -398,7 +398,7 @@ Hard rules:
 \`
 })
 
-When the subagent completes, synthesize the result and confirm STATE.md was updated. Do not re-execute its work.`;
+When the subagent completes, synthesize the result and confirm STATE.md was updated. Do not re-execute its work. Then suggest \`soly verify\` to self-review the work with fresh eyes before calling the phase done.`;
 
 	return { handled: true, transformedText: instruction };
 }
