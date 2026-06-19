@@ -28,7 +28,7 @@ export function buildTopBarLines(data: ChromeData, width: number, opts: TopBarOp
 	const { ascii, styler } = opts;
 	const left: Segment[] = [];
 	// Phase now lives in the footer; the top bar appears only for an active verb.
-	if (data.verbLabel) left.push({ id: "verb", text: styler.fg("accent", data.verbLabel), priority: 8 });
+	if (data.verbLabel) left.push({ id: "verb", text: styler.fg("muted", data.verbLabel), priority: 8 });
 	if (left.length === 0) return [];
 
 	const right: Segment[] = [];

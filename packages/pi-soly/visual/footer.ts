@@ -58,8 +58,8 @@ export function buildFooterLine(data: ChromeData, fd: FooterData, width: number,
 	const left: Segment[] = [];
 	const right: Segment[] = [];
 
-	// Phase leads the footer in soly's accent color (the key project state).
-	if (data.phaseLabel) left.push({ id: "phase", text: styler.fg("accent", data.phaseLabel), priority: 8 });
+	// Phase leads the footer (monochrome — ctx% keeps the only functional color).
+	if (data.phaseLabel) left.push({ id: "phase", text: styler.fg("muted", data.phaseLabel), priority: 8 });
 
 	const pct = data.ctxPercent;
 	const ctxText = withGlyph("ctx", pct === null ? "?" : `${Math.round(pct)}%`, ascii);
