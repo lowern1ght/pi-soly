@@ -18,7 +18,7 @@
 
 import * as path from "node:path";
 import * as fs from "node:fs";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import {
 	analyzeRules,
 	buildProgressBar,
@@ -43,8 +43,7 @@ import {
 import type { SolyConfig } from "./config.ts";
 import { migrateSolyDir } from "./migrate.js";
 import { initSolyProject } from "./init.js";
-import { readNotifications, formatNotifications } from "./notifications-log.js";
-import { formatStatus } from "./status.js";
+import { ListPanel, type ListItem, type ListAction } from "./visual/list-panel.ts";
 
 /** Minimum ui surface the command handlers actually need. */
 export interface CommandUI {
@@ -63,6 +62,49 @@ export interface CommandsDeps {
 	updateStatus: (ui: CommandUI) => void;
 	getConfig: () => SolyConfig;
 	getIntentDocs: () => IntentDoc[];
+}
+
+/** Open a focused list modal (overlay) for the given items + actions. */
+async function openListPanel(
+	ctx: ExtensionCommandContext,
+	spec: { title: string; headerRight?: string; build: () => ListItem[]; actions?: ListAction[] },
+): Promise<void> {
+	await ctx.ui.custom<void>(
+		(tui, theme, keybindings, done) =>
+			new ListPanel({
+				tui,
+				theme,
+				keybindings,
+				done: () => done(),
+				title: spec.title,
+				headerRight: spec.headerRight,
+				items: spec.build(),
+				actions: spec.actions,
+				refresh: spec.build,
+			}),
+		{ overlay: true },
+	);
+}
+
+/** Status marker for a rule: ● always-on · ◐ glob-matched · ○ disabled. */
+function ruleMarker(r: RuleFile): string {
+	if (!r.enabled) return "○";
+	return r.meta.always || !(r.meta.globs && r.meta.globs.length) ? "●" : "◐";
+}
+
+/** Map a rule to a panel row (token estimate + globs + description preview). */
+function ruleItem(r: RuleFile): ListItem {
+	const tokens = Math.ceil(r.body.length / 4);
+	const bits = [`${formatTok(tokens)} tok`];
+	if (r.meta.globs && r.meta.globs.length) bits.push(r.meta.globs.join(","));
+	if (!r.enabled) bits.push("off");
+	return {
+		id: r.relPath,
+		marker: ruleMarker(r),
+		label: r.relPath,
+		meta: bits.join(" · "),
+		body: r.meta.description ? `${r.meta.description}\n\n${r.body}` : r.body,
+	};
 }
 
 export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
@@ -102,6 +144,22 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 				const overridden = getOverridden();
 				if (rules.length === 0 && overridden.length === 0) {
 					ui.notify("no rules loaded from any source", "info");
+					return;
+				}
+				// Rich modal in the TUI; plain select elsewhere (RPC/print).
+				if (ctx.mode === "tui") {
+					const analytics = analyzeRules(getRules(), CONTEXT_WINDOW_TOKENS);
+					await openListPanel(ctx, {
+						title: "soly · rules",
+						headerRight: `${getRules().length} rules · ${formatTok(analytics.totalTokens)} · ${analytics.contextBudgetPct.toFixed(1)}%`,
+						build: () => getRules().map(ruleItem),
+						actions: [
+							{ key: "e", hint: "enable", run: (it) => { const r = getRules().find((x) => x.relPath === it.id); if (r) r.enabled = true; } },
+							{ key: "d", hint: "disable", run: (it) => { const r = getRules().find((x) => x.relPath === it.id); if (r) r.enabled = false; } },
+							{ key: "r", hint: "reload", run: () => refreshRules() },
+						],
+					});
+					updateStatus(ui);
 					return;
 				}
 				const lines: string[] = [];
@@ -374,7 +432,33 @@ What must the LLM do?
 				confirm: (title, message) => ctx.ui.confirm(title, message),
 			};
 			const parts = args.trim().split(/\s+/);
-			const sub = parts[0] ?? "stats";
+			const sub = parts[0] ?? "list";
+
+			if (sub === "list") {
+				const docs = getIntentDocs();
+				if (docs.length === 0) {
+					ui.notify("no intent docs found in .soly/docs/ — drop your vision/domain docs there", "info");
+					return;
+				}
+				if (ctx.mode === "tui") {
+					const total = docs.reduce((s, d) => s + d.tokens, 0);
+					await openListPanel(ctx, {
+						title: "soly · docs",
+						headerRight: `${docs.length} docs · ${formatTok(total)}`,
+						build: () =>
+							getIntentDocs().map((d) => ({
+								id: d.relPath,
+								marker: "○",
+								label: d.title || d.relPath,
+								meta: `${d.kind} · ${formatTok(d.tokens)} tok${d.oversized ? " · oversized" : ""}`,
+								body: d.preview,
+							})),
+					});
+					return;
+				}
+				ui.notify(docs.map((d) => `○ ${d.title || d.relPath} (${formatTok(d.tokens)} tok)`).join("\n"), "info");
+				return;
+			}
 
 			if (sub === "stats") {
 				const docs = getIntentDocs();
@@ -385,7 +469,7 @@ What must the LLM do?
 			}
 
 			ui.notify(
-				`Usage: /docs stats — show context breakdown for intent docs\n` +
+				`Usage: /docs [list|stats] — open the docs panel, or show the context breakdown\n` +
 				`Found ${getIntentDocs().length} doc(s) loaded.`,
 				"info",
 			);
