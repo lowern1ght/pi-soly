@@ -1,6 +1,6 @@
 {
   "name": "pi-soly",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "Project management + workflow engine for pi-coding-agent. Plans, state, MANDATORY rules, multi-question picker — one npm install, zero config. LLM is the executor (no subagent layer).",
   "type": "module",
   "main": "index.ts",
