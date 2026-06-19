@@ -141,39 +141,30 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 		if (cmd.verb === "help") {
 			return {
 				action: "transform",
-				text: `soly subcommand picker (esc to cancel).
+				text: `soly — workflow verbs (type \`soly <verb>\`):
 
-Available verbs (all start with \`soly <verb>\` or use \`/soly <verb>\` in slash form):
+Lifecycle:
+  discuss <N>         — talk through phase N's decisions (interactive)
+  plan <N>            — produce PLAN.md for phase N
+  execute <N|N.MM>    — execute a phase or one plan (also <task-id>, --all, --feature)
+  verify [N] [fresh]  — self-review loop until "no issues" (max N; \`verify stop\` to exit)
+  pause / compact     — write handoff (compact also compresses the session)
+  resume [N]          — restore from handoff (scoped to phase N if given)
 
-  position       — one-screen current position summary
-  state          — full STATE.md body
-  plan           — current PLAN.md body
-  context        — current phase CONTEXT.md
-  research       — current phase RESEARCH.md
-  roadmap        — ROADMAP.md body
-  progress       — progress bar + counts
-  phases         — list all phases with C/R markers
-  tasks          — list all tasks grouped by feature (new in v2)
-  task <id>      — show one task's PLAN + SUMMARY
-  features       — list all features (new in v2)
-  milestone      — show the active milestone document
-  log [N]        — last N (default 20) decisions from STATE.md
-  diff           — git status + uncommitted .soly/ changes
-  doctor         — health check: missing files, broken refs, stale iterations
-  iterations [N] — list recent iteration files
-  todos          — show pi-todo live list (.soly/todos.json or .pi-todos.json)
-  phase delete <N> — soft-delete a phase
-  reload         — re-read project state from disk
-  plan <N>       — produce PLAN.md for phase N
-  discuss <N>    — interactive discussion of phase N
-  execute <N>    — execute all plans in phase N (or \`execute N.MM\` for one plan)
-  verify [N] [fresh] — self-review loop until "no issues" (max N, optional fresh context); \`verify stop\` to exit
-  pause          — write HANDOFF.json + .continue-here.md
-  compact        — pause + auto-compact session
-  resume [N]     — restore from handoff (scoped to phase N if given)
-  help           — this picker
+Quick info (no LLM round-trip):
+  status              — position + progress + phases
+  log [N]             — last N decisions from STATE.md
+  diff                — git status + uncommitted .soly/ changes
+  doctor              — health check (missing files, broken refs, stale iterations)
+  iterations [N]      — recent iteration bundles
+  todos               — pi-todo live list
+  phase delete <N>    — soft-delete a phase
 
-Unknown / missing verb? Use \`/soly\` (slash) for the picker.`,
+State inspection lives on the slash form — \`/soly <sub>\`:
+  position · state · plan · roadmap · progress · phases · tasks · task <id> ·
+  features · milestone · context · research · config · reload
+
+(\`/soly\` with no argument opens the interactive picker.)`,
 			};
 		}
 
