@@ -184,3 +184,24 @@ describe("buildNudgeSection", () => {
 		expect(section).toContain("Treat (1) and (2) as defaults, not laws");
 	});
 });
+
+describe("buildNudgeSection — workflow routing (point 4)", () => {
+	const nonTrivial = classifyTaskHeuristics("implement the auth refactor across src/auth/login.ts and src/auth/token.ts");
+	const trivial = classifyTaskHeuristics("fix typo");
+
+	test("suggests the soly lifecycle when a project exists and the task is non-trivial", () => {
+		const s = buildNudgeSection(nonTrivial, { hasProject: true });
+		expect(s.includes("Route project work through the soly workflow")).toBe(true);
+		expect(s.includes("soly discuss")).toBe(true);
+		expect(s.includes("soly verify")).toBe(true);
+	});
+
+	test("omitted without a project", () => {
+		expect(buildNudgeSection(nonTrivial, { hasProject: false }).includes("Route project work")).toBe(false);
+		expect(buildNudgeSection(nonTrivial).includes("Route project work")).toBe(false);
+	});
+
+	test("omitted for trivial tasks even with a project", () => {
+		expect(buildNudgeSection(trivial, { hasProject: true }).includes("Route project work")).toBe(false);
+	});
+});

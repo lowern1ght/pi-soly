@@ -82,7 +82,10 @@ export function classifyTaskHeuristics(prompt: string): TaskHeuristics {
 	return { nonTrivial, researchHeavy, mentions, suggestedAngles };
 }
 
-export function buildNudgeSection(heuristics: TaskHeuristics): string {
+export function buildNudgeSection(
+	heuristics: TaskHeuristics,
+	opts: { hasProject?: boolean } = {},
+): string {
 	// Always-on rules (cheap to add, high signal):
 	//   - Don't dive in on non-trivial tasks without a brief check
 	//   - Prefer background subagents for research
@@ -105,6 +108,13 @@ export function buildNudgeSection(heuristics: TaskHeuristics): string {
 				.join("\n")}`
 		: "";
 
+	// When there's an active soly project and the task is non-trivial, steer the
+	// model toward the workflow lifecycle instead of ad-hoc edits.
+	const workflowPoint =
+		opts.hasProject && heuristics.nonTrivial
+			? `\n\n4. **Route project work through the soly workflow.** For phase/task work in \`.soly/\`, prefer the lifecycle over ad-hoc edits: \`soly discuss <N>\` (scope) → \`soly plan <N>\` (write tasks) → \`soly execute <N>\` (do them) → \`soly verify\` (review). Run \`soly status\` to see where you are. Skip only for a genuine one-off.`
+			: "";
+
 	return `
 
 ## soly behavioral nudge (always on)
@@ -116,7 +126,7 @@ The following are user-set defaults, not project rules. They tell you how the us
 
 2. **Background subagents by default.** When you need to read unfamiliar code, scout a directory, gather external evidence, or run a multi-step review, prefer \`subagent(...)\` with \`async: true\` and \`context: "fresh"\` over doing it inline. Reserve your own context for the actual decision the user is paying you to make. If the work needs the parent conversation history, use \`context: "fork"\` instead. Do not silently block on long runs — launch async and continue with independent work.
 
-3. **Subagent tool ergonomics.** When delegating: give the child a concrete role, scope, success criteria, hard constraints, and expected output. Do not pass vague instructions like "implement this" or "look into that". Async is the default; foreground is the explicit opt-out.
+3. **Subagent tool ergonomics.** When delegating: give the child a concrete role, scope, success criteria, hard constraints, and expected output. Do not pass vague instructions like "implement this" or "look into that". Async is the default; foreground is the explicit opt-out.${workflowPoint}
 
 Treat (1) and (2) as defaults, not laws. The user can always override per-task ("just do it", "ask me everything", "no subagents"). When overriding, briefly acknowledge it.
 `;

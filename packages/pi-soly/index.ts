@@ -670,7 +670,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 
 		// 7. Behavioral nudge
 		const heuristics = classifyTaskHeuristics(event.prompt);
-		sections.push(buildNudgeSection(heuristics));
+		sections.push(buildNudgeSection(heuristics, { hasProject: state.exists }));
 
 		// 7.5 Soly drift reminder — injected when the user has been doing
 		// non-soly work for several turns. Throttled: at most once per
