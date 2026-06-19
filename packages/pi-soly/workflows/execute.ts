@@ -329,14 +329,24 @@ When the subagent completes, synthesize the result. Do not re-execute its work. 
 
 	// Build the LLM instruction. Keep it terse at the top, then dump the
 	// workflow markdown verbatim so the LLM has full context.
+	// Unified model: when the phase has tasks under tasks/, execute those (in
+	// dependency order) instead of legacy plan files. Legacy phases (plans, no
+	// tasks) keep the original behavior.
+	const phaseTasks = phase.tasks ?? [];
+	const useTasks = !isPlanLevel && phaseTasks.length > 0;
 	const targetDesc = isPlanLevel
 		? `phase ${target.phase} plan ${String(target.plan).padStart(2, "0")}`
-		: `phase ${target.phase} (${phase.name}) — all ${phase.planCount} plan(s)`;
+		: useTasks
+			? `phase ${target.phase} (${phase.name}) — ${phaseTasks.length} task(s)`
+			: `phase ${target.phase} (${phase.name}) — all ${phase.planCount} plan(s)`;
 
 	const scopeBlock = isPlanLevel
 		? `Target: ONE plan = ${targetDesc}.
 The iteration context file lists the specific plan at section 6.`
-		: `Target: ${targetDesc}.
+		: useTasks
+			? `Target: ${targetDesc} — the unified task model.
+Execute the tasks under \`${phase.dir}/tasks/\`. Run only tasks whose \`depends-on\` are all satisfied (status: done), in dependency order — sequential is fine. Each task produces its own SUMMARY.md in its task dir and flips its PLAN.md frontmatter to \`status: done\`. The wave/plan language in the workflow below maps onto these tasks.`
+			: `Target: ${targetDesc}.
 The iteration context file lists all plans (their frontmatter) in section 6, grouped by wave.`;
 
 	const childRole = isPlanLevel
@@ -362,7 +372,7 @@ subagent({
   maxSubagentDepth: 1,  // worker must not spawn sub-sub-agents
   task: \`You are ${childRole}.
 
-Your job: ${isPlanLevel ? "execute ONE plan and produce its SUMMARY.md" : "execute ALL plans in this phase using wave-based parallel execution"}.
+Your job: ${isPlanLevel ? "execute ONE plan and produce its SUMMARY.md" : useTasks ? "execute the phase's ready tasks in dependency order, each producing its SUMMARY.md" : "execute ALL plans in this phase using wave-based parallel execution"}.
 
 **FIRST ACTION — read the iteration context file:**
 \`\`\`
