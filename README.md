@@ -34,7 +34,7 @@ Restart pi (`/reload`), and you have:
 - **Multi-question picker** — `ask_pro` tool for the LLM
 - **Skill-based execution** — LLM reads the `soly-framework` skill on demand
 
-No agents, no rotors, no mode cycling. The LLM is the executor. You focus on the work.
+The LLM drives execution; `plan`/`execute` delegate to a `worker` subagent when one is available (via pi-subagents), with first-party delegation on the roadmap. You focus on the work.
 
 ---
 
@@ -72,7 +72,7 @@ bun install
 ### Test + typecheck
 
 ```bash
-bun test          # 366 tests across 24 files
+bun test          # run the test suite
 bun run typecheck # tsc --noEmit
 bun run ci        # both
 ```

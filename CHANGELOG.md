@@ -2,6 +2,37 @@
 
 All notable changes to the monorepo are documented here.
 
+## [Unreleased] — pi-soly
+
+### Added
+- **Visual chrome** — native, dependency-free status layer: custom footer, top
+  bar, snowflake working spinner with live telemetry (elapsed · ↑↓ tokens ·
+  tok/s), and a gradient welcome banner. Config under `chrome`.
+- **`soly verify`** — self-review loop (re-review until "No issues found." or a
+  cap; `fresh`-context mode), built on a new single-owner `context` channel.
+- **`/rules` / `/docs` modal** — overlay list panel (fuzzy search, live preview,
+  in-place enable/disable/reload) instead of chat dumps.
+- **`ask_pro`** now supports per-option `preview` (side panel) and per-question
+  `allowOther` (free-text "Other…").
+- **Top bar** lights up for the active workflow verb (execute/plan/discuss/
+  resume/verify).
+
+### Fixed
+- soly-framework skill now ships via the `pi.skills` manifest (it never loaded
+  by default before).
+- execute/plan run inline (with a `soly doctor` check) when the `subagent` tool
+  isn't installed, instead of asking for a tool that doesn't exist.
+- Phase CONTEXT was emitted twice in plan/exec iteration bundles.
+
+### Changed
+- Repositioned: the LLM drives execution and delegates to a `worker` subagent
+  when available (dropped the "no subagent layer" framing).
+- `execute` close-out now suggests `soly verify`.
+
+### Removed
+- Inert `useSolyWorkerSubagents` flag + `__PI_SWITCH_AGENT__` plumbing.
+- Redundant `soly_intent` tool; `soly_ask_user` deprecated in favor of `ask_pro`.
+
 ## [1.9.1] — 2026-06-XX
 
 ### Changed

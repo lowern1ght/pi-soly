@@ -1,3 +1,9 @@
+---
+name: soly-framework
+description: Use when the user invokes soly workflow commands (`/plan`, `/execute`, `/discuss`, `/inspect`, `/pause`, `/resume`, `/quick`, `/soly-init`, `/soly-migrate`, `/soly-status`, `/soly-log`) or asks how to use soly in pi-coding-agent — phases, plans, tasks, intent docs, ROADMAP/STATE state machine, rules, close-out order, and the available soly_* tools. Loaded as the complete reference for managing a soly project end-to-end (init → plan → execute → summary → state update).
+priority: high
+---
+
 # soly framework
 
 The **soly** extension adds project-management workflow to [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent): intent docs, ROADMAP/STATE/PHASE state machine, and LLM-driven plan execution. This skill is your complete reference for using it.
@@ -17,33 +23,41 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 - A **task** is the smallest unit. Has type, description, verify, accept.
 - **Close-out**: production code commits → `SUMMARY.md` → `STATE.md` updated → ROADMAP check.
 
-## Quick reference — slash commands
+## Commands
+
+Workflow verbs are **plain text** — type `soly <verb>` (NOT a slash command):
+
+| Verb | What it does |
+|---|---|
+| `soly discuss <N>` | Discussion-driven scoping for phase N — interactive, uses the `ask_pro` picker |
+| `soly plan <N>` | Generate `PLAN.md` for phase N (also `<task-id>`, `--new-task`, `--feature`) |
+| `soly execute <N[.MM]>` | Execute a phase / one plan / a task / `--all` / `--feature` |
+| `soly verify [N] [fresh]` | Self-review loop until "No issues found." (max N; `verify stop` to exit; `fresh` = fresh-context) |
+| `soly pause` · `soly compact` | Save a handoff (compact also compresses the session) |
+| `soly resume [N]` | Restore from a handoff |
+| `soly status` · `log` · `diff` · `doctor` · `iterations` · `todos` | Quick read-outs (no LLM round-trip) |
+
+**Slash commands** (pi's command surface):
 
 | Command | What it does |
 |---|---|
-| `/plan [N]` | Generate or update `PLAN.md` for phase N (or current phase) |
-| `/execute [N[.MM]]` | Execute plan(s) in phase N. `N` = all plans. `N.MM` = specific plan. The LLM (you) executes directly. |
-| `/discuss N` | Discussion-driven scoping for phase N — capture decisions before planning |
-| `/inspect` | One-screen summary: position, phases, recent decisions |
-| `/pause` | Save handoff (`HANDOFF.json` + `.continue-here.md`) for later resume |
-| `/resume` | Restore from a paused handoff |
-| `/quick <task>` | One-shot task that doesn't need a full plan — direct dispatch |
-| `/soly` | Project state inspection (alias for `/inspect`) |
-| `/why` | Show what context the LLM's last turn was based on |
-| `/soly-init` | Scaffold a new soly project (interactive template picker) |
-| `/soly-migrate` | Move legacy `.soly/` to `.agents/` (atomic) |
-| `/soly-status` | Comprehensive one-screen report |
-| `/soly-log [N]` | Show last N notifications from the log |
+| `/rules` · `/docs` | Open the rules / intent-docs **modal** (fuzzy list + preview; `e/d/r` enable·disable·reload on rules). A subcommand (`/rules stats`, `/docs stats`, …) prints to chat instead of opening the modal. |
+| `/soly [<sub>]` | Project-state inspection (position, state, plan, roadmap, phases, tasks, …); bare `/soly` opens the picker |
+| `/soly-init` · `/soly-migrate` | Scaffold a project · migrate `.soly/` → `.agents/` |
+| `/why` | What rules + state grounded the last turn |
+| `/rulewizard` | Rule vs .editorconfig vs linter guide |
 
-`/soly <verb>` plain-text aliases also work for some verbs (legacy compat).
+## Delegation
 
-## No rotors (removed in 1.4.0)
-
-As of 1.4.0, soly no longer ships rotors. No `/rotor` command, no `Ctrl+Tab` cycle, no footer pill. The LLM picks the right subagent based on the task brief — use `subagent(...)` with `agent: "worker"` for implementation, `"oracle"` for decisions, `"scout"` for recon, `"reviewer"` for adversarial review.
-
-**Why drop them?** Rotors were a UX shortcut (Ctrl+Tab) that pi itself doesn't support well. pi has its own subagent system (`worker`, `oracle`, `scout`, `reviewer`); wrapping it in a "cycle" was over-engineering. The LLM in the main session is the executor; pi's subagents are helpers, not cycle modes.
-
-**For soly work**, the LLM does the work itself — it reads PLAN.md, runs commands, commits, writes SUMMARY.md. It does NOT spawn a soly subagent. Use `subagent(...)` only for read-only research (e.g. `agent: "scout"` for "find all files using X").
+`soly plan` and `soly execute` delegate the heavy work to a `worker` subagent
+(via the `subagent(...)` tool from pi-subagents); the parent session keeps the
+close-out (production commits → `SUMMARY.md` → `STATE.md` → then `soly verify`).
+If the `subagent` tool is NOT installed they run **inline** in the main session
+instead — `soly doctor` reports which mode is active. First-party delegation is
+on the roadmap. Other agents are read-only helpers: `oracle` (second opinion),
+`scout` (recon), `reviewer` (adversarial review). `soly discuss` is always
+interactive in the main session (not delegated). Rotors / `Ctrl+Tab` cycling
+were removed in 1.4.0.
 
 ## File structure
 
@@ -211,10 +225,10 @@ Once production commits exist, returning without a committed `SUMMARY.md` is an 
 | `soly_env()` | Detect runtime (package manager, runtimes, services, scripts) |
 | `soly_snippet(path, offset, limit)` | Read bounded line range with line numbers |
 | `soly_doc_search(query, limit)` | Search .md/.html under cwd (prioritizes intent docs) |
-| `soly_intent()` | List 0-point intent docs from `.soly/docs/` |
 | `soly_scratchpad(limit)` | Recent conversation recap (one line per turn) |
-| `ask_pro(questions)` | Multi-question picker (tabbed, single/multi-select, ⭐, Other…) |
-| `todo_update(todos)` | Update task list rendered in footer |
+| `ask_pro(questions)` | Multi-question picker (tabbed, single/multi-select, ⭐, `preview`, `allowOther`, notes) — preferred |
+| `soly_save_discuss_checkpoint(...)` · `soly_finish_discuss(...)` | Save / finalize a `soly discuss` session (writes CONTEXT.md) |
+| `soly_ask_user(...)` | Single-question picker — **deprecated**, prefer `ask_pro` |
 
 ## Common workflows
 
@@ -246,8 +260,6 @@ You are a data scientist. ...
 2. `<project>/.pi/agent/agents/` — project pi native (legacy)
 3. `~/.agents/` — user vendor-neutral (preferred)
 4. `~/.pi/agent/agents/` — user pi native (legacy)
-
-`Ctrl+Tab` to see them in the cycle. (Removed in 1.4.0 — use `subagent(...)` directly.)
 
 ### Add a feature to an existing phase
 

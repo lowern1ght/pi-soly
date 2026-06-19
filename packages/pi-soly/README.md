@@ -27,12 +27,15 @@ pi install npm:pi-soly
 Restart pi (`/reload`), and you have:
 
 - **Project management** — plans, state, phases, decisions
-- **Workflow engine** — `/plan`, `/execute`, `/resume`, `/inspect`, `/discuss`, `/quick`
+- **Workflow engine** — plain-text verbs: `soly discuss` · `plan` · `execute` · `verify` · `pause`/`resume`
+- **Self-review loop** — `soly verify` re-reviews the work until "No issues found."
+- **Visual chrome** — native footer, snowflake working spinner with live telemetry, gradient welcome banner
+- **Rules & docs modal** — `/rules` and `/docs` open a fuzzy list + preview panel (no chat dumps)
 - **Mandatory rules** — strict-mode directives injected every turn
 - **Multi-question picker** — `ask_pro` tool for the LLM
 - **Skill-based execution** — LLM reads the `soly-framework` skill on demand
 
-No agents, no rotors, no mode cycling. The LLM is the executor. You focus on the work.
+The LLM drives execution; `plan`/`execute` delegate to a `worker` subagent when one is available (via pi-subagents), with first-party delegation on the roadmap. You focus on the work.
 
 ---
 
@@ -50,15 +53,15 @@ No agents, no rotors, no mode cycling. The LLM is the executor. You focus on the
 
 ## 📋 Commands
 
-### Workflow
+### Workflow — plain-text verbs (type `soly <verb>`, not slash)
 
 ```bash
-/plan              # generate PLAN.md for the current phase
-/execute           # execute plan directly (LLM does the work)
-/resume            # pick up a paused session
-/inspect           # show current state summary
-/discuss 3         # talk through decisions before planning phase 3
-/quick "fix typo"  # one-shot task with HANDOFF-style context
+soly discuss 3     # talk through decisions before planning phase 3
+soly plan 3        # generate PLAN.md for phase 3
+soly execute 3     # execute phase 3 (or `soly execute 3.02` for one plan)
+soly verify        # self-review loop until "No issues found." (`soly verify stop` to exit)
+soly pause         # save a handoff; `soly resume` to pick it back up
+soly status        # current position + progress (no LLM round-trip)
 ```
 
 ### State inspection (`/soly`)
@@ -274,7 +277,7 @@ bun install
 ### Test + typecheck
 
 ```bash
-bun test          # 366 tests across 24 files
+bun test          # run the test suite
 bun run typecheck # tsc --noEmit
 bun run ci        # both
 ```
