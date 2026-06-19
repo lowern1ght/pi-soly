@@ -103,7 +103,12 @@ export interface PhaseInfo {
   planCount: number;
   contextExists: boolean;
   researchExists: boolean;
+  /** Legacy standalone plan files (`NN-MM-PLAN.md`). Superseded by `tasks`. */
   plans: string[];
+  /** Unified model: tasks under `phases/<N>/tasks/<id>/`. Optional during the
+   *  phases→tasks migration (legacy phases have none); the loader always sets
+   *  an array. Becomes required once plans are fully retired. */
+  tasks?: TaskInfo[];
 }
 
 /**
@@ -1294,6 +1299,7 @@ function loadPhaseDir(phaseDir: string): PhaseInfo {
     contextExists: files.some((f) => /-CONTEXT\.md$/.test(f)),
     researchExists: files.some((f) => /-RESEARCH\.md$/.test(f)),
     plans,
+    tasks: listPhaseTasks(phaseDir),
   };
 }
 
@@ -1416,6 +1422,19 @@ function loadTaskDir(taskDir: string): TaskInfo | null {
     contextExists: files.some((f) => f === "CONTEXT.md"),
     summaryExists: files.some((f) => f === "SUMMARY.md"),
   };
+}
+
+/** Unified model: load tasks under a phase's `tasks/` subdir. */
+function listPhaseTasks(phaseDir: string): TaskInfo[] {
+  const tasksDir = path.join(phaseDir, "tasks");
+  if (!fs.existsSync(tasksDir)) return [];
+  const tasks: TaskInfo[] = [];
+  for (const e of fs.readdirSync(tasksDir, { withFileTypes: true })) {
+    if (!e.isDirectory()) continue;
+    const t = loadTaskDir(path.join(tasksDir, e.name));
+    if (t) tasks.push(t);
+  }
+  return tasks.sort((a, b) => a.id.localeCompare(b.id));
 }
 
 function listTasks(solyDir: string): TaskInfo[] {
