@@ -57,9 +57,9 @@ describe("format", () => {
 		expect(formatElapsed(8400)).toBe("8s");
 		expect(formatElapsed(-10)).toBe("0s");
 		expect(formatElapsed(59_000)).toBe("59s");
-		expect(formatElapsed(590_000)).toBe("9m50s");
-		expect(formatElapsed(605_000)).toBe("10m05s");
-		expect(formatElapsed(3_700_000)).toBe("1h01m");
+		expect(formatElapsed(590_000)).toBe("9m 50s");
+		expect(formatElapsed(605_000)).toBe("10m 05s");
+		expect(formatElapsed(3_700_000)).toBe("1h 01m");
 	});
 });
 
@@ -452,7 +452,7 @@ describe("chrome.install (integration)", () => {
 describe("config.chrome defaults", () => {
 	test("ships enabled with the snowflake spinner", () => {
 		expect(DEFAULT_CONFIG.chrome.enabled).toBe(true);
-		expect(DEFAULT_CONFIG.chrome.spinnerFrames.length).toBe(10);
+		expect(DEFAULT_CONFIG.chrome.spinnerFrames.length).toBe(9);
 		expect(DEFAULT_CONFIG.chrome.spinnerIntervalMs).toBe(180);
 		expect(DEFAULT_CONFIG.chrome.telemetry).toBe(true);
 	});

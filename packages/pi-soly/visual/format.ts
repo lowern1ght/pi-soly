@@ -57,8 +57,10 @@ export function fitPath(cwd: string, home: string | undefined, maxWidth: number)
 }
 
 /**
- * Compact elapsed label: `8s` under a minute, `9m50s` under an hour, `1h02m`
- * beyond. Clamped at 0.
+ * Compact elapsed label: `8s` under a minute, `9m 50s` under an hour, `1h 02m`
+ * beyond. Components are space-separated so the digits don't run together.
+ * Seconds/minutes are zero-padded to two digits so the right edge doesn't
+ * jump each tick on a live-updating counter. Clamped at 0.
  */
 export function formatElapsed(ms: number): string {
 	const total = Math.max(0, Math.floor(ms / 1000));
@@ -66,6 +68,6 @@ export function formatElapsed(ms: number): string {
 	const h = Math.floor(total / 3600);
 	const m = Math.floor((total % 3600) / 60);
 	const s = total % 60;
-	if (h > 0) return `${h}h${String(m).padStart(2, "0")}m`;
-	return `${m}m${String(s).padStart(2, "0")}s`;
+	if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
+	return `${m}m ${String(s).padStart(2, "0")}s`;
 }
