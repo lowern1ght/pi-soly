@@ -199,6 +199,18 @@ export function showDoctor(_cmd: unknown, state: SolyState, ui: InspectUI, confi
 		});
 	}
 
+	// 11. subagent tool (execute/plan delegate to it; without it they run inline)
+	if (state.exists) {
+		const hasSubagent = activeTools.includes("subagent");
+		checks.push({
+			name: "subagent tool (delegated execution)",
+			status: hasSubagent ? "pass" : "info",
+			detail: hasSubagent
+				? "subagent tool loaded — soly execute/plan delegate to a worker"
+				: "not installed — soly execute/plan run inline in this session (install pi-subagents for delegated/parallel execution)",
+		});
+	}
+
 	// Render
 	const symbol = { pass: "✓", warn: "⚠", fail: "✗", info: "ℹ" };
 	const color = { pass: "pass", warn: "warning", fail: "fail", info: "info" } as const;

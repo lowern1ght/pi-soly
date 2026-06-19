@@ -52,6 +52,24 @@ export interface WorkflowsDeps {
 /** Verbs that put the session into a visible "mode" (shown in the chrome top bar). */
 const MODE_VERBS: readonly string[] = ["execute", "plan", "discuss", "resume"];
 
+/**
+ * execute/plan instructions tell the model to launch a `subagent(...)`. That
+ * tool is provided by the external pi-subagents plugin. When it's absent the
+ * instruction is impossible, so prepend an authoritative override telling the
+ * model to do the work inline instead — removing the silent breakage until
+ * soly ships first-party delegation.
+ */
+export function withSubagentPreflight(text: string, activeTools: string[]): string {
+	if (activeTools.includes("subagent")) return text;
+	return (
+		"> ⚠ The `subagent` tool is NOT installed in this session. Ignore any " +
+		'"launch a subagent / do not work inline" instruction below — instead do this ' +
+		"work yourself, inline, in THIS session, applying the same close-out discipline. " +
+		"(Install pi-subagents for delegated/parallel execution.)\n\n" +
+		text
+	);
+}
+
 export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 	const { getState, getInteractiveRules, getActiveTools, getConfig, onWorkflowUsed } = deps;
 
@@ -97,7 +115,7 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 		if (cmd.verb === "execute") {
 			const result = buildExecuteTransform(cmd, state, getInteractiveRules());
 			if (!result.handled || !result.transformedText) return;
-			return { action: "transform", text: result.transformedText };
+			return { action: "transform", text: withSubagentPreflight(result.transformedText, getActiveTools()) };
 		}
 
 		if (cmd.verb === "pause" || cmd.verb === "compact") {
@@ -116,7 +134,7 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 		if (cmd.verb === "plan") {
 			const result = buildPlanTransform(cmd, state);
 			if (!result.handled || !result.transformedText) return;
-			return { action: "transform", text: result.transformedText };
+			return { action: "transform", text: withSubagentPreflight(result.transformedText, getActiveTools()) };
 		}
 
 		if (cmd.verb === "discuss") {
