@@ -136,7 +136,8 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 				confirm: (title, message) => ctx.ui.confirm(title, message),
 			};
 			const parts = args.trim().split(/\s+/);
-			const sub = parts[0] ?? "list";
+			// Bare `/rules` (empty args) opens the modal; an explicit subcommand does not.
+			const sub = parts[0] || "list";
 			const target = parts[1];
 
 			if (sub === "list") {
@@ -432,7 +433,8 @@ What must the LLM do?
 				confirm: (title, message) => ctx.ui.confirm(title, message),
 			};
 			const parts = args.trim().split(/\s+/);
-			const sub = parts[0] ?? "list";
+			// Bare `/docs` opens the modal; an explicit subcommand (e.g. stats) does not.
+			const sub = parts[0] || "list";
 
 			if (sub === "list") {
 				const docs = getIntentDocs();
