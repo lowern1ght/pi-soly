@@ -32,7 +32,7 @@ DON'T use it for:
 
 Keyboard in the picker: \`↑↓\` navigate, \`1-N\` instant-pick, \`Tab\` next question, \`Space\` toggle (multi-select only), \`Enter\` confirm/advance/submit, \`n\` add a free-text note to the current question, \`Esc\` cancel.
 
-Schema reminder: \`questions: [{ header, question, options: [{label, description?, recommended?, preview?}], multiSelect? }]\`. Mark exactly one option \`recommended: true\` per question when you have a default.
+Schema reminder: \`questions: [{ header, question, options: [{label, description?, recommended?, preview?}], multiSelect?, allowOther? }]\`. Mark exactly one option \`recommended: true\` per question when you have a default. Set \`allowOther: true\` when the listed options may not be exhaustive — it adds a free-text "Other…" choice instead of forcing a pick.
 
 **Option previews:** \`option.preview\` (markdown/plain string) shows in a side panel next to the option list while that option is focused. Use it when the question is about a code structure, API shape, or concrete example — show a small snippet of what each option entails so the user can decide without asking follow-ups. Example: when asking "how should we model auth?", each option's preview can show the relevant type signature.
 

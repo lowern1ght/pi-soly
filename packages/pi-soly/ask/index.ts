@@ -37,9 +37,9 @@ export default function piAskExtension(pi: ExtensionAPI) {
 
 	pi.registerTool({
 		name: "ask_pro",
-		label: "pi-ask ask_pro",
+		label: "soly · ask_pro",
 		description:
-			"Ask the user multiple questions at once via a tabbed picker. Each question is a tab at the top. Options are numbered (1-N instant-pick), the recommended answer is marked ⭐. Supports single-select (default, auto-advance on pick) and multi-select (Enter toggles, last question shows Submit). All answers returned in one call. Use for progressive Q&A flows like `soly discuss`.",
+			"Ask the user multiple questions at once via a tabbed picker. Each question is a tab at the top. Options are numbered (1-N instant-pick), the recommended answer is marked ⭐. Supports single-select (default, auto-advance on pick) and multi-select (Enter toggles, last question shows Submit). Per option, `preview` shows a side-panel snippet while focused; per question, `allowOther: true` adds a free-text 'Other…' choice. The user can press `n` to attach a free-text note to any answer. All answers returned in one call. Use for progressive Q&A flows like `soly discuss`.",
 		parameters: Type.Object({
 			questions: Type.Array(
 				Type.Object({
@@ -64,6 +64,12 @@ export default function piAskExtension(pi: ExtensionAPI) {
 									description: "Mark as ⭐ recommended answer.",
 								}),
 							),
+							preview: Type.Optional(
+								Type.String({
+									description:
+										"Markdown/plain snippet shown in a side panel while this option is focused (e.g. a code shape, API signature, config sample) so the user can compare options without follow-ups.",
+								}),
+							),
 						}),
 						{ description: "2-4 concrete options." },
 					),
@@ -71,6 +77,12 @@ export default function piAskExtension(pi: ExtensionAPI) {
 						Type.Boolean({
 							description:
 								"If true, user can pick multiple (checkboxes, Enter toggles). If false (default), single-select with auto-advance.",
+						}),
+					),
+					allowOther: Type.Optional(
+						Type.Boolean({
+							description:
+								"If true, append a synthetic 'Other…' option that opens a free-text input, so the user isn't boxed into the listed choices.",
 						}),
 					),
 				}),
@@ -159,7 +171,7 @@ export default function piAskExtension(pi: ExtensionAPI) {
 						theme: askTheme,
 						keybindings,
 						done,
-						title: `pi-ask — ${params.questions.length} question${params.questions.length > 1 ? "s" : ""}`,
+						title: `soly · ${params.questions.length} question${params.questions.length > 1 ? "s" : ""}`,
 					});
 				},
 			);
