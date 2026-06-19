@@ -607,7 +607,7 @@ soly_ask_user({
 - ${hasAskPro ? "`ask_pro` — multi-question tabbed picker (PREFERRED)" : "`soly_ask_user` — single-question picker (fallback)"}
 - \`soly_save_discuss_checkpoint\` — save partial progress (use after each answer)
 - \`soly_finish_discuss\` — finalize: writes CONTEXT.md, deletes checkpoint
-- \`soly_read\`, \`soly_snippet\`, \`soly_doc_search\`, \`soly_intent\` — read .soly/ artifacts as needed
+- \`soly_read\`, \`soly_snippet\`, \`soly_doc_search\` — read .soly/ artifacts as needed (intent docs are already in your system prompt)
 - \`soly_log_decision\` — log to STATE.md Decisions table (use sparingly)
 - Standard pi tools: \`read\`, \`bash\`, \`grep\`, \`find\` for codebase context
 

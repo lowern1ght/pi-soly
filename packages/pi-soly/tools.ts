@@ -22,7 +22,6 @@ import { detectEnv, type EnvSummary } from "./env.ts";
 import type { SolyConfig } from "./config.ts";
 import { buildDocIndex, searchDocs, readSnippet, stripHtml } from "./docs.ts";
 import { buildScratchpad, SCRATCHPAD_LIMITS } from "./scratchpad.ts";
-import { loadIntentDocs, buildIntentSection, type IntentDoc } from "./intent.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -683,51 +682,6 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	});
 
 	// ============================================================================
-	// soly_intent — refresh / list the project's 0-point intent docs
-	// ============================================================================
-
-	pi.registerTool({
-		name: "soly_intent",
-		label: "soly intent",
-		description:
-			"list the project's 0-point intent docs from `.soly/docs/` — the business/domain/tech-intent documents the user wrote BEFORE any soly plans. Use before planning, discussing, or executing a phase to ensure alignment with the user's vision. Supports `.md` and `.html` (parsed for `<title>`/`<h1>`/`<meta description>`). Phase-specific docs under `.soly/phases/<N>/docs/` are also included if present. Pass no arguments — this tool always returns the full list.",
-		parameters: Type.Object({}),
-		async execute(_id, _params, _signal, _onUpdate, ctx) {
-			const docs = loadIntentDocs(ctx.cwd);
-			const { section } = buildIntentSection(docs);
-
-			if (docs.length === 0) {
-				return {
-					content: [
-						{
-							type: "text",
-							text:
-								`soly_intent: no docs found in ${path.join(ctx.cwd, ".soly", "docs")}.\n\n` +
-								`Project intent is the user's vision written BEFORE soly plans. If empty, ask the user to drop their intent docs (business glossary, design vision, domain concepts) into .soly/docs/ as .md or .html files, then run soly_intent again.`,
-						},
-					],
-					details: { count: 0 },
-				};
-			}
-
-			// Render the same section that goes into the system prompt, so the
-			// model sees a consistent view whether it asks or not.
-			const out: string[] = [];
-			out.push(`soly_intent: ${docs.length} document(s) in .soly/docs/:`);
-			out.push("");
-			out.push(section);
-			out.push("");
-			out.push(
-				"To read a specific doc, use soly_snippet(path=\".soly/docs/<name>\", offset=N, limit=M). For HTML files, pass format=\"stripped\" to get plain text.",
-			);
-			return {
-				content: [{ type: "text", text: out.join("\n") }],
-				details: { count: docs.length, paths: docs.map((d) => d.relPath) },
-			};
-		},
-	});
-
-	// ============================================================================
 	// soly_ask_user — multiple-choice picker (for `soly discuss` interactive flow)
 	// ============================================================================
 
@@ -735,7 +689,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_ask_user",
 		label: "soly ask user",
 		description:
-			"Ask the user a multiple-choice question via pi's UI picker. Use this for progressive Q&A flows (e.g. `soly discuss <N>`). The first option is treated as the recommended answer — mark it with a ⭐ prefix in its label and add a 1-sentence rationale in the `rationale` parameter. Returns the chosen option text (or the custom string if `allowOther: true` and the user picked 'Other…'). The picker has ↑/↓/j/k navigation, Enter to confirm, Esc to cancel (cancelled → returns 'cancelled' in details).",
+			"DEPRECATED fallback — prefer `ask_pro` (always available; multi-question tabbed picker with previews + notes). Use `soly_ask_user` only if `ask_pro` is somehow unavailable. Asks the user one multiple-choice question via pi's UI picker, for progressive Q&A flows (e.g. `soly discuss <N>`). The first option is treated as the recommended answer — mark it with a ⭐ prefix in its label and add a 1-sentence rationale in the `rationale` parameter. Returns the chosen option text (or the custom string if `allowOther: true` and the user picked 'Other…'). The picker has ↑/↓/j/k navigation, Enter to confirm, Esc to cancel (cancelled → returns 'cancelled' in details).",
 		parameters: Type.Object({
 			title: Type.String({
 				description: "Short title shown above the picker (e.g. 'Q1: Session handling').",
