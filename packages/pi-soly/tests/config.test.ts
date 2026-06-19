@@ -77,19 +77,6 @@ describe("loadConfig — global only", () => {
 		// Untouched fields keep defaults
 		expect(r.config.iteration.includeResearch).toBe(true);
 		expect(r.config.agent.preferAskPro).toBe(true);
-		expect(r.config.agent.useSolyWorkerSubagents).toBe(false); // opt-in default off
-	});
-
-	test("useSolyWorkerSubagents can be enabled via per-project config", () => {
-		const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "soly-cfg-worker-"));
-		fs.mkdirSync(path.join(cwd, ".soly"), { recursive: true });
-		fs.writeFileSync(
-			path.join(cwd, ".soly", "config.json"),
-			JSON.stringify({ version: 1, agent: { useSolyWorkerSubagents: true } }),
-		);
-		const r = loadConfig(cwd, fakeHome);
-		expect(r.config.agent.useSolyWorkerSubagents).toBe(true);
-		fs.rmSync(cwd, { recursive: true, force: true });
 	});
 
 	test("global file path is reported in sources", () => {

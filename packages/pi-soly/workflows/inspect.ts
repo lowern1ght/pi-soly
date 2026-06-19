@@ -199,35 +199,6 @@ export function showDoctor(_cmd: unknown, state: SolyState, ui: InspectUI, confi
 		});
 	}
 
-	// 11. soly-aware subagents (opt-in via `agent.useSolyWorkerSubagents`).
-	// Reports current state — not a failure if disabled.
-	if (state.exists) {
-		const userAgentsDir = path.join(os.homedir(), ".pi", "agent", "agents");
-		const hasWorker = fs.existsSync(path.join(userAgentsDir, "soly-worker.md"));
-		const hasOracle = fs.existsSync(path.join(userAgentsDir, "soly-oracle.md"));
-		const both = hasWorker && hasOracle;
-		const flag = config.agent.useSolyWorkerSubagents;
-		if (flag) {
-			// User opted in: both files MUST be present
-			checks.push({
-				name: "soly-aware subagents (opt-in enabled)",
-				status: both ? "pass" : "warn",
-				detail: both
-					? "installed in ~/.pi/agent/agents/ — soly execute uses soly-worker"
-					: `useSolyWorkerSubagents=true but ${hasWorker ? "soly-oracle.md" : "soly-worker.md"} missing — check session_start install errors`,
-			});
-		} else {
-			// Opt-in disabled: informational only
-			checks.push({
-				name: "soly-aware subagents (opt-in available, not enabled)",
-				status: "info",
-				detail: both
-					? "soly-worker.md and soly-oracle.md present in ~/.pi/agent/agents/ — set `agent.useSolyWorkerSubagents: true` in .soly/config.json to use them in soly execute"
-					: "set `agent.useSolyWorkerSubagents: true` in .soly/config.json to auto-install soly-worker + soly-oracle (specialized for soly paths/plans/todo)",
-			});
-		}
-	}
-
 	// Render
 	const symbol = { pass: "✓", warn: "⚠", fail: "✗", info: "ℹ" };
 	const color = { pass: "pass", warn: "warning", fail: "fail", info: "info" } as const;

@@ -67,7 +67,7 @@ export function buildExecuteTransform(
 	cmd: SolyCommand,
 	state: SolyState,
 	interactiveRules: string[] = [],
-	opts: { agent?: string; useSolyWorker?: boolean } = {},
+	opts: { agent?: string } = {},
 ): ExecuteHandlerResult {
 	if (!state.exists) {
 		return {

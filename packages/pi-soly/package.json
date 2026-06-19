@@ -42,7 +42,6 @@
     "nudge.ts",
     "scratchpad.ts",
     "tools.ts",
-    "agents-install.ts",
     "ask",
     "skills",
     "workflows",

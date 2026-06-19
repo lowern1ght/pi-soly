@@ -48,7 +48,6 @@ import {
 	type SourceSpec,
 } from "./core.ts";
 import { buildIntegrationsSection } from "./integrations.ts";
-import { installSolyAssets } from "./agents-install.ts";
 import {
 	DEFAULT_CONFIG,
 	loadConfig,
@@ -392,7 +391,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 	pi.on("session_start", async (event, ctx) => {
 		// Deprecation warning: if the project still uses `.soly/`, nudge the
 		// user toward `.agents/`. One-time per session.
-		if (activeConfig.agent.useSolyWorkerSubagents && isLegacySolyDir(ctx.cwd)) {
+		if (isLegacySolyDir(ctx.cwd)) {
 			notifyDeprecation(
 				ctx.ui,
 				`.soly/ (legacy)`,
@@ -443,42 +442,13 @@ export default function solyExtension(pi: ExtensionAPI) {
 			}
 		}
 
-		// Auto-install soly user-scope assets (soly-framework skill only,
-		// since 1.3.0 we don't ship a subagent) to ~/.pi/agent/skills/ on
-		// first run. Opt-in via config `agent.useSolyWorkerSubagents`
-		// (kept for backward compat, now a no-op for the skill install).
-		// Idempotent — respects any existing user-customized copies.
-		if (activeConfig.agent.useSolyWorkerSubagents) {
-			const extRoot = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
-			const assets = installSolyAssets(extRoot);
-			const installed = assets.skills.installed.map((s) => `skill:${s}`);
-			if (installed.length > 0) {
-				ctx.ui.notify(
-					`soly: installed (${installed.join(", ")}) — pi will discover on next session`,
-					"info",
-				);
-			}
-			for (const e of assets.skills.errors) {
-				ctx.ui.notify(`soly: install error — ${e}`, "warning");
-			}
-		}
+		// (The soly-framework skill now ships via the package `pi.skills`
+		// manifest — pi discovers it natively, no home-dir copy needed.)
 
 		// Phase-scoped rules: if a phase is currently active, load its
 		// per-phase rules on top of the always-on rule set.
 		reloadPhaseRules();
 
-		// Restore agent from .soly/agent (if present) — survives session restart
-		if (state.exists) {
-			const agentFile = path.join(state.solyDir, "agent");
-			try {
-				if (fs.existsSync(agentFile)) {
-					const raw = fs.readFileSync(agentFile, "utf-8").trim();
-					if (raw && /^[a-zA-Z0-9_-]{1,64}$/.test(raw)) {
-						(globalThis as { __PI_SWITCH_AGENT__?: string }).__PI_SWITCH_AGENT__ = raw;
-					}
-				}
-			} catch { /* best-effort */ }
-		}
 
 		// Capture rule mtimes for the "rules changed since last session" diff
 		captureLastSessionRuleMtimes();

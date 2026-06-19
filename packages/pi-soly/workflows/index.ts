@@ -62,14 +62,6 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 		getConfig: () => getConfig().verify,
 		onState: (state) => deps.onVerifyState?.(state),
 	});
-	// The current agent is owned by the separate `pi-switch` extension.
-	// It writes `globalThis.__PI_SWITCH_AGENT__` (in-process) and
-	// `.soly/agent` (persisted). We read the in-process value first (fresh);
-	// fall back to "worker" if pi-switch isn't installed.
-	const getCurrentAgent = (): string => {
-		return (globalThis as { __PI_SWITCH_AGENT__?: string }).__PI_SWITCH_AGENT__ ?? "worker";
-	};
-
 	// Track whether we need to fire ctx.compact() at the end of the upcoming
 	// turn. Reset on every user input — only set if the user types
 	// "soly compact" (which expands to a handoff + compact request).
@@ -103,9 +95,7 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 		// ----- LLM-driven transforms -----
 
 		if (cmd.verb === "execute") {
-			const result = buildExecuteTransform(cmd, state, getInteractiveRules(), {
-				useSolyWorker: getConfig().agent.useSolyWorkerSubagents,
-			});
+			const result = buildExecuteTransform(cmd, state, getInteractiveRules());
 			if (!result.handled || !result.transformedText) return;
 			return { action: "transform", text: result.transformedText };
 		}

@@ -35,11 +35,6 @@ export interface SolyConfig {
 		preferAskPro: boolean;
 		/** When soly pause is invoked, also auto-save HANDOFF.json (currently always true; knob for future). */
 		autoCheckpointOnPause: boolean;
-		/** DEPRECATED in 1.3.0. Soly no longer ships a subagent. The LLM
-		 *  executes plans directly using the slash commands + the
-		 *  soly-framework skill. This option is kept as a no-op for
-		 *  backward compat with old config files. */
-		useSolyWorkerSubagents: boolean;
 	};
 	display: {
 		/** Always show the recommended (⭐) option as the first row. */
@@ -101,7 +96,6 @@ export const DEFAULT_CONFIG: SolyConfig = {
 	agent: {
 		preferAskPro: true,
 		autoCheckpointOnPause: true,
-		useSolyWorkerSubagents: false,
 	},
 	display: {
 		defaultRecommendedFirst: true,
@@ -176,8 +170,6 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 			merged.agent.preferAskPro = over.agent.preferAskPro;
 		if (typeof over.agent.autoCheckpointOnPause === "boolean")
 			merged.agent.autoCheckpointOnPause = over.agent.autoCheckpointOnPause;
-		if (typeof over.agent.useSolyWorkerSubagents === "boolean")
-			merged.agent.useSolyWorkerSubagents = over.agent.useSolyWorkerSubagents;
 	}
 	if (over.display) {
 		if (typeof over.display.defaultRecommendedFirst === "boolean")

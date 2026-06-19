@@ -108,7 +108,7 @@ function makeMockDeps(cwd: string) {
 			version: "1.4.2",
 			iteration: { retentionDays: 7, maxFiles: 50 },
 			rules: { contextBudgetPct: 10, includeAntiPatterns: true },
-			agent: { preferAskPro: false, autoCheckpointOnPause: true, useSolyWorkerSubagents: false },
+			agent: { preferAskPro: false, autoCheckpointOnPause: true },
 			display: { defaultRecommendedFirst: true, maxPhasesInStatus: 5, maxDecisionsInLog: 5 },
 			paths: { excludeGlobs: [] },
 			hotReload: { pollMs: 2000, notifyOnChange: true },
