@@ -714,7 +714,11 @@ export default function solyExtension(pi: ExtensionAPI) {
 		const angle =
 			heuristics.suggestedAngles[0] ?? "want me to confirm assumptions before I start?";
 
-		notifyNudge(ctx.ui, heuristics.researchHeavy ? "research" : "nonTrivial", angle);
+		// The visible chat box is opt-in (default off — it was noisy). The
+		// system-prompt nudge still guides the LLM on every turn regardless.
+		if (getActiveConfig().agent.nudgeNotify) {
+			notifyNudge(ctx.ui, heuristics.researchHeavy ? "research" : "nonTrivial", angle);
+		}
 		nudgeActiveForTask = true;
 		lastNudgePromptKey = text.slice(0, 200);
 

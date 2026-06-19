@@ -35,6 +35,9 @@ export interface SolyConfig {
 		preferAskPro: boolean;
 		/** When soly pause is invoked, also auto-save HANDOFF.json (currently always true; knob for future). */
 		autoCheckpointOnPause: boolean;
+		/** Show the soft "non-trivial / research" nudge as a chat box. Default off
+		 *  (it was noisy). The system-prompt nudge guides the LLM regardless. */
+		nudgeNotify: boolean;
 	};
 	display: {
 		/** Always show the recommended (⭐) option as the first row. */
@@ -96,6 +99,7 @@ export const DEFAULT_CONFIG: SolyConfig = {
 	agent: {
 		preferAskPro: true,
 		autoCheckpointOnPause: true,
+		nudgeNotify: false,
 	},
 	display: {
 		defaultRecommendedFirst: true,
@@ -170,6 +174,8 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 			merged.agent.preferAskPro = over.agent.preferAskPro;
 		if (typeof over.agent.autoCheckpointOnPause === "boolean")
 			merged.agent.autoCheckpointOnPause = over.agent.autoCheckpointOnPause;
+		if (typeof over.agent.nudgeNotify === "boolean")
+			merged.agent.nudgeNotify = over.agent.nudgeNotify;
 	}
 	if (over.display) {
 		if (typeof over.display.defaultRecommendedFirst === "boolean")
