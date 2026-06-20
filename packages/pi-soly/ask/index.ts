@@ -21,9 +21,49 @@
 // =============================================================================
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { highlightCode } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { AskProComponent, type AskProResult } from "./picker.ts";
 import { buildAskProSection } from "./prompt.ts";
+
+type ToolError = {
+	content: { type: "text"; text: string }[];
+	details: Record<string, unknown>;
+};
+
+type BoundsCheck = {
+	header: string;
+	multiSelect?: boolean;
+	minSelect?: number;
+	maxSelect?: number;
+	allowOther?: boolean;
+	options: unknown[];
+};
+
+/** Validate multi-select min/max bounds. Returns a tool error, or null if OK.
+ *  No-op for single-select questions. */
+function validateSelectBounds(q: BoundsCheck, i: number): ToolError | null {
+	if (!q.multiSelect) return null;
+	const max = q.options.length + (q.allowOther ? 1 : 0);
+	const err = (text: string, error: string): ToolError => ({
+		content: [{ type: "text", text: `ask_pro: Q${i + 1} ("${q.header}") ${text}` }],
+		details: { error, questionIdx: i },
+	});
+	if (q.minSelect !== undefined && (q.minSelect < 1 || q.minSelect > max)) {
+		return err(`minSelect ${q.minSelect} out of range (1-${max}).`, "bad_min_select");
+	}
+	if (q.maxSelect !== undefined && (q.maxSelect < 1 || q.maxSelect > max)) {
+		return err(`maxSelect ${q.maxSelect} out of range (1-${max}).`, "bad_max_select");
+	}
+	if (
+		q.minSelect !== undefined &&
+		q.maxSelect !== undefined &&
+		q.minSelect > q.maxSelect
+	) {
+		return err(`minSelect ${q.minSelect} > maxSelect ${q.maxSelect}.`, "min_gt_max");
+	}
+	return null;
+}
 
 export default function piAskExtension(pi: ExtensionAPI) {
 	// Inject a "when to use ask_pro" section into the system prompt so the
@@ -39,7 +79,7 @@ export default function piAskExtension(pi: ExtensionAPI) {
 		name: "ask_pro",
 		label: "soly · ask_pro",
 		description:
-			"Ask the user multiple questions at once via a tabbed picker. Each question is a tab at the top. Options are numbered (1-N instant-pick), the recommended answer is marked ⭐. Supports single-select (default, auto-advance on pick) and multi-select (Enter toggles, last question shows Submit). Per option, `preview` shows a side-panel snippet while focused; per question, `allowOther: true` adds a free-text 'Other…' choice. The user can press `n` to attach a free-text note to any answer. All answers returned in one call. Use for progressive Q&A flows like `soly discuss`.",
+			"Ask the user multiple questions at once via a tabbed picker. Each question is a tab at the top. Options are numbered (1-N instant-pick), the recommended answer is marked ⭐. Supports single-select (default, auto-advance on pick), multi-select (Space toggles; `minSelect`/`maxSelect` bound the count), and `freeText: true` questions (no options — the user types an answer). Per option, `preview` shows a side-panel snippet while focused (fenced ```code is syntax-highlighted); per question, `allowOther: true` adds a free-text 'Other…' choice. The user can press `n` to attach a note or `s` to skip a question (returned as skipped). All answers returned in one call. Use for progressive Q&A flows like `soly discuss`.",
 		parameters: Type.Object({
 			questions: Type.Array(
 				Type.Object({
@@ -71,7 +111,10 @@ export default function piAskExtension(pi: ExtensionAPI) {
 								}),
 							),
 						}),
-						{ description: "2-4 concrete options." },
+						{
+							description:
+								"2-4 concrete options. Leave empty ([]) when freeText is true.",
+						},
 					),
 					multiSelect: Type.Optional(
 						Type.Boolean({
@@ -83,6 +126,24 @@ export default function piAskExtension(pi: ExtensionAPI) {
 						Type.Boolean({
 							description:
 								"If true, append a synthetic 'Other…' option that opens a free-text input, so the user isn't boxed into the listed choices.",
+						}),
+					),
+					minSelect: Type.Optional(
+						Type.Number({
+							description:
+								"Multi-select only: minimum options the user must choose (default 1).",
+						}),
+					),
+					maxSelect: Type.Optional(
+						Type.Number({
+							description:
+								"Multi-select only: maximum options the user may choose (default: no limit).",
+						}),
+					),
+					freeText: Type.Optional(
+						Type.Boolean({
+							description:
+								"If true, the question has no options — the user types a free-text answer. Leave options empty. Use for open-ended input (names, descriptions); the answer is optional (blank allowed).",
 						}),
 					),
 				}),
@@ -129,12 +190,27 @@ export default function piAskExtension(pi: ExtensionAPI) {
 			for (let i = 0; i < params.questions.length; i++) {
 				const q = params.questions[i];
 				if (!q) continue;
+				// Free-text questions carry no options — skip the option checks.
+				if (q.freeText) {
+					if (q.multiSelect) {
+						return {
+							content: [
+								{
+									type: "text",
+									text: `ask_pro: Q${i + 1} ("${q.header}") can't be both freeText and multiSelect.`,
+								},
+							],
+							details: { error: "freetext_multiselect", questionIdx: i },
+						};
+					}
+					continue;
+				}
 				if (q.options.length < 2 || q.options.length > 4) {
 					return {
 						content: [
 							{
 								type: "text",
-								text: `ask_pro: Q${i + 1} ("${q.header}") has ${q.options.length} options, need 2-4.`,
+								text: `ask_pro: Q${i + 1} ("${q.header}") has ${q.options.length} options, need 2-4 (or set freeText:true).`,
 							},
 						],
 						details: {
@@ -157,6 +233,9 @@ export default function piAskExtension(pi: ExtensionAPI) {
 						details: { error: "multiple_recommended", questionIdx: i },
 					};
 				}
+				// Validate multi-select min/max bounds when provided.
+				const bounds = validateSelectBounds(q, i);
+				if (bounds) return bounds;
 			}
 
 			// --- show the picker ---
@@ -172,6 +251,7 @@ export default function piAskExtension(pi: ExtensionAPI) {
 						keybindings,
 						done,
 						title: `soly · ${params.questions.length} question${params.questions.length > 1 ? "s" : ""}`,
+						highlight: highlightCode,
 					});
 				},
 			);
@@ -191,6 +271,7 @@ export default function piAskExtension(pi: ExtensionAPI) {
 
 			const answers = result.answers ?? {};
 			const notes = result.notes ?? {};
+			const skipped = new Set(result.skipped ?? []);
 			// Pretty-print for the LLM
 			const out: string[] = ["User answers:"];
 			for (let i = 0; i < params.questions.length; i++) {
@@ -198,7 +279,9 @@ export default function piAskExtension(pi: ExtensionAPI) {
 				if (!q) continue;
 				const a = answers[i];
 				let line: string;
-				if (a === undefined) {
+				if (skipped.has(i)) {
+					line = `  Q${i + 1} (${q.header}): (skipped)`;
+				} else if (a === undefined) {
 					line = `  Q${i + 1} (${q.header}): (no answer)`;
 				} else if (Array.isArray(a)) {
 					const parts: string[] = [];
@@ -212,6 +295,8 @@ export default function piAskExtension(pi: ExtensionAPI) {
 					line = `  Q${i + 1} (${q.header}) [multi]: ${parts.join(", ")}`;
 				} else if (typeof a === "number") {
 					line = `  Q${i + 1} (${q.header}): ${q.options[a]?.label ?? `?${a}`}`;
+				} else if (q.freeText) {
+					line = `  Q${i + 1} (${q.header}): "${a}"`;
 				} else {
 					line = `  Q${i + 1} (${q.header}) [Other]: "${a}"`;
 				}
@@ -224,7 +309,11 @@ export default function piAskExtension(pi: ExtensionAPI) {
 
 			return {
 				content: [{ type: "text", text: out.join("\n") }],
-				details: { answers, notes: Object.keys(notes).length > 0 ? notes : undefined },
+				details: {
+					answers,
+					notes: Object.keys(notes).length > 0 ? notes : undefined,
+					skipped: skipped.size > 0 ? [...skipped] : undefined,
+				},
 			};
 		},
 	});

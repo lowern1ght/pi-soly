@@ -47,7 +47,7 @@ export interface AskQuestion {
 	header: string;
 	/** The full question. */
 	question: string;
-	/** 2-4 options. */
+	/** 2-4 options. Empty when `freeText` is set (the answer is typed). */
 	options: AskOption[];
 	/** If true, user can pick multiple options (checkboxes). Default false. */
 	multiSelect?: boolean;
@@ -55,6 +55,16 @@ export interface AskQuestion {
 	 *  dialog when picked. The custom string is stored as the answer.
 	 *  Default false. */
 	allowOther?: boolean;
+	/** Multi-select only: minimum number of options that must be chosen for the
+	 *  question to count as answered. Default 1. */
+	minSelect?: number;
+	/** Multi-select only: maximum number of options the user may choose.
+	 *  Default = no limit. Toggling beyond this is ignored. */
+	maxSelect?: number;
+	/** If true, the question has no options — the user types a free-text answer
+	 *  into an inline field. The typed string is the answer; leaving it blank
+	 *  is allowed (the question is optional and omitted from results). */
+	freeText?: boolean;
 }
 
 /** Single-pick answer: either an option index (0..N-1) or a custom string
@@ -72,6 +82,9 @@ export interface AskProResult {
 	 *  Keyed by question index. Added when the user pressed `n` after
 	 *  picking an option and typed a note. */
 	notes?: Record<number, string>;
+	/** Indices of questions the user explicitly skipped (via `s`) or left
+	 *  blank (free-text). Absent when nothing was skipped. */
+	skipped?: number[];
 }
 
 interface AskProComponentDeps {
@@ -81,6 +94,9 @@ interface AskProComponentDeps {
 	done: (result: AskProResult) => void;
 	/** Optional title shown above the tabs. */
 	title?: string;
+	/** Optional syntax highlighter (pi's highlightCode). When provided, fenced
+	 *  ```lang code blocks inside option previews are colorized. */
+	highlight?: (code: string, lang?: string) => string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +151,13 @@ export class AskProComponent extends Container {
 	/** Note Input used while inputMode.kind === "note". Kept on the instance
 	 *  so the `n`-flow can reuse a single field across open/close cycles. */
 	private noteInput: Input | null = null;
+	/** Indices the user explicitly skipped (via `s`). */
+	private skipped = new Set<number>();
+	/** Persistent inline Input per free-text question, keyed by question index.
+	 *  Lazily created so navigating back keeps what was typed. */
+	private freeTextInputs = new Map<number, Input>();
+	/** Optional syntax highlighter for fenced code in previews. */
+	private highlight?: (code: string, lang?: string) => string[];
 
 	private tabsText!: Text;
 	private bodyContainer!: Container;
@@ -147,6 +170,7 @@ export class AskProComponent extends Container {
 		this.keybindings = deps.keybindings;
 		this.done = deps.done;
 		this.title = deps.title ?? "pi-ask";
+		this.highlight = deps.highlight;
 
 		const titleText = new Text(this.theme.fg("accent", this.theme.bold(this.title)), 1, 0);
 		this.addChild(titleText);
@@ -172,6 +196,36 @@ export class AskProComponent extends Container {
 		const opts = this.questions[qIdx]?.options ?? [];
 		const rec = opts.findIndex((o) => o.recommended);
 		return rec >= 0 ? rec : 0;
+	}
+
+	/** A question with no options whose answer is typed free-text. */
+	private isFreeText(qIdx: number): boolean {
+		return this.questions[qIdx]?.freeText === true;
+	}
+
+	/** Min/max number of selections for a multi-select question. min defaults
+	 *  to 1, max to the number of options (effectively unlimited). */
+	private multiSelectBounds(q: AskQuestion): { min: number; max: number } {
+		const optionCount = q.options.length + (q.allowOther ? 1 : 0);
+		const min = Math.max(1, q.minSelect ?? 1);
+		const max = Math.min(optionCount, q.maxSelect ?? optionCount);
+		return { min, max: Math.max(min, max) };
+	}
+
+	/** Number of items currently selected for a multi-select question. */
+	private multiCount(qIdx: number): number {
+		const a = this.answers.get(qIdx);
+		return Array.isArray(a) ? a.length : 0;
+	}
+
+	/** Lazily get the persistent free-text Input for a question. */
+	private freeTextInputFor(qIdx: number): Input {
+		let input = this.freeTextInputs.get(qIdx);
+		if (!input) {
+			input = new Input();
+			this.freeTextInputs.set(qIdx, input);
+		}
+		return input;
 	}
 
 	// -------------------------------------------------------------------------
@@ -204,14 +258,27 @@ export class AskProComponent extends Container {
 	private renderTabs(): string {
 		return this.questions
 			.map((q, i) => {
-				const answered = this.isAnswered(i);
+				const skipped = this.skipped.has(i);
+				const filled = this.hasContent(i);
 				const active = i === this.currentIndex;
-				const marker = active ? "◉" : answered ? "✓" : "○";
+				const marker = active ? "◉" : skipped ? "⊘" : filled ? "✓" : "○";
 				const label = q.header.length > 12 ? `${q.header.slice(0, 11)}…` : q.header;
-				const color = active ? "accent" : answered ? "success" : "dim";
+				const color = active ? "accent" : skipped ? "dim" : filled ? "success" : "dim";
 				return this.theme.fg(color, `${marker} ${label}`);
 			})
 			.join(this.theme.fg("dim", "   "));
+	}
+
+	/** Does the question hold a real (non-skipped) answer? Distinct from
+	 *  isAnswered, which treats skipped/free-text as non-blocking. */
+	private hasContent(qIdx: number): boolean {
+		if (this.skipped.has(qIdx)) return false;
+		if (this.isFreeText(qIdx)) {
+			return (this.freeTextInputs.get(qIdx)?.getValue().trim() ?? "") !== "";
+		}
+		const a = this.answers.get(qIdx);
+		if (a === undefined) return false;
+		return Array.isArray(a) ? a.length > 0 : true;
 	}
 
 	private renderQuestionBody(): void {
@@ -234,6 +301,20 @@ export class AskProComponent extends Container {
 			),
 		);
 		this.bodyContainer.addChild(new Spacer(1));
+
+		// Skipped — show a muted note instead of the options.
+		if (this.skipped.has(this.currentIndex)) {
+			this.bodyContainer.addChild(
+				new Text(this.theme.fg("dim", "⊘ skipped — press s to answer"), 1, 0),
+			);
+			return;
+		}
+
+		// Free-text — the answer is typed into an always-on inline field.
+		if (this.isFreeText(this.currentIndex)) {
+			this.renderFreeTextBody();
+			return;
+		}
 
 		const isMulti = q.multiSelect ?? false;
 		const allowOther = q.allowOther ?? false;
@@ -357,6 +438,24 @@ export class AskProComponent extends Container {
 		this.renderInlineField();
 	}
 
+	/** Render the body of a free-text question: a label, the persistent inline
+	 *  Input, and a hint. Keystrokes are routed to the field by handleInput. */
+	private renderFreeTextBody(): void {
+		this.bodyContainer.addChild(
+			new Text(this.theme.fg("dim", "Type your answer:"), 1, 0),
+		);
+		this.bodyContainer.addChild(new Spacer(1));
+		this.bodyContainer.addChild(this.freeTextInputFor(this.currentIndex));
+		this.bodyContainer.addChild(new Spacer(1));
+		this.bodyContainer.addChild(
+			new Text(
+				this.theme.fg("dim", "(blank is allowed — this question is optional)"),
+				1,
+				0,
+			),
+		);
+	}
+
 	/** Append the active inline text field to bodyContainer. No-op when no
 	 *  inline mode is active. */
 	private renderInlineField(): void {
@@ -435,6 +534,24 @@ export class AskProComponent extends Container {
 			return parts.join("   ");
 		}
 
+		// Skipped — only the un-skip + nav affordances apply.
+		if (this.skipped.has(this.currentIndex)) {
+			parts.push(this.theme.fg("accent", "s answer"));
+			if (this.currentIndex > 0) parts.push(this.theme.fg("dim", "tab/← prev"));
+			if (!isLast) parts.push(this.theme.fg("dim", "tab/→ next"));
+			parts.push(this.theme.fg("dim", "esc cancel"));
+			return parts.join("   ");
+		}
+
+		// Free-text — typing field owns most keys; tab/enter navigate/submit.
+		if (this.isFreeText(this.currentIndex)) {
+			parts.push(this.theme.fg("dim", "type answer"));
+			if (this.currentIndex > 0) parts.push(this.theme.fg("dim", "tab prev"));
+			parts.push(this.theme.fg("accent", isLast ? "⏎ submit" : "⏎ next"));
+			parts.push(this.theme.fg("dim", "esc cancel"));
+			return parts.join("   ");
+		}
+
 		parts.push(this.theme.fg("dim", "↑↓ navigate"));
 		parts.push(this.theme.fg("dim", `1-${totalOptions} pick`));
 		if (this.currentIndex > 0) parts.push(this.theme.fg("dim", "tab/← prev"));
@@ -449,6 +566,14 @@ export class AskProComponent extends Container {
 		} else if (isMulti) {
 			// Multi-select: Space toggles, Enter advances/submits
 			parts.push(this.theme.fg("dim", "␣ toggle"));
+			// Min/max bounds hint with a live count, e.g. "pick 2–3 (1)".
+			const { min, max } = this.multiSelectBounds(q);
+			const count = this.multiCount(this.currentIndex);
+			if (min > 1 || max < totalOptions) {
+				const range = min === max ? `${min}` : `${min}–${max}`;
+				const ok = count >= min && count <= max;
+				parts.push(this.theme.fg(ok ? "success" : "warning", `pick ${range} (${count})`));
+			}
 			if (isLast) {
 				parts.push(
 					this.theme.fg(
@@ -468,14 +593,25 @@ export class AskProComponent extends Container {
 		const hasNote = this.notes.has(this.currentIndex);
 		const noteHint = hasNote ? "n ✓note" : "n note";
 		parts.push(this.theme.fg(hasNote ? "success" : "dim", noteHint));
+		parts.push(this.theme.fg("dim", "s skip"));
 		parts.push(this.theme.fg("dim", "esc cancel"));
 		return parts.join("   ");
 	}
 
 	private isAnswered(qIdx: number): boolean {
+		// Explicitly skipped questions never block submission.
+		if (this.skipped.has(qIdx)) return true;
+		// Free-text is optional — typing is encouraged but blank is allowed,
+		// so the question never blocks the flow.
+		if (this.isFreeText(qIdx)) return true;
 		const a = this.answers.get(qIdx);
 		if (a === undefined) return false;
-		if (Array.isArray(a)) return a.length > 0;
+		if (Array.isArray(a)) {
+			const q = this.questions[qIdx];
+			if (!q) return a.length > 0;
+			const { min, max } = this.multiSelectBounds(q);
+			return a.length >= min && a.length <= max;
+		}
 		return true;
 	}
 
@@ -508,12 +644,32 @@ export class AskProComponent extends Container {
 			return;
 		}
 
+		// Free-text question — the inline field owns most keys (printable input,
+		// cursor arrows, backspace); only Tab/Shift-Tab/Enter navigate/submit.
+		if (this.isFreeText(this.currentIndex) && !this.skipped.has(this.currentIndex)) {
+			this.handleFreeTextKey(keyData);
+			return;
+		}
+
 		const q = this.questions[this.currentIndex];
 		if (!q) return;
 		const isMulti = q.multiSelect ?? false;
 		const allowOther = q.allowOther ?? false;
 		const otherIndex = allowOther ? q.options.length : -1;
 		const totalOptions = this.totalOptionsForCurrent();
+
+		// `s` — toggle skip for the current question (works from any state,
+		// including re-answering a previously skipped question).
+		if (keyData === "s") {
+			this.toggleSkip();
+			return;
+		}
+
+		// While skipped, option interaction is locked — only navigation applies.
+		if (this.skipped.has(this.currentIndex)) {
+			this.handleSkippedNav(keyData);
+			return;
+		}
 
 		// Arrow up / k — move selection up
 		if (
@@ -584,8 +740,13 @@ export class AskProComponent extends Container {
 			}
 			const cur = (this.answers.get(this.currentIndex) as AskMultiAnswer | undefined) ?? [];
 			const idx = cur.indexOf(this.selectedIndex);
-			if (idx === -1) cur.push(this.selectedIndex);
-			else cur.splice(idx, 1);
+			if (idx === -1) {
+				// Respect maxSelect: ignore the toggle once the cap is reached.
+				if (cur.length >= this.multiSelectBounds(q).max) return;
+				cur.push(this.selectedIndex);
+			} else {
+				cur.splice(idx, 1);
+			}
 			this.answers.set(this.currentIndex, cur);
 			this.repaint();
 			return;
@@ -664,8 +825,12 @@ export class AskProComponent extends Container {
 		if (isMulti) {
 			const cur = (this.answers.get(this.currentIndex) as AskMultiAnswer | undefined) ?? [];
 			const idx = cur.indexOf(optionIdx);
-			if (idx === -1) cur.push(optionIdx);
-			else cur.splice(idx, 1);
+			if (idx === -1) {
+				if (cur.length >= this.multiSelectBounds(q).max) return;
+				cur.push(optionIdx);
+			} else {
+				cur.splice(idx, 1);
+			}
 			this.answers.set(this.currentIndex, cur);
 			this.repaint();
 		} else {
@@ -683,6 +848,104 @@ export class AskProComponent extends Container {
 				this.repaint();
 			}
 		}
+	}
+
+	/** Toggle the skip state of the current question. Skipping discards any
+	 *  partial answer and advances; un-skipping stays so the user can answer. */
+	private toggleSkip(): void {
+		const i = this.currentIndex;
+		if (this.skipped.has(i)) {
+			this.skipped.delete(i);
+			this.repaint();
+			return;
+		}
+		this.skipped.add(i);
+		this.answers.delete(i);
+		this.advanceOrSubmit();
+	}
+
+	/** Advance to the next question; on the last one, submit if everything is
+	 *  answered, else just repaint. Shared by skip / free-text / pick flows. */
+	private advanceOrSubmit(): void {
+		if (this.currentIndex < this.questions.length - 1) {
+			this.currentIndex++;
+			this.selectedIndex = this.defaultIndexFor(this.currentIndex);
+			this.repaint();
+		} else if (this.allAnswered()) {
+			this.submit();
+		} else {
+			this.repaint();
+		}
+	}
+
+	/** Navigation while a question is skipped (option interaction is locked). */
+	private handleSkippedNav(keyData: string): void {
+		if (keyData === KEY_TAB || keyData === KEY_RIGHT) {
+			if (this.currentIndex < this.questions.length - 1) {
+				this.currentIndex++;
+				this.selectedIndex = this.defaultIndexFor(this.currentIndex);
+				this.repaint();
+			}
+			return;
+		}
+		if (
+			keyData === KEY_SHIFT_TAB ||
+			keyData === KEY_LEFT ||
+			keyData === KEY_BACKSPACE
+		) {
+			if (this.currentIndex > 0) {
+				this.currentIndex--;
+				this.selectedIndex = this.defaultIndexFor(this.currentIndex);
+				this.repaint();
+			}
+			return;
+		}
+		if (
+			this.keybindings.matches(keyData, "tui.select.confirm") ||
+			keyData === KEY_ENTER ||
+			keyData === KEY_ENTER_CR
+		) {
+			this.advanceOrSubmit();
+		}
+	}
+
+	/** Key handling for a free-text question: Tab/Shift-Tab navigate, Enter
+	 *  advances/submits (committing the typed value), everything else (printable
+	 *  chars, cursor arrows, backspace) routes to the inline field. */
+	private handleFreeTextKey(keyData: string): void {
+		if (keyData === KEY_TAB) {
+			this.commitFreeText();
+			if (this.currentIndex < this.questions.length - 1) this.currentIndex++;
+			this.repaint();
+			return;
+		}
+		if (keyData === KEY_SHIFT_TAB) {
+			this.commitFreeText();
+			if (this.currentIndex > 0) this.currentIndex--;
+			this.repaint();
+			return;
+		}
+		if (
+			this.keybindings.matches(keyData, "tui.select.confirm") ||
+			keyData === KEY_ENTER ||
+			keyData === KEY_ENTER_CR
+		) {
+			this.commitFreeText();
+			this.advanceOrSubmit();
+			return;
+		}
+		this.freeTextInputFor(this.currentIndex).handleInput(keyData);
+		this.commitFreeText();
+		this.repaint();
+	}
+
+	/** Mirror the current free-text field's value into the answers map (trimmed,
+	 *  non-empty), or clear it when blank. Keeps tab markers / submit live. */
+	private commitFreeText(): void {
+		const i = this.currentIndex;
+		const value = this.freeTextInputs.get(i)?.getValue().trim() ?? "";
+		if (value === "") this.answers.delete(i);
+		else this.answers.set(i, value);
 	}
 
 	/** Create a fresh inline Input pre-filled with `value`, cursor at the
@@ -804,7 +1067,14 @@ export class AskProComponent extends Container {
 	private submit(): void {
 		if (!this.allAnswered()) return;
 		const answers: Record<number, AskAnswer | AskMultiAnswer> = {};
+		const skipped: number[] = [];
 		for (let i = 0; i < this.questions.length; i++) {
+			// A question with no real content (explicitly skipped, or a free-text
+			// field left blank) is reported as skipped, not as an answer.
+			if (!this.hasContent(i)) {
+				skipped.push(i);
+				continue;
+			}
 			answers[i] = this.answers.get(i) as AskAnswer | AskMultiAnswer;
 		}
 		// Include notes only if at least one was added
@@ -818,7 +1088,10 @@ export class AskProComponent extends Container {
 			}
 		}
 		this.completed = true;
-		this.done(hasNotes ? { answers, notes } : { answers });
+		const result: AskProResult = { answers };
+		if (hasNotes) result.notes = notes;
+		if (skipped.length > 0) result.skipped = skipped;
+		this.done(result);
 	}
 
 	// -------------------------------------------------------------------------
@@ -891,6 +1164,48 @@ export class AskProComponent extends Container {
 		return out;
 	}
 
+	/** Final, styled preview lines for the given column width. Prose is
+	 *  word-wrapped and themed; fenced ```lang code blocks are syntax-highlighted
+	 *  (via the optional highlighter) and hard-truncated, never word-wrapped. */
+	private previewDisplayLines(maxWidth: number): string[] {
+		const raw = this.currentPreviewLines();
+		const out: string[] = [];
+		let codeBuf: string[] | null = null;
+		let codeLang = "";
+		for (const line of raw) {
+			const fence = line.trimStart().match(/^```(\w*)\s*$/);
+			if (fence) {
+				if (codeBuf === null) {
+					codeBuf = [];
+					codeLang = fence[1] ?? "";
+				} else {
+					out.push(...this.highlightBlock(codeBuf, codeLang, maxWidth));
+					codeBuf = null;
+					codeLang = "";
+				}
+				continue;
+			}
+			if (codeBuf !== null) {
+				codeBuf.push(line);
+				continue;
+			}
+			for (const w of this.wrapPreviewLine(line, maxWidth)) {
+				out.push(this.theme.fg("text", w));
+			}
+		}
+		if (codeBuf !== null) out.push(...this.highlightBlock(codeBuf, codeLang, maxWidth));
+		return out;
+	}
+
+	/** Highlight a fenced code block to styled lines capped at `maxWidth`. Falls
+	 *  back to dimmed plain text when no highlighter was provided. */
+	private highlightBlock(code: string[], lang: string, maxWidth: number): string[] {
+		const highlighted = this.highlight
+			? this.highlight(code.join("\n"), lang || undefined)
+			: code.map((l) => this.theme.fg("dim", l));
+		return highlighted.map((l) => truncateToWidth(l, maxWidth, "", false));
+	}
+
 	/** Override render to produce a side-by-side layout when a preview is
 	 *  present. Falls back to default Container render otherwise. Every
 	 *  returned line is guaranteed ≤ `width` visible columns. */
@@ -911,15 +1226,11 @@ export class AskProComponent extends Container {
 		);
 		const previewWidth = width - splitCol - sepLen;
 		if (previewWidth < AskProComponent.MIN_COL) {
-			return this.renderPreviewStacked(width, superLines, previewLines, border);
+			return this.renderPreviewStacked(width, superLines, border);
 		}
 
-		// Wrap each preview source line to previewWidth (a long line may
-		// produce several wrapped rows).
-		const wrapped: string[] = [];
-		for (const line of previewLines) {
-			for (const w of this.wrapPreviewLine(line, previewWidth)) wrapped.push(w);
-		}
+		// Final styled preview rows (prose wrapped, code highlighted).
+		const wrapped = this.previewDisplayLines(previewWidth);
 
 		const result: string[] = [];
 		// Header row for the preview column (aligned under it), hard-capped.
@@ -939,7 +1250,7 @@ export class AskProComponent extends Container {
 			// short ones. truncateToWidth preserves ANSI/OSC styling.
 			const left = truncateToWidth(superLine, splitCol, "", true);
 			let row = left + " " + border + " ";
-			if (pLine !== undefined) row += this.theme.fg("text", pLine);
+			if (pLine !== undefined) row += pLine; // already styled
 			// Hard cap — the guarantee that prevents the terminal-width crash.
 			result.push(truncateToWidth(row, width, "", false));
 		}
@@ -951,7 +1262,6 @@ export class AskProComponent extends Container {
 	private renderPreviewStacked(
 		width: number,
 		superLines: string[],
-		previewLines: string[],
 		border: string,
 	): string[] {
 		const result: string[] = [];
@@ -959,10 +1269,8 @@ export class AskProComponent extends Container {
 		result.push(
 			truncateToWidth(this.theme.fg("dim", `${border} — preview —`), width, "", false),
 		);
-		for (const line of previewLines) {
-			for (const w of this.wrapPreviewLine(line, width)) {
-				result.push(truncateToWidth(this.theme.fg("text", w), width, "", false));
-			}
+		for (const l of this.previewDisplayLines(width)) {
+			result.push(truncateToWidth(l, width, "", false));
 		}
 		return result;
 	}
