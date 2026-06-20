@@ -35,6 +35,9 @@ export type ListPanelProps = {
 	actions?: ListAction[];
 	/** Re-read items after an action mutates state. */
 	refresh?: () => ListItem[];
+	/** Fired on Enter for the selected item; the panel then closes. When set,
+	 *  the footer shows an "⏎ open" hint. */
+	onSelect?: (item: ListItem) => void;
 };
 
 const MAX_ROWS = 12; // list window height (render() has no viewport height)
@@ -110,6 +113,13 @@ export class ListPanel implements Component {
 			this.selected = Math.min(list.length - 1, this.selected + 1);
 		} else if (data === "/") {
 			this.searching = true;
+		} else if (matchesKey(data, "return")) {
+			const current = list[this.selected];
+			if (this.p.onSelect && current) {
+				this.p.onSelect(current);
+				this.p.done();
+				return;
+			}
 		} else {
 			const action = this.p.actions?.find((a) => a.key === data);
 			const current = list[this.selected];
@@ -189,7 +199,8 @@ export class ListPanel implements Component {
 
 	private footerLine(inner: number, dim: (s: string) => string): string {
 		const acts = (this.p.actions ?? []).map((a) => `${a.key} ${a.hint}`).join(" · ");
-		const hint = ` ↑↓ move · / search${acts ? " · " + acts : ""} · esc `;
+		const open = this.p.onSelect ? "⏎ open · " : "";
+		const hint = ` ↑↓ move · ${open}/ search${acts ? " · " + acts : ""} · esc `;
 		const fillN = Math.max(1, inner + 2 - visibleWidth(hint));
 		return dim("└") + dim(hint) + dim("─".repeat(fillN)) + dim("┘");
 	}

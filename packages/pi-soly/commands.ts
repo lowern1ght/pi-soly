@@ -67,7 +67,13 @@ export interface CommandsDeps {
 /** Open a focused list modal (overlay) for the given items + actions. */
 async function openListPanel(
 	ctx: ExtensionCommandContext,
-	spec: { title: string; headerRight?: string; build: () => ListItem[]; actions?: ListAction[] },
+	spec: {
+		title: string;
+		headerRight?: string;
+		build: () => ListItem[];
+		actions?: ListAction[];
+		onSelect?: (item: ListItem) => void;
+	},
 ): Promise<void> {
 	await ctx.ui.custom<void>(
 		(tui, theme, keybindings, done) =>
@@ -81,6 +87,7 @@ async function openListPanel(
 				items: spec.build(),
 				actions: spec.actions,
 				refresh: spec.build,
+				onSelect: spec.onSelect,
 			}),
 		{ overlay: true },
 	);
@@ -806,45 +813,81 @@ What must the LLM do?
 				},
 			};
 
+			const ICONS: Record<string, string> = {
+				position: "📍", state: "📄", plan: "📋", context: "💡",
+				research: "🔬", roadmap: "🗺️", progress: "📊",
+				phases: "📁", tasks: "✅", task: "🔎",
+				features: "⭐", milestone: "🎯", reload: "🔄", config: "⚙️",
+			};
+
+			// Short live preview shown in the modal's preview pane per subcommand.
+			const previewFor = (name: string): string => {
+				const s = getState();
+				const teaser = (p: string | null): string => (p ?? "").replace(/\s+/g, " ").slice(0, 240);
+				const phaseFile = (suffix: string) =>
+					s.currentPhase ? readIfExists(path.join(s.currentPhase.dir, `${s.currentPhase.slug}-${suffix}.md`)) : null;
+				switch (name) {
+					case "position": return s.position ? `${s.position.phase} · ${s.position.plan} · ${s.position.status} · ${s.progress.percent}%` : `${s.milestone} — no position set`;
+					case "progress": return `${s.progress.percent}% · ${s.progress.completedPhases}/${s.progress.totalPhases} phases · ${s.progress.completedPlans}/${s.progress.totalPlans} plans`;
+					case "phases": return s.phases.length ? s.phases.map((p) => `${p.number}.${p.name}`).join(" · ") : "no phases";
+					case "tasks": return s.tasks.length ? `${s.tasks.length} task(s) across ${s.features.length} feature(s)` : "no tasks";
+					case "features": return s.features.length ? s.features.map((f) => f.name).join(" · ") : "no features";
+					case "milestone": return s.milestone && s.milestone !== "—" ? String(s.milestoneName ?? s.milestone) : "no milestone set";
+					case "state": return teaser(s.stateBody) || "STATE.md not found";
+					case "roadmap": return teaser(s.roadmapBody) || "ROADMAP.md not found";
+					case "plan": return s.currentPlanPath ? teaser(readIfExists(s.currentPlanPath)) : "no current plan";
+					case "context": return s.currentPhase ? teaser(phaseFile("CONTEXT")) || "CONTEXT.md not found" : "no current phase";
+					case "research": return s.currentPhase ? teaser(phaseFile("RESEARCH")) || "RESEARCH.md not found" : "no current phase";
+					case "config": return "merged config — press ⏎ to view the JSON";
+					case "reload": return "re-read project state from disk";
+					default: return subcommands[name]?.description ?? "";
+				}
+			};
+
+			const solyItems = (): ListItem[] =>
+				Object.keys(subcommands).map((name) => ({
+					id: name,
+					marker: ICONS[name] ?? "▸",
+					label: name,
+					meta: subcommands[name]!.description,
+					body: previewFor(name),
+				}));
+
+			// Plain-select fallback for non-TUI (RPC/print) modes.
 			const picker = async (label: string) => {
 				const entries = Object.entries(subcommands);
-				const lines = entries.map(
-					([name, spec], i) => {
-						const icons: Record<string, string> = {
-							position: "📍", state: "📄", plan: "📋", context: "💡",
-							research: "🔬", roadmap: "🗺️", progress: "📊",
-							phases: "📁", tasks: "✅", task: "🔎",
-							features: "⭐", milestone: "🎯", reload: "🔄",
-							config: "⚙️",
-						};
-						const icon = icons[name] ?? "▸";
-						return `${icon} ${name} — ${spec.description}`;
-					},
-				);
+				const lines = entries.map(([name, spec]) => `${ICONS[name] ?? "▸"} ${name} — ${spec.description}`);
 				const choice = await ui.select(label, lines);
 				if (choice != null && typeof choice === "number") {
 					const name = entries[choice]?.[0];
-					if (name) {
-						await subcommands[name].run([name]);
-					}
+					if (name) await subcommands[name]!.run([name]);
 				}
+			};
+
+			const openMenu = async () => {
+				if (ctx.mode !== "tui") return picker("soly (esc to cancel):");
+				const s = getState();
+				await openListPanel(ctx, {
+					title: "soly · state",
+					headerRight: `${s.phases.length} phases · ${s.progress.percent}%`,
+					build: solyItems,
+					onSelect: (it) => {
+						void subcommands[it.id]?.run([it.id]);
+					},
+				});
 			};
 
 			const parts = args.trim().split(/\s+/).filter(Boolean);
 			const sub = parts[0] ?? "";
 
-			// /soly with no args → interactive picker with emoji + next hint
-			if (!sub) {
-				return picker("soly (esc to cancel):");
-			}
-
-			if (sub === "help" || sub === "?" || sub === "--help" || sub === "-h") {
-				return picker("soly subcommand (esc to cancel):");
+			// /soly (or help) with no specific subcommand → the modal (TUI) / picker.
+			if (!sub || sub === "help" || sub === "?" || sub === "--help" || sub === "-h") {
+				return openMenu();
 			}
 
 			if (!subcommands[sub]) {
 				ui.notify(`soly: unknown subcommand '${sub}'`, "error");
-				return picker("did you mean:");
+				return openMenu();
 			}
 
 			await subcommands[sub].run(parts);
