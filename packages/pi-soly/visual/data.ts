@@ -37,6 +37,8 @@ export type ChromeData = {
 	phaseLabel: string | null;
 	/** Active workflow verb, e.g. "execute"; null when idle. */
 	verbLabel: string | null;
+	/** html_artifacts created this session (0 = no segment). */
+	artifactCount: number;
 };
 
 /** A fresh ChromeData with everything empty/idle. */
@@ -55,5 +57,6 @@ export function emptyChromeData(): ChromeData {
 		rulesActive: 0,
 		phaseLabel: null,
 		verbLabel: null,
+		artifactCount: 0,
 	};
 }

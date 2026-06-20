@@ -23,6 +23,7 @@ import type { SolyConfig } from "../config.ts";
 import { atomicWriteFileSync } from "../util.ts";
 import { buildArtifactHtml, artifactFileName, artifactFileNameForId, DEFAULT_CSS } from "./render.ts";
 import { ArtifactServer } from "./server.ts";
+import { setArtifactServer } from "./session.ts";
 
 type ToolText = { content: { type: "text"; text: string }[]; details: Record<string, unknown> };
 type Asset = { path: string; content: string; encoding?: string };
@@ -147,6 +148,7 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 	pi.on("session_shutdown", async () => {
 		server?.stop();
 		server = null;
+		setArtifactServer(null);
 	});
 
 	pi.registerTool({
@@ -201,7 +203,10 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 
 			if (!cfg.server) return fileMode(pi, file, bytes, shouldOpen);
 
-			if (!server) server = new ArtifactServer(sessionDir);
+			if (!server) {
+				server = new ArtifactServer(sessionDir);
+				setArtifactServer(server);
+			}
 			try {
 				await server.ensureStarted();
 			} catch (err) {
@@ -219,6 +224,12 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 				} catch (err) {
 					openError = String(err);
 				}
+			}
+			// User-facing nudge with the link (chat notify; the LLM gets the text result).
+			try {
+				ctx.ui.notify(`🖼 artifact "${params.title}" → ${url}`, "info");
+			} catch {
+				// notify unavailable in some modes — ignore
 			}
 			const lines = [`Artifact: ${url}`, `Gallery (all session artifacts): ${gallery}`];
 			if (opened) lines.push("Opened the gallery in your browser.");

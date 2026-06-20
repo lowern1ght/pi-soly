@@ -21,7 +21,7 @@ pi-soly.framework/
 packages/pi-soly/
 ├── index.ts              # main entry — solyExtension(pi)
 ├── core.ts               # types, loaders (rules/docs/intent), builders
-├── commands.ts           # /rules /soly /soly-migrate /soly-init /soly-status /why /rulewizard
+├── commands.ts           # /rules /docs /soly /artifacts /soly-migrate /soly-init /why /rulewizard
 ├── tools.ts              # soly_read, soly_log_decision, soly_list_phases
 ├── notification.ts       # Box widget for framed messages
 ├── notifications-log.ts  # JSONL append to .soly/notifications.log

@@ -77,6 +77,11 @@ export function buildFooterLine(data: ChromeData, fd: FooterData, width: number,
 		left.push({ id: "rules", text: styler.dim(rulesText), priority: 5 });
 	}
 
+	if (data.artifactCount > 0) {
+		const artText = ascii ? `${data.artifactCount} art` : `🖼 ${data.artifactCount}`;
+		left.push({ id: "artifacts", text: styler.dim(artText), priority: 4 });
+	}
+
 	const exts = [...fd.getExtensionStatuses().entries()]
 		.filter(([key]) => key !== "soly")
 		.sort(([a], [b]) => a.localeCompare(b))

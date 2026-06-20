@@ -22,7 +22,12 @@ All notable changes to the monorepo are documented here.
   `assets` writes sibling files (images/css/json) the HTML can reference; the
   theme is overridable via `.soly/artifact-theme.css`. Falls back to opening the
   file directly when the server is off. Config under `artifacts` (`open`, `dir`,
-  `server`, `theme`, `retentionDays`).
+  `server`, `theme`, `retentionDays`). **`/artifacts`** browses the gallery from
+  the terminal (modal: Enter opens, `g` gallery, `x` delete, `clear` all); a
+  `🖼 N` footer indicator shows the live count and a notification fires on create.
+- **`/soly`** now opens the ListPanel modal (like `/rules`) with a live preview
+  per subcommand and Enter-to-open — replacing the plain picker (and its
+  duplicated entries).
 - **`ask_pro`** gained per-option `preview` (side panel, with fenced code
   syntax-highlighted), per-question `allowOther` (free-text "Other…"),
   `freeText` questions (no options — typed answer), multi-select `minSelect`/

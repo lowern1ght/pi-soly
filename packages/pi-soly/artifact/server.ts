@@ -73,6 +73,54 @@ export class ArtifactServer {
 		return `http://127.0.0.1:${this.port}/${this.token}/a/${encodeURIComponent(path.basename(file))}`;
 	}
 
+	/** Number of artifacts registered this session. */
+	get count(): number {
+		return this.entries.length;
+	}
+
+	/** Snapshot of the current entries (newest first), each with its URL. */
+	list(): (GalleryEntry & { url: string })[] {
+		return this.entries.map((e) => ({ ...e, url: this.artifactUrl(e.file) }));
+	}
+
+	/** Remove an artifact by id (and delete its file). Returns whether it existed. */
+	remove(id: string): boolean {
+		const i = this.entries.findIndex((e) => e.id === id);
+		if (i < 0) return false;
+		const [e] = this.entries.splice(i, 1);
+		if (e) this.deleteFile(e.file);
+		this.broadcast();
+		return true;
+	}
+
+	/** Remove every artifact (and delete the files). Returns how many. */
+	clear(): number {
+		const n = this.entries.length;
+		for (const e of this.entries) this.deleteFile(e.file);
+		this.entries.length = 0;
+		this.broadcast();
+		return n;
+	}
+
+	private deleteFile(base: string): void {
+		try {
+			fs.unlinkSync(path.join(this.dir, base));
+		} catch {
+			// best effort
+		}
+	}
+
+	/** Notify open gallery tabs (SSE) that the list changed. */
+	private broadcast(): void {
+		for (const res of this.clients) {
+			try {
+				res.write("data: update\n\n");
+			} catch {
+				// dropped client — cleaned up on its 'close'
+			}
+		}
+	}
+
 	/** Start listening on an ephemeral 127.0.0.1 port. Idempotent. */
 	async ensureStarted(): Promise<void> {
 		if (this.server) return;
@@ -105,13 +153,7 @@ export class ArtifactServer {
 				createdAt: Date.now(),
 			});
 		}
-		for (const res of this.clients) {
-			try {
-				res.write("data: update\n\n");
-			} catch {
-				// dropped client — cleaned up on its 'close'
-			}
-		}
+		this.broadcast();
 		return this.artifactUrl(base);
 	}
 

@@ -9,6 +9,7 @@
 //                    subcommands: position, state, plan, context, research, roadmap,
 //                                 progress, phases, tasks, task <id>, features,
 //                                 milestone, reload, help
+//   - /artifacts     browse this session's html_artifact gallery (list/open/clear)
 //   - /rulewizard    interactive guide for rule vs .editorconfig vs linter
 //   - /why           show rules + project state that grounded the last turn
 //
@@ -18,6 +19,7 @@
 
 import * as path from "node:path";
 import * as fs from "node:fs";
+import { platform } from "node:os";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import {
 	analyzeRules,
@@ -44,6 +46,7 @@ import type { SolyConfig } from "./config.ts";
 import { migrateSolyDir } from "./migrate.js";
 import { initSolyProject } from "./init.js";
 import { ListPanel, type ListItem, type ListAction } from "./visual/list-panel.ts";
+import { getArtifactServer } from "./artifact/session.ts";
 
 /** Minimum ui surface the command handlers actually need. */
 export interface CommandUI {
@@ -91,6 +94,18 @@ async function openListPanel(
 			}),
 		{ overlay: true },
 	);
+}
+
+/** Open a URL/file with the OS default handler (browser for http/.html). */
+async function openExternally(pi: ExtensionAPI, target: string): Promise<void> {
+	const o = platform();
+	const r =
+		o === "darwin"
+			? await pi.exec("open", [target])
+			: o === "win32"
+				? await pi.exec("cmd", ["/c", "start", "", target])
+				: await pi.exec("xdg-open", [target]);
+	if (r.code !== 0) throw new Error(r.stderr || `open failed (exit ${r.code})`);
 }
 
 /** Status marker for a rule: ● always-on · ◐ glob-matched · ○ disabled. */
@@ -893,6 +908,66 @@ What must the LLM do?
 			await subcommands[sub].run(parts);
 		},
 	});
+	// ============================================================================
+	// /artifacts — browse this session's html_artifact gallery
+	// ============================================================================
+
+	pi.registerCommand("artifacts", {
+		description: "browse this session's html_artifact gallery (list, open, clear)",
+		handler: async (args, ctx) => {
+			const server = getArtifactServer();
+			if (!server || server.count === 0) {
+				ctx.ui.notify("soly: no artifacts created this session yet (use the html_artifact tool)", "info");
+				return;
+			}
+			const gallery = server.galleryUrl();
+			const sub = args.trim().split(/\s+/).filter(Boolean)[0] ?? "";
+
+			if (sub === "clear") {
+				const n = server.clear();
+				ctx.ui.notify(`soly: cleared ${n} artifact(s)`, "info");
+				return;
+			}
+			if (sub === "open" || sub === "gallery") {
+				try {
+					await openExternally(pi, gallery);
+					ctx.ui.notify(`soly: opened ${gallery}`, "info");
+				} catch {
+					ctx.ui.notify(`soly artifacts gallery: ${gallery}`, "info");
+				}
+				return;
+			}
+
+			if (ctx.mode === "tui") {
+				await openListPanel(ctx, {
+					title: "soly · artifacts",
+					headerRight: `${server.count} · ${gallery}`,
+					build: () =>
+						(getArtifactServer()?.list() ?? []).map((a) => ({
+							id: a.id,
+							marker: "🖼",
+							label: a.title,
+							meta: new Date(a.createdAt).toLocaleTimeString(),
+							body: a.url,
+						})),
+					onSelect: (it) => {
+						const a = getArtifactServer()?.list().find((x) => x.id === it.id);
+						if (a) void openExternally(pi, a.url);
+					},
+					actions: [
+						{ key: "g", hint: "gallery", run: () => void openExternally(pi, gallery) },
+						{ key: "x", hint: "delete", run: (it) => { getArtifactServer()?.remove(it.id); } },
+					],
+				});
+				return;
+			}
+
+			// Non-TUI: print the list + gallery URL.
+			const lines = server.list().map((a) => `🖼 ${a.title} — ${a.url}`);
+			ctx.ui.notify([`soly artifacts gallery: ${gallery}`, "", ...lines].join("\n"), "info");
+		},
+	});
+
 	// ============================================================================
 	// /rulewizard
 	// ============================================================================

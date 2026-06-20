@@ -139,6 +139,17 @@ describe("artifact — session server", () => {
 			const trav = base + "a/" + encodeURIComponent("../../etc/hosts");
 			expect([403, 404]).toContain((await fetch(trav)).status);
 
+			// count / list / remove / clear
+			srv.register("Second", path.join(dir, "data.json"), "two");
+			expect(srv.count).toBe(2);
+			expect(srv.list().map((e) => e.id).sort()).toEqual(["demo", "two"]);
+			expect(srv.list()[0]?.url).toContain("/a/");
+			expect(srv.remove("two")).toBe(true);
+			expect(srv.remove("nope")).toBe(false);
+			expect(srv.count).toBe(1);
+			expect(srv.clear()).toBe(1);
+			expect(srv.count).toBe(0);
+
 			// First-open latch fires exactly once
 			expect(srv.consumeFirstOpen()).toBe(true);
 			expect(srv.consumeFirstOpen()).toBe(false);

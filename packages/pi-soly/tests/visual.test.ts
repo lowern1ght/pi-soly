@@ -171,6 +171,19 @@ describe("footer.buildFooterLine", () => {
 		expect(line.includes("opus")).toBe(true); // no active verb → model lives in footer
 	});
 
+	test("shows the artifact count segment when artifacts exist", () => {
+		const data = emptyChromeData();
+		data.ctxPercent = 10;
+		data.artifactCount = 3;
+		const fd = fakeFooterData(null, {});
+		const line = buildFooterLine(data, fd, 160, { ascii: true, styler: identityStyler });
+		expect(line.includes("3 art")).toBe(true);
+		// Hidden when zero.
+		const none = emptyChromeData();
+		none.ctxPercent = 10;
+		expect(buildFooterLine(none, fd, 160, { ascii: true, styler: identityStyler }).includes("art")).toBe(false);
+	});
+
 	test("shows model in footer when no verb is active", () => {
 		const data = emptyChromeData();
 		data.ctxPercent = 10;
