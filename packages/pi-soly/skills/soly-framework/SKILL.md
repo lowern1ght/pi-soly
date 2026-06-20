@@ -229,7 +229,9 @@ Once production commits exist, returning without a committed `SUMMARY.md` is an 
 | `soly_snippet(path, offset, limit)` | Read bounded line range with line numbers |
 | `soly_doc_search(query, limit)` | Search .md/.html under cwd (prioritizes intent docs) |
 | `soly_scratchpad(limit)` | Recent conversation recap (one line per turn) |
-| `ask_pro(questions)` | Multi-question picker (tabbed, single/multi-select, ⭐, `preview`, `allowOther`, notes) — preferred |
+| `ask_pro(questions)` | Multi-question picker (tabbed, single/multi-select, ⭐, `preview` w/ code highlight, `allowOther`, `freeText`, `minSelect`/`maxSelect`, `s` to skip, notes) — preferred for structured input |
+| `decision_deck(options)` | Full-screen TUI deck — one card per option with a highlighted code snippet + pros/cons. For design/architecture forks where the choice hinges on the concrete code shape |
+| `html_artifact(title, html)` | Render self-contained HTML (full doc or body fragment) to a temp file and open it in the browser — soly's "artifacts". For visual output: example galleries, comparisons, diagrams |
 | `soly_save_discuss_checkpoint(...)` · `soly_finish_discuss(...)` | Save / finalize a `soly discuss` session (writes CONTEXT.md) |
 | `soly_ask_user(...)` | Single-question picker — **deprecated**, prefer `ask_pro` |
 

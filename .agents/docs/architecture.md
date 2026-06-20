@@ -29,6 +29,8 @@ packages/pi-soly/
 ├── intent.ts             # intent doc loader + section builder
 ├── workflows/            # /soly execute|pause|resume|compact|discuss|plan|inspect|quick
 ├── ask/                  # ask_pro tool (multi-question picker)
+├── deck/                  # decision_deck tool (full-screen option cards)
+├── artifact/              # html_artifact tool (HTML → temp file → browser)
 ├── mcp/                  # pi-mcp-adapter fork (UE5 session-retry + framed notifs)
 ├── skills/soly-framework/  # SKILL.md loaded by LLM on demand
 ├── docs.ts               # builds system-prompt sections (rules, status, hints)
@@ -39,7 +41,7 @@ packages/pi-soly/
 ├── migrate.ts            # .soly/ → .agents/ atomic rename
 ├── init.ts / hotreload.ts / iteration.ts / codemap.ts / scratchpad.ts
 │   └── supporting subsystems
-└── agents-install.ts    # installs soly-framework SKILL.md into ~/.pi/agent/skills/
+└── util.ts             # shared leaf helpers (frontmatter, fs/glob/format)
 ```
 
 ## pi-keyrouter package
@@ -57,7 +59,7 @@ packages/pi-soly/
    b. Registers event hooks (session_start, before_agent_start, etc.)
    c. Registers slash commands
    d. Registers LLM tools
-   e. Mounts sub-features (ask, mcp)
+   e. Mounts sub-features (ask, deck, artifact, mcp)
 5. Extension is "live" — events flow to our handlers
 ```
 

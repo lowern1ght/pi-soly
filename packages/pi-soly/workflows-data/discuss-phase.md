@@ -2,8 +2,11 @@
 
 <purpose>Reference document for the **interactive** `soly discuss <N>` flow. The
 discussion is now driven by the interactive LLM (you) directly — no subagent.
-You use the `soly_ask_user` tool to ask questions one at a time via a real
-UI picker, and `soly_finish_discuss` to write the canonical CONTEXT.md. This
+You ask questions via a real UI picker — **`ask_pro` (preferred, one batched
+call)**, falling back to `soly_ask_user` (deprecated, one question at a time)
+when `ask_pro` isn't available — and `soly_finish_discuss` to write the
+canonical CONTEXT.md. For design/architecture forks you may reach for
+`decision_deck`, and for a rich visual comparison `html_artifact`. This
 markdown is background context, not a strict protocol.</purpose>
 
 <path_discipline>
@@ -20,8 +23,9 @@ The iteration context file (path given by the parent in the task prompt) is your
 2. **Generate 3-5 phase-specific gray areas** grounded in the intent + ROADMAP row. For each, prepare a question with 2-3 CONCRETE options, ⭐ first = recommended answer, with 1-sentence rationale.
 
 3. **Pick a picker** (the parent's prompt tells you which one is preferred):
-   - **`ask_pro`** (from the separate `pi-ask` extension, if installed) — multi-question tabbed picker. **PREFERRED**: call ONCE with all questions, returns all answers in one shot. Supports `allowOther: true` for free-text input per question.
-   - **`soly_ask_user`** (always available as fallback) — single-question picker. Call N times, one per question. No `allowOther` support.
+   - **`ask_pro`** — multi-question tabbed picker. **PREFERRED**: call ONCE with all questions, returns all answers in one shot. Per question: `multiSelect` (+ `minSelect`/`maxSelect`), `allowOther` (free-text choice), `freeText` (typed answer, no options), per-option `preview` (side panel, code highlighted); the user can press `s` to skip.
+   - **`soly_ask_user`** (deprecated — fallback only when `ask_pro` is unavailable) — single-question picker. Call N times, one per question. No `allowOther` support.
+   - **`decision_deck`** (optional) — for an architecture/design fork where the choice hinges on the concrete code shape, present the options as full-screen cards (code snippet + pros/cons) instead of a flat list.
 
 4. **Save a checkpoint after each answer** with `soly_save_discuss_checkpoint` so the user can quit and resume. The final `soly_finish_discuss` will delete the checkpoint and write CONTEXT.md.
 
@@ -165,9 +169,9 @@ Build a small `<codebase_context>` block (≤ 10 lines) of reusable assets/patte
 
 **10. Discuss (interactive, one question at a time).**
 
-**PREFERRED** (if `ask_pro` tool is available from the `pi-ask` extension): call `ask_pro` ONCE with all questions as tabs. Returns all answers in one shot. Per question: `header`, `question`, `options[2-4]`, optional `multiSelect`, optional `allowOther` (text input for custom answer).
+**PREFERRED**: call `ask_pro` ONCE with all questions as tabs. Returns all answers in one shot. Per question: `header`, `question`, `options[2-4]`, optional `multiSelect` (+ `minSelect`/`maxSelect`), `allowOther` (text input for custom answer), or `freeText: true` for an open typed answer (no options). For a design/architecture fork where the choice turns on the concrete code shape, `decision_deck` (cards with code + pros/cons) reads better than a flat option list.
 
-**FALLBACK** (if `ask_pro` is not available): call `soly_ask_user` once per question, one at a time. Pattern:
+**FALLBACK** (only if `ask_pro` is unavailable — it is deprecated): call `soly_ask_user` once per question, one at a time. Pattern:
 
 ```
 soly_ask_user({

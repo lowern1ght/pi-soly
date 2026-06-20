@@ -12,8 +12,15 @@ showing a **tabbed, multi-question picker** in pi's TUI.
   is marked ⭐
 - **Single-select** (default) — Enter on an option auto-advances to the next
   question; on the last question, Enter submits
-- **Multi-select** — Enter toggles checkboxes; the last question shows a
-  visible "Submit" row
+- **Multi-select** — Space toggles checkboxes; `minSelect`/`maxSelect` bound how
+  many may be chosen; the last question shows a visible "Submit" row
+- **Free-text questions** — `freeText: true` (with empty `options`) makes a
+  typed-answer question; it's optional (blank is allowed)
+- **Option previews** — per-option `preview` shows a side panel while focused;
+  fenced ```code blocks in it are syntax-highlighted
+- **"Other…"** — per-question `allowOther: true` adds a free-text custom choice
+- **Notes & skip** — `n` attaches a free-text note to any answer; `s` skips a
+  question (returned in `skipped`)
 - **Cancelled detection** — `Esc` resolves `{cancelled: true}`
 
 ## Usage from an LLM
@@ -83,8 +90,10 @@ Result:
 | `1` – `4` | Instant-pick that option |
 | `Tab` / `→` | Next question |
 | `Shift+Tab` / `←` / `Backspace` | Previous question |
-| `Space` | Multi-select only: toggle the current option. On "Other…", opens the input dialog. |
-| `Enter` | **Single-select:** confirm + advance (or submit on last). **Multi-select:** advance to next question (or submit on last + all answered). Does NOT toggle. |
+| `Space` | Multi-select only: toggle the current option (ignored past `maxSelect`). On "Other…", opens the input dialog. |
+| `Enter` | **Single-select:** confirm + advance (or submit on last). **Multi-select:** advance to next question (or submit on last + all answered). Does NOT toggle. **Free-text:** commit the typed answer + advance/submit. |
+| `n` | Add/edit a free-text note on the current answer |
+| `s` | Skip the current question (reported as skipped, omitted from answers) |
 | `Esc` | Cancel (returns `{cancelled: true}`) |
 
 Multi-select: **Space toggles, Enter advances/submits**. Single-select
@@ -95,17 +104,20 @@ shows `⏎ submit` in accent color.
 ## Limits
 
 - 2–4 options per question (more is bad UX; the picker is meant for focused
-  choices, not long lists)
+  choices, not long lists) — except `freeText: true` questions, which take no
+  options
 - 1–6 questions per call (more = tab-switching fatigue)
 - At most 1 `recommended: true` per question
+- `minSelect`/`maxSelect` apply to multi-select only and must fall within the
+  option count
 - TUI and RPC modes only (`hasUI: true`); print mode returns an error
 
 ## Development
 
 ```bash
-cd packages/pi-soly/ask
-bun test              # runs tests/picker.test.ts
-bun run typecheck     # tsc --noEmit
+cd packages/pi-soly
+bun test tests/ask-picker.test.ts   # picker behavior (C/D/E/A features)
+bun run typecheck                   # tsc --noEmit
 ```
 
 ## Why a separate module?
