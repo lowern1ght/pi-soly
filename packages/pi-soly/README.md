@@ -218,7 +218,7 @@ html_artifact({
 })
 ```
 
-Use it when a visual, rendered result beats terminal text (example galleries, comparisons, diagrams). The gallery URL lives only while the pi session runs. **`/artifacts`** reopens the gallery anytime (modal: Enter opens an artifact, `g` the gallery, `x` delete, `/artifacts clear` clears); a `🖼 N` footer indicator shows the live count. Config under `artifacts` (`open`, `dir`, `server`, `theme`, `retentionDays`).
+Use it when a visual, rendered result beats terminal text (example galleries, comparisons, diagrams). The gallery URL lives only while the pi session runs. **`/artifacts`** reopens the gallery anytime (modal: Enter opens an artifact, `g` the gallery, `x` delete, `/artifacts clear` clears); a `▦ N` footer indicator shows the live count. Config under `artifacts` (`open`, `dir`, `server`, `theme`, `retentionDays`).
 
 ---
 

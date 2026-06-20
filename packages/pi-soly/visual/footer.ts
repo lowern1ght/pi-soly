@@ -78,7 +78,9 @@ export function buildFooterLine(data: ChromeData, fd: FooterData, width: number,
 	}
 
 	if (data.artifactCount > 0) {
-		const artText = ascii ? `${data.artifactCount} art` : `🖼 ${data.artifactCount}`;
+		// BMP glyph only — an astral emoji (🖼) is measured as 1 col here but drawn
+		// as 2 by terminals, overflowing the width-fitted bar and wrapping it.
+		const artText = ascii ? `${data.artifactCount} art` : `▦ ${data.artifactCount}`;
 		left.push({ id: "artifacts", text: styler.dim(artText), priority: 4 });
 	}
 
