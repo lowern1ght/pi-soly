@@ -225,12 +225,11 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 					openError = String(err);
 				}
 			}
-			// User-facing nudge with the link (chat notify; the LLM gets the text result).
-			try {
-				ctx.ui.notify(`🖼 artifact "${params.title}" → ${url}`, "info");
-			} catch {
-				// notify unavailable in some modes — ignore
-			}
+			// No mid-turn ctx.ui.notify here: firing one while the model is still
+			// streaming forces a repaint that can garble the TUI (the toast collided
+			// with the footer + duplicated streamed lines). The user still sees the
+			// artifact via auto-open, the `🖼 N` footer indicator, this tool result,
+			// and `/artifacts`.
 			const lines = [`Artifact: ${url}`, `Gallery (all session artifacts): ${gallery}`];
 			if (opened) lines.push("Opened the gallery in your browser.");
 			else if (openError) lines.push(`(could not auto-open: ${openError})`);

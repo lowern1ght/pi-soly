@@ -24,7 +24,7 @@ All notable changes to the monorepo are documented here.
   file directly when the server is off. Config under `artifacts` (`open`, `dir`,
   `server`, `theme`, `retentionDays`). **`/artifacts`** browses the gallery from
   the terminal (modal: Enter opens, `g` gallery, `x` delete, `clear` all); a
-  `🖼 N` footer indicator shows the live count and a notification fires on create.
+  `🖼 N` footer indicator shows the live count.
 - **`/soly`** now opens the ListPanel modal (like `/rules`) with a live preview
   per subcommand and Enter-to-open — replacing the plain picker (and its
   duplicated entries).
