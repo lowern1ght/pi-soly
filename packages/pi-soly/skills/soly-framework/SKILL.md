@@ -231,7 +231,7 @@ Once production commits exist, returning without a committed `SUMMARY.md` is an 
 | `soly_scratchpad(limit)` | Recent conversation recap (one line per turn) |
 | `ask_pro(questions)` | Multi-question picker (tabbed, single/multi-select, ⭐, `preview` w/ code highlight, `allowOther`, `freeText`, `minSelect`/`maxSelect`, `s` to skip, notes) — preferred for structured input |
 | `decision_deck(options)` | Full-screen TUI deck — one card per option with a highlighted code snippet + pros/cons. For design/architecture forks where the choice hinges on the concrete code shape |
-| `html_artifact(title, html)` | Render self-contained HTML (full doc or body fragment) and serve it from a per-session browser gallery (live-updating, one stable URL) — soly's "artifacts". For visual output: example galleries, comparisons, diagrams |
+| `html_artifact(title, html, id?, assets?)` | Render HTML (full doc or body fragment) and serve it from a per-session browser gallery SPA (sidebar + iframe + filter + live updates, one stable URL) — soly's "artifacts". `id` updates in place; `assets` writes sibling files. For visual output: example galleries, comparisons, diagrams |
 | `soly_save_discuss_checkpoint(...)` · `soly_finish_discuss(...)` | Save / finalize a `soly discuss` session (writes CONTEXT.md) |
 | `soly_ask_user(...)` | Single-question picker — **deprecated**, prefer `ask_pro` |
 
@@ -243,7 +243,7 @@ The main system prompt only points at these; the detail is here.
 
 **`decision_deck`** — full-screen cards (one per option) with a highlighted code snippet + pros/cons. Reach for it when the choice hinges on the concrete code/structure of each option, not a label, and there are 2–6 alternatives worth comparing side-by-side. Prefer `ask_pro` for short-label choices; don't use it for trivial/yes-no.
 
-**`html_artifact`** — render HTML to a self-contained file served from a per-session browser gallery (one stable localhost URL, live-updating). Use when a visual rendered result beats terminal text: example galleries, before/after or side-by-side comparisons, tables, diagrams, a small HTML/CSS/SVG demo. Pass `title` + `html` (a body fragment is fine — it's wrapped in a styled skeleton; put code in `<pre><code>`). **Self-contained only:** inline all CSS/JS, embed images as data: URIs, no external/CDN requests. Don't use it for a single snippet (markdown code block) or prose. Mention the returned URL to the user.
+**`html_artifact`** — render HTML served from a per-session browser gallery SPA (sidebar + iframe + filter + live SSE updates, one stable localhost URL). Use when a visual rendered result beats terminal text: example galleries, before/after or side-by-side comparisons, tables, diagrams, a small HTML/CSS/SVG demo. Pass `title` + `html` (a body fragment is fine — it's wrapped in a themed skeleton; put code in `<pre><code>`). Pass `id` to re-render/update an artifact in place (instead of piling up copies); pass `assets: [{path, content, encoding?}]` to write sibling files the HTML references by relative path (e.g. an image or `data.json`). The theme is overridable per project via `.soly/artifact-theme.css`. Keep it self-contained unless you use `assets` — no external/CDN requests. Don't use it for a single snippet (markdown code block) or prose. Mention the returned URL to the user.
 
 ## Common workflows
 

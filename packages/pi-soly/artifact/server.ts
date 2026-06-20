@@ -2,23 +2,46 @@
 // server.ts — per-session HTTP server for browsing artifacts
 // =============================================================================
 //
-// One lightweight HTTP server per pi session, serving every html_artifact made
-// this session from a single stable URL: a live-updating gallery at `/<token>/`
-// plus each artifact at `/<token>/a/<file>`. Built on node:http (no deps).
+// One lightweight HTTP server per pi session serving every html_artifact made
+// this session from a single stable URL: a vanilla-JS gallery SPA at `/<token>/`
+// (sidebar + iframe + filter + theme + live SSE), the artifact list as JSON at
+// `/<token>/list`, and any file in the session dir at `/<token>/a/<path>` with a
+// proper MIME type (so artifacts can pull sibling CSS/JS/images). Built on
+// node:http (no deps).
 //
-// Security: binds 127.0.0.1 only and namespaces all routes under a random
-// `token` so other local processes can't enumerate the artifacts. Lifecycle:
-// started lazily on the first artifact, stopped on session_shutdown. The link
-// is valid only while the pi session runs (not a share-after-exit mechanism).
+// Security: binds 127.0.0.1 only, namespaces routes under a random `token`, and
+// confines file serving to the session dir. Lifecycle: started lazily on the
+// first artifact, stopped on session_shutdown. The link is valid only while the
+// pi session runs (not a share-after-exit mechanism).
 // =============================================================================
 
 import * as http from "node:http";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { randomBytes } from "node:crypto";
-import { buildGalleryHtml, type GalleryEntry } from "./render.ts";
+import { buildGalleryShell, type GalleryEntry } from "./render.ts";
 
-const HTML_HEADERS = { "content-type": "text/html; charset=utf-8" } as const;
+const MIME: Record<string, string> = {
+	".html": "text/html; charset=utf-8",
+	".htm": "text/html; charset=utf-8",
+	".css": "text/css; charset=utf-8",
+	".js": "text/javascript; charset=utf-8",
+	".mjs": "text/javascript; charset=utf-8",
+	".json": "application/json; charset=utf-8",
+	".svg": "image/svg+xml",
+	".png": "image/png",
+	".jpg": "image/jpeg",
+	".jpeg": "image/jpeg",
+	".gif": "image/gif",
+	".webp": "image/webp",
+	".ico": "image/x-icon",
+	".txt": "text/plain; charset=utf-8",
+	".md": "text/plain; charset=utf-8",
+};
+
+function mimeFor(file: string): string {
+	return MIME[path.extname(file).toLowerCase()] ?? "application/octet-stream";
+}
 
 export class ArtifactServer {
 	private server: http.Server | null = null;
@@ -65,18 +88,26 @@ export class ArtifactServer {
 		this.server = server;
 	}
 
-	/** Record a new artifact and notify open gallery tabs. Returns its URL. */
-	register(title: string, file: string): string {
+	/** Record (or, when `id` matches an existing entry, update in place) an
+	 *  artifact and notify open gallery tabs. Returns its URL. */
+	register(title: string, file: string, id?: string): string {
 		const base = path.basename(file);
-		this.entries.unshift({
-			id: randomBytes(4).toString("hex"),
-			title,
-			file: base,
-			createdAt: Date.now(),
-		});
+		const existing = id ? this.entries.find((e) => e.id === id) : undefined;
+		if (existing) {
+			existing.title = title;
+			existing.file = base;
+			existing.createdAt = Date.now();
+		} else {
+			this.entries.unshift({
+				id: id ?? randomBytes(4).toString("hex"),
+				title,
+				file: base,
+				createdAt: Date.now(),
+			});
+		}
 		for (const res of this.clients) {
 			try {
-				res.write("data: reload\n\n");
+				res.write("data: update\n\n");
 			} catch {
 				// dropped client — cleaned up on its 'close'
 			}
@@ -111,16 +142,21 @@ export class ArtifactServer {
 		}
 		const rest = parts.slice(1);
 		if (rest.length === 0) {
-			res.writeHead(200, HTML_HEADERS);
-			res.end(buildGalleryHtml(this.entries, this.token));
+			res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+			res.end(buildGalleryShell(this.token));
+			return;
+		}
+		if (rest[0] === "list") {
+			res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+			res.end(JSON.stringify(this.entries));
 			return;
 		}
 		if (rest[0] === "events") {
 			this.serveEvents(res);
 			return;
 		}
-		if (rest[0] === "a" && rest[1]) {
-			this.serveArtifact(decodeURIComponent(rest[1]), res);
+		if (rest[0] === "a" && rest.length > 1) {
+			this.serveFile(rest.slice(1).map((p) => decodeURIComponent(p)).join("/"), res);
 			return;
 		}
 		res.writeHead(404);
@@ -138,18 +174,24 @@ export class ArtifactServer {
 		res.on("close", () => this.clients.delete(res));
 	}
 
-	private serveArtifact(name: string, res: http.ServerResponse): void {
-		// Confine to the session dir: basename only, no traversal.
-		const file = path.join(this.dir, path.basename(name));
+	/** Serve a file from the session dir, confined to it (no traversal). */
+	private serveFile(rel: string, res: http.ServerResponse): void {
+		const root = path.resolve(this.dir);
+		const target = path.resolve(root, rel);
+		if (target !== root && !target.startsWith(root + path.sep)) {
+			res.writeHead(403);
+			res.end("forbidden");
+			return;
+		}
 		let body: Buffer;
 		try {
-			body = fs.readFileSync(file);
+			body = fs.readFileSync(target);
 		} catch {
 			res.writeHead(404);
 			res.end("artifact not found");
 			return;
 		}
-		res.writeHead(200, HTML_HEADERS);
+		res.writeHead(200, { "content-type": mimeFor(target) });
 		res.end(body);
 	}
 }

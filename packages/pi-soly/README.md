@@ -209,7 +209,7 @@ Flip cards with ←/→ (or 1-N), choose with Enter, Esc to cancel. Native TUI �
 
 ## 🖼 HTML Artifacts
 
-`html_artifact` tool for the LLM — soly's local "artifacts". Renders HTML (a full document or just body content, wrapped in a styled light/dark skeleton with good code-block and table styling) to a self-contained file, then serves it from a **per-session HTTP server** with a **live gallery** of every artifact made this session — one stable localhost URL, opened in your browser. (Falls back to opening the file directly if the server is disabled.)
+`html_artifact` tool for the LLM — soly's local "artifacts". Renders HTML (a full document or just body content, themed light/dark) and serves it from a **per-session gallery SPA** — a sidebar of every artifact this session, an iframe viewer, a filter box, a light/dark toggle, and live SSE updates — on one stable localhost URL, opened in your browser. Pass `id` to update an artifact in place; pass `assets` to write sibling files (images/css/json) the HTML references; restyle everything via `.soly/artifact-theme.css`. (Falls back to opening the file directly if the server is disabled.)
 
 ```ts
 html_artifact({
@@ -218,7 +218,7 @@ html_artifact({
 })
 ```
 
-Use it when a visual, rendered result beats terminal text (example galleries, comparisons, diagrams). Self-contained only — inline CSS/JS, no external requests. The gallery URL lives only while the pi session runs. Config under `artifacts` (`open`, `dir`, `server`).
+Use it when a visual, rendered result beats terminal text (example galleries, comparisons, diagrams). The gallery URL lives only while the pi session runs. Config under `artifacts` (`open`, `dir`, `server`, `theme`, `retentionDays`).
 
 ---
 

@@ -21,10 +21,69 @@ import { randomBytes } from "node:crypto";
 import { Type } from "typebox";
 import type { SolyConfig } from "../config.ts";
 import { atomicWriteFileSync } from "../util.ts";
-import { buildArtifactHtml, artifactFileName } from "./render.ts";
+import { buildArtifactHtml, artifactFileName, artifactFileNameForId, DEFAULT_CSS } from "./render.ts";
 import { ArtifactServer } from "./server.ts";
 
 type ToolText = { content: { type: "text"; text: string }[]; details: Record<string, unknown> };
+type Asset = { path: string; content: string; encoding?: string };
+
+/** Load the artifact CSS theme: config override → .soly/artifact-theme.css →
+ *  built-in DEFAULT_CSS. */
+function loadCss(themeCfg: string, cwd: string): string {
+	const candidates: string[] = [];
+	const t = themeCfg.trim();
+	if (t) candidates.push(path.isAbsolute(t) ? t : path.join(cwd, t));
+	candidates.push(path.join(cwd, ".soly", "artifact-theme.css"));
+	for (const c of candidates) {
+		try {
+			return fs.readFileSync(c, "utf-8");
+		} catch {
+			// try next
+		}
+	}
+	return DEFAULT_CSS;
+}
+
+/** Delete session artifact dirs older than `days` under `baseDir`. Best-effort;
+ *  skips when days <= 0. */
+function pruneOldSessions(baseDir: string, days: number): void {
+	if (days <= 0) return;
+	const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(baseDir, { withFileTypes: true });
+	} catch {
+		return; // base dir doesn't exist yet — nothing to prune
+	}
+	for (const e of entries) {
+		if (!e.isDirectory()) continue;
+		const p = path.join(baseDir, e.name);
+		try {
+			if (fs.statSync(p).mtimeMs < cutoff) fs.rmSync(p, { recursive: true, force: true });
+		} catch {
+			// best effort
+		}
+	}
+}
+
+/** Write sibling assets into the session dir (confined to it). Returns count. */
+function writeAssets(dir: string, assets: Asset[]): number {
+	const root = path.resolve(dir);
+	let n = 0;
+	for (const a of assets) {
+		const target = path.resolve(root, a.path);
+		if (target !== root && !target.startsWith(root + path.sep)) continue; // skip traversal
+		try {
+			fs.mkdirSync(path.dirname(target), { recursive: true });
+			const buf = a.encoding === "base64" ? Buffer.from(a.content, "base64") : Buffer.from(a.content, "utf-8");
+			fs.writeFileSync(target, buf);
+			n++;
+		} catch {
+			// best effort
+		}
+	}
+	return n;
+}
 
 /** Open a file or URL with the OS default handler (browser for .html / http). */
 async function openInBrowser(pi: ExtensionAPI, target: string): Promise<void> {
@@ -81,6 +140,10 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 
 	// Usage guidance lives in the soly-framework skill + the main soly prompt
 	// pointer — not injected here.
+	pi.on("session_start", async (_event, ctx) => {
+		const cfg = getConfig().artifacts;
+		pruneOldSessions(resolveDir(cfg.dir, ctx.cwd), cfg.retentionDays);
+	});
 	pi.on("session_shutdown", async () => {
 		server?.stop();
 		server = null;
@@ -90,13 +153,26 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 		name: "html_artifact",
 		label: "soly · html_artifact",
 		description:
-			"Render HTML to a self-contained file and serve it from a per-session gallery in the browser — soly's artifacts. `html` is a full document or a body fragment (wrapped in a styled light/dark skeleton with good code/table styling). Use when a visual rendered result beats terminal text: example galleries, comparisons, diagrams, HTML/CSS demos. Self-contained only — inline CSS/JS, no external URLs. Returns a localhost URL for the artifact + the session gallery.",
+			"Render HTML to a self-contained file and serve it from a per-session gallery in the browser — soly's artifacts. `html` is a full document or a body fragment (wrapped in a styled light/dark skeleton; theme overridable via .soly/artifact-theme.css). Pass `id` to update an existing artifact in place (re-render). Pass `assets` to write sibling files (images/css/json) the HTML references via relative paths. Use when a visual rendered result beats terminal text. Self-contained otherwise — no external URLs. Returns the localhost URL + session gallery.",
 		parameters: Type.Object({
 			title: Type.String({ description: "Title (used for <title>, header, gallery, filename)." }),
 			html: Type.String({
 				description:
-					"Full document or body fragment. Code in <pre><code>…</code></pre>. Self-contained (inline CSS/JS, no external requests).",
+					"Full document or body fragment. Code in <pre><code>…</code></pre>. May reference sibling `assets` by relative path; otherwise self-contained.",
 			}),
+			id: Type.Optional(
+				Type.String({ description: "Stable id — re-calling with the same id updates that artifact in place." }),
+			),
+			assets: Type.Optional(
+				Type.Array(
+					Type.Object({
+						path: Type.String({ description: "Relative path within the artifact dir (e.g. 'data.json', 'img/logo.png')." }),
+						content: Type.String({ description: "File content." }),
+						encoding: Type.Optional(Type.String({ description: "'utf8' (default) or 'base64' for binary." })),
+					}),
+					{ description: "Sibling files the HTML references by relative path." },
+				),
+			),
 			open: Type.Optional(
 				Type.Boolean({ description: "Open the gallery in the browser (default: artifacts.open)." }),
 			),
@@ -113,8 +189,12 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 				};
 			}
 
-			const file = path.join(sessionDir, artifactFileName(params.title, Date.now().toString(36)));
-			const html = buildArtifactHtml(params.title, params.html);
+			if (params.assets?.length) writeAssets(sessionDir, params.assets);
+
+			const css = loadCss(cfg.theme, ctx.cwd);
+			const name = params.id ? artifactFileNameForId(params.id) : artifactFileName(params.title, Date.now().toString(36));
+			const file = path.join(sessionDir, name);
+			const html = buildArtifactHtml(params.title, params.html, css);
 			atomicWriteFileSync(file, html);
 			const bytes = Buffer.byteLength(html);
 			const shouldOpen = params.open ?? cfg.open;
@@ -128,7 +208,7 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 				return fileMode(pi, file, bytes, shouldOpen, `session server unavailable: ${String(err)}`);
 			}
 
-			const url = server.register(params.title, file);
+			const url = server.register(params.title, file, params.id);
 			const gallery = server.galleryUrl();
 			let opened = false;
 			let openError: string | undefined;

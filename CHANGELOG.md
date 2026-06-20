@@ -16,10 +16,13 @@ All notable changes to the monorepo are documented here.
   forks: one framed card per option with a syntax-highlighted code snippet and
   pros/cons; flip with ←/→ or 1-N, choose with Enter.
 - **`html_artifact`** — render LLM-supplied HTML (full doc or body fragment,
-  wrapped in a styled light/dark skeleton) and serve it from a per-session
-  HTTP server with a live gallery of every artifact made this session — soly's
-  local "artifacts" (one stable localhost URL; falls back to opening the file
-  directly). Config under `artifacts` (`open`, `dir`, `server`).
+  themed light/dark) and serve it from a per-session **gallery SPA** (sidebar +
+  iframe viewer + filter + theme toggle + live SSE updates) on one stable
+  localhost URL — soly's local "artifacts". `id` updates an artifact in place;
+  `assets` writes sibling files (images/css/json) the HTML can reference; the
+  theme is overridable via `.soly/artifact-theme.css`. Falls back to opening the
+  file directly when the server is off. Config under `artifacts` (`open`, `dir`,
+  `server`, `theme`, `retentionDays`).
 - **`ask_pro`** gained per-option `preview` (side panel, with fenced code
   syntax-highlighted), per-question `allowOther` (free-text "Other…"),
   `freeText` questions (no options — typed answer), multi-select `minSelect`/

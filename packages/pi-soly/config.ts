@@ -96,6 +96,12 @@ export interface SolyConfig {
 		/** Serve artifacts from a per-session HTTP server with a live gallery
 		 *  (one stable localhost URL). When false, just open the .html file. */
 		server: boolean;
+		/** Path to a CSS file overriding the artifact theme. Empty → built-in.
+		 *  Resolved like `dir`; also auto-detected at `.soly/artifact-theme.css`. */
+		theme: string;
+		/** Prune session artifact dirs older than N days on session start.
+		 *  0 = keep forever. */
+		retentionDays: number;
 	};
 }
 
@@ -150,6 +156,8 @@ export const DEFAULT_CONFIG: SolyConfig = {
 		open: true,
 		dir: "",
 		server: true,
+		theme: "",
+		retentionDays: 7,
 	},
 };
 
@@ -240,6 +248,9 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 		if (typeof over.artifacts.open === "boolean") merged.artifacts.open = over.artifacts.open;
 		if (typeof over.artifacts.dir === "string") merged.artifacts.dir = over.artifacts.dir;
 		if (typeof over.artifacts.server === "boolean") merged.artifacts.server = over.artifacts.server;
+		if (typeof over.artifacts.theme === "string") merged.artifacts.theme = over.artifacts.theme;
+		if (typeof over.artifacts.retentionDays === "number" && over.artifacts.retentionDays >= 0)
+			merged.artifacts.retentionDays = over.artifacts.retentionDays;
 	}
 	return merged;
 }

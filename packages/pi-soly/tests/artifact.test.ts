@@ -12,7 +12,7 @@ import {
 	artifactFileName,
 	isFullDocument,
 	buildArtifactHtml,
-	buildGalleryHtml,
+	buildGalleryShell,
 } from "../artifact/render.ts";
 import { ArtifactServer } from "../artifact/server.ts";
 import { DEFAULT_CONFIG } from "../config.ts";
@@ -46,9 +46,11 @@ describe("artifact — isFullDocument", () => {
 });
 
 describe("artifact — buildArtifactHtml", () => {
-	test("passes full documents through untouched", () => {
-		const doc = "<!doctype html><html><body>x</body></html>";
-		expect(buildArtifactHtml("T", doc)).toBe(doc);
+	test("keeps a full document's markup but injects the base theme", () => {
+		const doc = "<!doctype html><html><head></head><body>x</body></html>";
+		const out = buildArtifactHtml("T", doc);
+		expect(out).toContain("<body>x</body>"); // original markup preserved
+		expect(out).toContain("<style data-soly>"); // theme injected as a base layer
 	});
 
 	test("wraps a fragment in a styled, self-contained skeleton", () => {
@@ -80,48 +82,62 @@ describe("artifact — config", () => {
 	});
 });
 
-describe("artifact — gallery builder", () => {
-	test("lists entries with token-scoped links, escaping, and live-reload", () => {
-		const html = buildGalleryHtml(
-			[{ id: "1", title: "My <Art>", file: "my-art-x.html", createdAt: 1000 }],
-			"TOK",
-		);
-		expect(html).toContain("/TOK/a/my-art-x.html"); // token-scoped artifact link
-		expect(html).toContain("My &lt;Art&gt;"); // title escaped
-		expect(html).toContain("/TOK/events"); // SSE endpoint
+describe("artifact — gallery shell", () => {
+	test("is a self-contained SPA shell wired to the token routes", () => {
+		const html = buildGalleryShell("TOK");
+		expect(html).toContain('var T="TOK"'); // token baked into the JS
+		expect(html).toContain("'/'+T+'/list'"); // fetches the list
 		expect(html).toContain("EventSource");
+		expect(html).toContain("<iframe");
 		expect(html).not.toContain("http://"); // no external requests
-	});
-
-	test("empty state", () => {
-		expect(buildGalleryHtml([], "TOK")).toContain("No artifacts yet");
 	});
 });
 
 describe("artifact — session server", () => {
-	test("serves the gallery + artifact, rejects bad token + traversal", async () => {
+	test("serves shell/list/artifact with MIME, updates in place, rejects bad token + traversal", async () => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "soly-art-"));
-		fs.writeFileSync(path.join(dir, "demo-x.html"), "<!doctype html><h1>Demo Body</h1>");
+		fs.writeFileSync(path.join(dir, "demo.html"), "<!doctype html><h1>Demo Body</h1>");
+		fs.writeFileSync(path.join(dir, "data.json"), '{"x":1}');
 		const srv = new ArtifactServer(dir);
 		await srv.ensureStarted();
 		try {
-			const url = srv.register("Demo", path.join(dir, "demo-x.html"));
+			const base = srv.galleryUrl(); // http://127.0.0.1:PORT/<token>/
+			const url = srv.register("Demo", path.join(dir, "demo.html"), "demo");
 
+			// Artifact served as HTML
 			const aRes = await fetch(url);
 			expect(aRes.status).toBe(200);
+			expect(aRes.headers.get("content-type")).toContain("text/html");
 			expect(await aRes.text()).toContain("Demo Body");
 
-			const gRes = await fetch(srv.galleryUrl());
+			// Gallery shell
+			const gRes = await fetch(base);
 			expect(gRes.status).toBe(200);
-			expect(await gRes.text()).toContain("Demo"); // title listed
+			expect(await gRes.text()).toContain("soly artifacts");
+
+			// List JSON
+			const list = (await (await fetch(base + "list")).json()) as { id: string; title: string }[];
+			expect(list.length).toBe(1);
+			expect(list[0]?.id).toBe("demo");
+
+			// Update-in-place: same id → still one entry, new title
+			srv.register("Demo v2", path.join(dir, "demo.html"), "demo");
+			const list2 = (await (await fetch(base + "list")).json()) as { title: string }[];
+			expect(list2.length).toBe(1);
+			expect(list2[0]?.title).toBe("Demo v2");
+
+			// Sibling asset served with correct MIME
+			const jRes = await fetch(base + "a/data.json");
+			expect(jRes.status).toBe(200);
+			expect(jRes.headers.get("content-type")).toContain("application/json");
 
 			// Wrong token → 404
-			const badToken = srv.galleryUrl().replace(/\/[0-9a-f]+\/$/, "/deadbeef/");
+			const badToken = base.replace(/\/[0-9a-f]+\/$/, "/deadbeef/");
 			expect((await fetch(badToken)).status).toBe(404);
 
-			// Path traversal is stripped to a basename → not found
-			const trav = srv.galleryUrl() + "a/" + encodeURIComponent("../../etc/hosts");
-			expect((await fetch(trav)).status).toBe(404);
+			// Path traversal is refused (403 or 404 depending on URL normalization)
+			const trav = base + "a/" + encodeURIComponent("../../etc/hosts");
+			expect([403, 404]).toContain((await fetch(trav)).status);
 
 			// First-open latch fires exactly once
 			expect(srv.consumeFirstOpen()).toBe(true);
