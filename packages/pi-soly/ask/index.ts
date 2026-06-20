@@ -24,7 +24,6 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { highlightCode } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { AskProComponent, type AskProResult } from "./picker.ts";
-import { buildAskProSection } from "./prompt.ts";
 
 type ToolError = {
 	content: { type: "text"; text: string }[];
@@ -66,15 +65,8 @@ function validateSelectBounds(q: BoundsCheck, i: number): ToolError | null {
 }
 
 export default function piAskExtension(pi: ExtensionAPI) {
-	// Inject a "when to use ask_pro" section into the system prompt so the
-	// LLM reaches for the picker at the right times (and avoids overusing
-	// it for trivial yes/no or open-ended questions).
-	pi.on("before_agent_start", async (event) => {
-		return {
-			systemPrompt: event.systemPrompt + buildAskProSection(),
-		};
-	});
-
+	// Usage guidance lives in the soly-framework skill (loaded on demand) +
+	// a one-line pointer in the main soly system prompt — not injected here.
 	pi.registerTool({
 		name: "ask_pro",
 		label: "soly · ask_pro",

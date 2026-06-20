@@ -22,7 +22,6 @@ import { Type } from "typebox";
 import type { SolyConfig } from "../config.ts";
 import { atomicWriteFileSync } from "../util.ts";
 import { buildArtifactHtml, artifactFileName } from "./render.ts";
-import { buildArtifactSection } from "./prompt.ts";
 import { ArtifactServer } from "./server.ts";
 
 type ToolText = { content: { type: "text"; text: string }[]; details: Record<string, unknown> };
@@ -80,9 +79,8 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 	let server: ArtifactServer | null = null;
 	const sessionId = randomBytes(6).toString("hex");
 
-	pi.on("before_agent_start", async (event) => {
-		return { systemPrompt: event.systemPrompt + buildArtifactSection() };
-	});
+	// Usage guidance lives in the soly-framework skill + the main soly prompt
+	// pointer — not injected here.
 	pi.on("session_shutdown", async () => {
 		server?.stop();
 		server = null;

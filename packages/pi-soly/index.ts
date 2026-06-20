@@ -83,6 +83,17 @@ function phaseLabelFromState(s: SolyState): string | null {
 }
 
 
+/** Tiny always-on pointer to soly's interactive/visual tools. The detailed
+ *  "when / when-not / params" guidance lives in the soly-framework skill
+ *  (loaded on demand) so it doesn't cost tokens every turn. */
+const SOLY_TOOLS_POINTER = `
+## soly — interactive & visual tools
+
+When terminal text isn't the best medium, reach for these (details + when-NOT in the soly-framework skill):
+- \`ask_pro\` — multi-question picker (single/multi-select, free-text, per-option previews).
+- \`decision_deck\` — full-screen cards comparing design options by their concrete code shape.
+- \`html_artifact\` — render HTML to a self-contained, browseable per-session gallery.`;
+
 export default function solyExtension(pi: ExtensionAPI) {
 	// ============================================================================
 	// State (module-local, lives for the duration of one extension instance)
@@ -643,6 +654,9 @@ export default function solyExtension(pi: ExtensionAPI) {
 		if (integrationSection) {
 			sections.push(integrationSection);
 		}
+
+		// 2.6. Interactive/visual tools pointer (lean — detail lives in the skill).
+		sections.push(SOLY_TOOLS_POINTER);
 
 		// 3.5. Project intent (zero-point docs) — always injected when present
 		if (lastIntentSection) {

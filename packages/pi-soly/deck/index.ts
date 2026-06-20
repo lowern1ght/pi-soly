@@ -16,13 +16,10 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { highlightCode } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { DeckComponent, type DeckResult } from "./deck.ts";
-import { buildDeckSection } from "./prompt.ts";
 
 export default function piDeckExtension(pi: ExtensionAPI) {
-	pi.on("before_agent_start", async (event) => {
-		return { systemPrompt: event.systemPrompt + buildDeckSection() };
-	});
-
+	// Usage guidance lives in the soly-framework skill + the main soly prompt
+	// pointer — not injected here.
 	pi.registerTool({
 		name: "decision_deck",
 		label: "soly · decision_deck",

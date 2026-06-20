@@ -235,6 +235,16 @@ Once production commits exist, returning without a committed `SUMMARY.md` is an 
 | `soly_save_discuss_checkpoint(...)` · `soly_finish_discuss(...)` | Save / finalize a `soly discuss` session (writes CONTEXT.md) |
 | `soly_ask_user(...)` | Single-question picker — **deprecated**, prefer `ask_pro` |
 
+### Visual & interaction tools — when to reach for each
+
+The main system prompt only points at these; the detail is here.
+
+**`ask_pro`** — multi-question picker. Use for 1–6 related questions where the user picks concrete answers to move forward (e.g. `soly discuss` scoping). NOT for simple yes/no, a single open-ended prompt, questions already answered, or trivial clarifications — use plain text. Per option, `preview` shows a side panel while focused (put a code/API/config snippet there; fenced ```code is highlighted). `freeText` = optional typed answer; `allowOther` = escape hatch; `minSelect`/`maxSelect` bound multi-select. The user can skip (`s`, returned `(skipped)`) or note (`n`, returned `// note:` — treat as a hard constraint).
+
+**`decision_deck`** — full-screen cards (one per option) with a highlighted code snippet + pros/cons. Reach for it when the choice hinges on the concrete code/structure of each option, not a label, and there are 2–6 alternatives worth comparing side-by-side. Prefer `ask_pro` for short-label choices; don't use it for trivial/yes-no.
+
+**`html_artifact`** — render HTML to a self-contained file served from a per-session browser gallery (one stable localhost URL, live-updating). Use when a visual rendered result beats terminal text: example galleries, before/after or side-by-side comparisons, tables, diagrams, a small HTML/CSS/SVG demo. Pass `title` + `html` (a body fragment is fine — it's wrapped in a styled skeleton; put code in `<pre><code>`). **Self-contained only:** inline all CSS/JS, embed images as data: URIs, no external/CDN requests. Don't use it for a single snippet (markdown code block) or prose. Mention the returned URL to the user.
+
 ## Common workflows
 
 ### Start a new project

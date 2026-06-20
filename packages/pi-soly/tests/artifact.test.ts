@@ -14,7 +14,6 @@ import {
 	buildArtifactHtml,
 	buildGalleryHtml,
 } from "../artifact/render.ts";
-import { buildArtifactSection } from "../artifact/prompt.ts";
 import { ArtifactServer } from "../artifact/server.ts";
 import { DEFAULT_CONFIG } from "../config.ts";
 
@@ -70,16 +69,10 @@ describe("artifact — buildArtifactHtml", () => {
 	});
 });
 
-describe("artifact — config & prompt", () => {
+describe("artifact — config", () => {
 	test("default config has an artifacts section", () => {
 		expect(DEFAULT_CONFIG.artifacts.open).toBe(true);
 		expect(DEFAULT_CONFIG.artifacts.dir).toBe("");
-	});
-
-	test("prompt section names the tool and the self-contained rule", () => {
-		const s = buildArtifactSection();
-		expect(s).toContain("html_artifact");
-		expect(s.toLowerCase()).toContain("self-contained");
 	});
 
 	test("default config enables the session server", () => {
