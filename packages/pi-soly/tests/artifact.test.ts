@@ -3,14 +3,19 @@
 // =============================================================================
 
 import { describe, expect, test } from "bun:test";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import {
 	escapeHtml,
 	slugify,
 	artifactFileName,
 	isFullDocument,
 	buildArtifactHtml,
+	buildGalleryHtml,
 } from "../artifact/render.ts";
 import { buildArtifactSection } from "../artifact/prompt.ts";
+import { ArtifactServer } from "../artifact/server.ts";
 import { DEFAULT_CONFIG } from "../config.ts";
 
 describe("artifact — slug & filename", () => {
@@ -75,5 +80,62 @@ describe("artifact — config & prompt", () => {
 		const s = buildArtifactSection();
 		expect(s).toContain("html_artifact");
 		expect(s.toLowerCase()).toContain("self-contained");
+	});
+
+	test("default config enables the session server", () => {
+		expect(DEFAULT_CONFIG.artifacts.server).toBe(true);
+	});
+});
+
+describe("artifact — gallery builder", () => {
+	test("lists entries with token-scoped links, escaping, and live-reload", () => {
+		const html = buildGalleryHtml(
+			[{ id: "1", title: "My <Art>", file: "my-art-x.html", createdAt: 1000 }],
+			"TOK",
+		);
+		expect(html).toContain("/TOK/a/my-art-x.html"); // token-scoped artifact link
+		expect(html).toContain("My &lt;Art&gt;"); // title escaped
+		expect(html).toContain("/TOK/events"); // SSE endpoint
+		expect(html).toContain("EventSource");
+		expect(html).not.toContain("http://"); // no external requests
+	});
+
+	test("empty state", () => {
+		expect(buildGalleryHtml([], "TOK")).toContain("No artifacts yet");
+	});
+});
+
+describe("artifact — session server", () => {
+	test("serves the gallery + artifact, rejects bad token + traversal", async () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "soly-art-"));
+		fs.writeFileSync(path.join(dir, "demo-x.html"), "<!doctype html><h1>Demo Body</h1>");
+		const srv = new ArtifactServer(dir);
+		await srv.ensureStarted();
+		try {
+			const url = srv.register("Demo", path.join(dir, "demo-x.html"));
+
+			const aRes = await fetch(url);
+			expect(aRes.status).toBe(200);
+			expect(await aRes.text()).toContain("Demo Body");
+
+			const gRes = await fetch(srv.galleryUrl());
+			expect(gRes.status).toBe(200);
+			expect(await gRes.text()).toContain("Demo"); // title listed
+
+			// Wrong token → 404
+			const badToken = srv.galleryUrl().replace(/\/[0-9a-f]+\/$/, "/deadbeef/");
+			expect((await fetch(badToken)).status).toBe(404);
+
+			// Path traversal is stripped to a basename → not found
+			const trav = srv.galleryUrl() + "a/" + encodeURIComponent("../../etc/hosts");
+			expect((await fetch(trav)).status).toBe(404);
+
+			// First-open latch fires exactly once
+			expect(srv.consumeFirstOpen()).toBe(true);
+			expect(srv.consumeFirstOpen()).toBe(false);
+		} finally {
+			srv.stop();
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });

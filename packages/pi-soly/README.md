@@ -34,7 +34,7 @@ Restart pi (`/reload`), and you have:
 - **Mandatory rules** — strict-mode directives injected every turn
 - **Multi-question picker** — `ask_pro` tool for the LLM (single/multi-select, free-text, skip)
 - **Decision deck** — `decision_deck` tool: full-screen TUI cards for comparing design options by code shape
-- **HTML artifacts** — `html_artifact` tool renders self-contained HTML to a temp file and opens it in the browser
+- **HTML artifacts** — `html_artifact` tool serves self-contained HTML from a per-session browser gallery (live-updating, one stable URL)
 - **Skill-based execution** — LLM reads the `soly-framework` skill on demand
 
 The LLM drives execution; `plan`/`execute` delegate to a `worker` subagent when one is available (via pi-subagents), with first-party delegation on the roadmap. You focus on the work.
@@ -209,7 +209,7 @@ Flip cards with ←/→ (or 1-N), choose with Enter, Esc to cancel. Native TUI �
 
 ## 🖼 HTML Artifacts
 
-`html_artifact` tool for the LLM — soly's local "artifacts". Renders HTML (a full document or just body content, wrapped in a styled light/dark skeleton with good code-block and table styling) to a self-contained file in a temp dir and opens it in the browser.
+`html_artifact` tool for the LLM — soly's local "artifacts". Renders HTML (a full document or just body content, wrapped in a styled light/dark skeleton with good code-block and table styling) to a self-contained file, then serves it from a **per-session HTTP server** with a **live gallery** of every artifact made this session — one stable localhost URL, opened in your browser. (Falls back to opening the file directly if the server is disabled.)
 
 ```ts
 html_artifact({
@@ -218,7 +218,7 @@ html_artifact({
 })
 ```
 
-Use it when a visual, rendered result beats terminal text (example galleries, comparisons, diagrams). Self-contained only — inline CSS/JS, no external requests. Config under `artifacts` (`open`, `dir`).
+Use it when a visual, rendered result beats terminal text (example galleries, comparisons, diagrams). Self-contained only — inline CSS/JS, no external requests. The gallery URL lives only while the pi session runs. Config under `artifacts` (`open`, `dir`, `server`).
 
 ---
 

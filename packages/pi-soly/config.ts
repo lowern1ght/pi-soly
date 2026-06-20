@@ -93,6 +93,9 @@ export interface SolyConfig {
 		/** Output directory. Empty → OS temp dir (pi-soly-artifacts/). Accepts an
 		 *  absolute path, ~, or a path relative to the project cwd. */
 		dir: string;
+		/** Serve artifacts from a per-session HTTP server with a live gallery
+		 *  (one stable localhost URL). When false, just open the .html file. */
+		server: boolean;
 	};
 }
 
@@ -146,6 +149,7 @@ export const DEFAULT_CONFIG: SolyConfig = {
 	artifacts: {
 		open: true,
 		dir: "",
+		server: true,
 	},
 };
 
@@ -235,6 +239,7 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 	if (over.artifacts) {
 		if (typeof over.artifacts.open === "boolean") merged.artifacts.open = over.artifacts.open;
 		if (typeof over.artifacts.dir === "string") merged.artifacts.dir = over.artifacts.dir;
+		if (typeof over.artifacts.server === "boolean") merged.artifacts.server = over.artifacts.server;
 	}
 	return merged;
 }

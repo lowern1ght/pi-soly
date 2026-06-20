@@ -69,6 +69,56 @@ ${header}${content}
 `;
 }
 
+/** One artifact in the session gallery. */
+export type GalleryEntry = { id: string; title: string; file: string; createdAt: number };
+
+/**
+ * Build the session gallery page: a live-updating list of every artifact made
+ * this session, newest first. `token` namespaces the routes. The page opens an
+ * SSE stream and reloads when a new artifact is registered. Self-contained.
+ */
+export function buildGalleryHtml(entries: GalleryEntry[], token: string): string {
+	const items =
+		entries.length === 0
+			? `<p class="empty">No artifacts yet — they'll appear here as they're created.</p>`
+			: `<ul class="gallery">\n${entries
+					.map(
+						(e) =>
+							`<li><a href="/${token}/a/${encodeURIComponent(e.file)}">${escapeHtml(
+								e.title,
+							)}</a><time data-ts="${e.createdAt}"></time></li>`,
+					)
+					.join("\n")}\n</ul>`;
+	return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>soly artifacts</title>
+<style>${SKELETON_CSS}
+.gallery{list-style:none;padding:0;margin:0}
+.gallery li{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;padding:.7rem 0;border-bottom:1px solid #e3e3e8}
+.gallery a{font-size:1.05rem;font-weight:600}
+.gallery time{color:#8a8a8e;font-size:.85rem;white-space:nowrap}
+.empty{color:#8a8a8e}
+.sub{font-size:.6em;font-weight:400;color:#8a8a8e}
+@media (prefers-color-scheme:dark){.gallery li{border-color:#2c2c2e}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>soly artifacts <span class="sub">· this session</span></h1></header>
+${items}
+<script>
+try{new EventSource('/${token}/events').onmessage=function(){location.reload()}}catch(e){}
+document.querySelectorAll('time[data-ts]').forEach(function(t){t.textContent=new Date(+t.dataset.ts).toLocaleString()});
+</script>
+</main>
+</body>
+</html>
+`;
+}
+
 // Self-contained stylesheet — no external fonts, scripts, or CDN requests.
 const SKELETON_CSS = `
 :root{color-scheme:light dark}

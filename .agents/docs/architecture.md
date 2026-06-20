@@ -30,7 +30,7 @@ packages/pi-soly/
 ├── workflows/            # /soly execute|pause|resume|compact|discuss|plan|inspect|quick
 ├── ask/                  # ask_pro tool (multi-question picker)
 ├── deck/                  # decision_deck tool (full-screen option cards)
-├── artifact/              # html_artifact tool (HTML → temp file → browser)
+├── artifact/              # html_artifact tool (HTML → per-session gallery server)
 ├── mcp/                  # pi-mcp-adapter fork (UE5 session-retry + framed notifs)
 ├── skills/soly-framework/  # SKILL.md loaded by LLM on demand
 ├── docs.ts               # builds system-prompt sections (rules, status, hints)
