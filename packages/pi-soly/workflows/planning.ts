@@ -129,13 +129,13 @@ These documents hold the project's INTENT — business context, design vision, w
 Phase directory: ${phase.dir}
 Current state:   planCount=${phase.planCount}, context=${phase.contextExists}, research=${phase.researchExists}
 
-Launch a subagent to produce the plan. Do NOT plan inline.
+Launch a subagent to produce the phase's tasks. Do NOT plan inline.
 
 subagent({
   agent: "worker",
   context: "fresh",
   async: true,
-  task: \`You are a planner. Produce PLAN.md (and ${phase.contextExists ? "" : "optionally CONTEXT.md / "}RESEARCH.md if missing) for phase ${target.phase}.
+  task: \`You are a planner. Break phase ${target.phase} into discrete tasks (unified model): write one PLAN.md per task at phases/<NN>-slug/tasks/<task-id>/PLAN.md with frontmatter, plus ${phase.contextExists ? "" : "CONTEXT.md / "}RESEARCH.md if missing.
 
 **FIRST ACTION — read the iteration context file:**
 \`\`\`
@@ -155,15 +155,16 @@ ${workflow}
 
 Hard rules:
   - Do not write production code. Planning only.
-  - Wave numbers must be pre-computed; dependency graph must be acyclic.
-  - Each plan needs requirements, must_haves.truths, must_haves.artifacts, must_haves.key_links.
-  - PATH DISCIPLINE: all PLAN.md / CONTEXT.md / RESEARCH.md files go under \`.soly/phases/<NN>-<slug>/\`. Never write plan files to the project root.
+  - One task = one PLAN.md under .soly/phases/<NN>-<slug>/tasks/<task-id>/ (task id = <short-slug>-<4hex>).
+  - Each task PLAN.md starts with frontmatter: id, kind, status: ready, depends-on: [task ids], optional feature. The cross-task dependency graph must be acyclic.
+  - Each task PLAN needs requirements, must_haves.truths, must_haves.artifacts, must_haves.key_links.
+  - PATH DISCIPLINE: all task PLAN.md / phase CONTEXT.md / RESEARCH.md go under \`.soly/phases/<NN>-<slug>/\`. Never write to the project root.
   - Update .soly/STATE.md Current Position at the end.
-  - Return: created files, plan count, wave breakdown, open questions.
+  - Return: created task ids, the dependency order (which tasks are ready first), open questions.
 \`
 })
 
-When the subagent returns, summarize the plan structure and ask the user to confirm before any execution.`;
+When the subagent returns, summarize the tasks + their dependency order, then suggest \`soly execute ${target.phase}\` (or ask the user to confirm before execution).`;
 		return { handled: true, transformedText: instruction };
 	}
 
