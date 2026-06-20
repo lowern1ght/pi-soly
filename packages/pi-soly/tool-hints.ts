@@ -49,12 +49,14 @@ export function detectToolHints(prompt: string): ToolHint {
 /** Build the affordance section, or null when nothing matched. */
 export function buildToolHintSection(h: ToolHint): string | null {
 	const bits: string[] = [];
-	if (h.deck)
-		bits.push("- Weighing options/alternatives → consider `decision_deck` (full-screen cards with each option's code + pros/cons).");
 	if (h.artifact)
-		bits.push("- Examples / a table / a visual result → consider `html_artifact` (a rendered page in the session gallery).");
+		bits.push("- Examples / a table / a visual result: **ask the user first** — render it in the browser as an artifact (`html_artifact`), or just as text here? Then proceed accordingly.");
+	if (h.deck)
+		bits.push("- Comparing options/alternatives: **ask the user first** — show them as a full-screen deck (`decision_deck`, code + pros/cons), or inline as text? Then proceed.");
 	if (h.ask)
-		bits.push("- Several things to clarify → consider `ask_pro` (one batched picker).");
+		bits.push("- Several things to clarify → use `ask_pro` (one batched picker).");
 	if (bits.length === 0) return null;
-	return `\n## soly — tool affordances for this turn\n\n${bits.join("\n")}\n(Only if it genuinely helps — otherwise answer normally.)`;
+	return `\n## soly — interactive output for this turn\n\n${bits.join(
+		"\n",
+	)}\nAsk once and briefly (a one-line question is fine). If the content is tiny or the format is obvious, just answer in text.`;
 }

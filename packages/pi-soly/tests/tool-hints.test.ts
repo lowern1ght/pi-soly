@@ -32,11 +32,12 @@ describe("buildToolHintSection", () => {
 		expect(buildToolHintSection({ artifact: false, deck: false, ask: false })).toBeNull();
 	});
 
-	test("lists only the matched tools", () => {
+	test("lists only the matched tools and tells the LLM to ask browser-vs-text", () => {
 		const s = buildToolHintSection({ artifact: true, deck: true, ask: false });
 		expect(s).toContain("decision_deck");
 		expect(s).toContain("html_artifact");
 		expect(s).not.toContain("ask_pro");
-		expect(s?.toLowerCase()).toContain("only if");
+		expect(s?.toLowerCase()).toContain("ask the user first");
+		expect(s?.toLowerCase()).toContain("as text");
 	});
 });
