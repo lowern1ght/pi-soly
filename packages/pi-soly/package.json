@@ -45,6 +45,7 @@
     "util.ts",
     "ask",
     "deck",
+    "artifact",
     "skills",
     "workflows",
     "workflows-data",

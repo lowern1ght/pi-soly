@@ -87,6 +87,13 @@ export interface SolyConfig {
 		/** Regex signaling issues were fixed → keep looping despite an exit phrase. */
 		issuesFixedPatterns: string[];
 	};
+	artifacts: {
+		/** Open generated HTML artifacts in the browser automatically. */
+		open: boolean;
+		/** Output directory. Empty → OS temp dir (pi-soly-artifacts/). Accepts an
+		 *  absolute path, ~, or a path relative to the project cwd. */
+		dir: string;
+	};
 }
 
 export const DEFAULT_CONFIG: SolyConfig = {
@@ -135,6 +142,10 @@ export const DEFAULT_CONFIG: SolyConfig = {
 			'exactly: "No issues found."',
 		exitPatterns: ["no issues found", "no further issues", "nothing to fix"],
 		issuesFixedPatterns: ["fixed \\d+ issue", "ready for another review", "issues? fixed"],
+	},
+	artifacts: {
+		open: true,
+		dir: "",
 	},
 };
 
@@ -220,6 +231,10 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 			merged.verify.exitPatterns = over.verify.exitPatterns.filter((p) => typeof p === "string");
 		if (Array.isArray(over.verify.issuesFixedPatterns))
 			merged.verify.issuesFixedPatterns = over.verify.issuesFixedPatterns.filter((p) => typeof p === "string");
+	}
+	if (over.artifacts) {
+		if (typeof over.artifacts.open === "boolean") merged.artifacts.open = over.artifacts.open;
+		if (typeof over.artifacts.dir === "string") merged.artifacts.dir = over.artifacts.dir;
 	}
 	return merged;
 }
