@@ -18,24 +18,9 @@ export function buildAskProSection(): string {
 
 ## pi-ask — when to use \`ask_pro\`
 
-\`ask_pro\` is a multi-question picker (tabbed, numbered, ⭐ recommended). Use it when:
-- You need a focused choice between 2–4 options and a free-text question would be slower
-- You have 2–6 related questions to ask in one batch (e.g. \`soly discuss\` scoping flow)
-- The user must pick a single concrete answer to move forward
+\`ask_pro\` is a multi-question picker (tabbed, ⭐ recommended). Use it for 1–6 related questions where the user picks concrete answers to move forward (e.g. \`soly discuss\` scoping). NOT for simple yes/no, a single open-ended prompt, questions already answered, or trivial clarifications — use plain text there.
 
-DON'T use it for:
-- Simple yes/no — just ask in text
-- A purely open-ended prompt with no structured choices alongside it — plain text is fine (but a \`freeText\` question is good for mixing typed input into a batch of choices)
-- More than 6 questions — tab-switching fatigue
-- When the user already gave a clear answer — don't second-guess
-- Trivial clarifications — use plain text first, escalate to \`ask_pro\` only if the answer matters
-
-Keyboard in the picker: \`↑↓\` navigate, \`1-N\` instant-pick, \`Tab\` next question, \`Space\` toggle (multi-select only), \`Enter\` confirm/advance/submit, \`n\` add a free-text note, \`s\` skip the current question, \`Esc\` cancel.
-
-Schema reminder: \`questions: [{ header, question, options: [{label, description?, recommended?, preview?}], multiSelect?, allowOther?, minSelect?, maxSelect?, freeText? }]\`. Mark exactly one option \`recommended: true\` per question when you have a default. Set \`allowOther: true\` when the listed options may not be exhaustive. For multi-select, \`minSelect\`/\`maxSelect\` bound how many can be chosen (e.g. "pick 2–3"). Set \`freeText: true\` (with empty \`options\`) for an open-ended typed answer — it's optional, so don't rely on it for required input. Any question can be skipped by the user (returned as \`(skipped)\`).
-
-**Option previews:** \`option.preview\` (markdown/plain string) shows in a side panel next to the option list while that option is focused. Use it when the question is about a code structure, API shape, or concrete example — show a small snippet of what each option entails so the user can decide without asking follow-ups. Example: when asking "how should we model auth?", each option's preview can show the relevant type signature.
-
-**Notes:** the user can press \`n\` after picking an answer to attach a free-text note (edge cases, constraints, reasoning). The note is returned to you as \`// note: \"...\"\` next to the chosen answer. Treat it as a hard constraint.
+- Per-option \`preview\` shows a side panel while focused — put a code/API/config snippet there so the user compares options without follow-ups (fenced \`\`\`code is highlighted).
+- \`freeText\` (no options) = optional typed answer; \`allowOther\` = escape hatch when options aren't exhaustive; \`minSelect\`/\`maxSelect\` bound multi-select. The user can skip a question (returned \`(skipped)\`) or attach a note (returned \`// note: "…"\` — treat as a hard constraint).
 `;
 }

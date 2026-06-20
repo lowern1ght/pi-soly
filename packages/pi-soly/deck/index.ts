@@ -27,37 +27,22 @@ export default function piDeckExtension(pi: ExtensionAPI) {
 		name: "decision_deck",
 		label: "soly · decision_deck",
 		description:
-			"Present ONE design/architecture decision as a full-screen deck of cards — one option per card — that the user flips through (←/→ or 1-N) and picks with Enter. Each option takes `{ title, summary?, code?, lang?, pros?, cons?, recommended? }`. Use it (instead of ask_pro) when the decision hinges on comparing the concrete code shape / structure of each option and a thin side-panel isn't enough. 2-6 options. Native TUI — no browser. Returns the chosen option.",
+			"Present ONE design/architecture decision as a full-screen deck of cards (one per option) the user flips through (←/→ or 1-N) and picks with Enter. Use instead of ask_pro when the choice hinges on comparing each option's concrete code shape, not a label. 2-6 options. Native TUI. Returns the chosen option.",
 		parameters: Type.Object({
-			title: Type.Optional(
-				Type.String({ description: "Short decision title (e.g. 'State management')." }),
-			),
-			prompt: Type.Optional(
-				Type.String({ description: "The question being decided, shown above the cards." }),
-			),
+			title: Type.Optional(Type.String({ description: "Decision title." })),
+			prompt: Type.Optional(Type.String({ description: "Question shown above the cards." })),
 			options: Type.Array(
 				Type.Object({
-					title: Type.String({ description: "Card title (1-4 words)." }),
-					summary: Type.Optional(
-						Type.String({ description: "1-3 sentence explanation of this option." }),
-					),
+					title: Type.String({ description: "Card title." }),
+					summary: Type.Optional(Type.String({ description: "1-3 sentence explanation." })),
 					code: Type.Optional(
-						Type.String({
-							description:
-								"Code snippet showing the shape of this option (no fences — pass raw code; set `lang` for highlighting).",
-						}),
+						Type.String({ description: "Raw code snippet (no fences); set `lang` to highlight." }),
 					),
-					lang: Type.Optional(
-						Type.String({ description: "Language for syntax highlighting (e.g. 'ts', 'py')." }),
-					),
-					pros: Type.Optional(
-						Type.Array(Type.String(), { description: "Upsides, shown as green '+' lines." }),
-					),
-					cons: Type.Optional(
-						Type.Array(Type.String(), { description: "Downsides, shown as '−' lines." }),
-					),
+					lang: Type.Optional(Type.String({ description: "Highlight language (e.g. 'ts')." })),
+					pros: Type.Optional(Type.Array(Type.String(), { description: "Upsides (+)." })),
+					cons: Type.Optional(Type.Array(Type.String(), { description: "Downsides (−)." })),
 					recommended: Type.Optional(
-						Type.Boolean({ description: "Mark the ⭐ recommended option (cursor starts here)." }),
+						Type.Boolean({ description: "⭐ recommended (cursor starts here, at most one)." }),
 					),
 				}),
 				{ description: "2-6 options to compare." },

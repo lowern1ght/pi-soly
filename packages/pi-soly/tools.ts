@@ -66,7 +66,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_read",
 		label: "soly read",
 		description:
-			"read a .soly/ artifact. Use when you need to inspect what the project knows — current state, the active plan, phase context/research, the roadmap, requirements, project overview, or milestone. Pass `phase` (number) to target a specific phase's plan/context/research; defaults to the current phase. Returns the file content as text.",
+			"Read a .soly/ artifact (state, plan, context, research, roadmap, requirements, project, milestone, task). `phase` targets a specific phase (default: current); `taskId` for the task artifact. Returns the file text.",
 		parameters: Type.Object({
 			artifact: StringEnum([
 				"state",
@@ -189,7 +189,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_log_decision",
 		label: "soly log decision",
 		description:
-			"append a row to the Decisions table in .soly/STATE.md (creates the table if missing). Use this for meaningful choices the future-you should know about — scope cuts, library picks, trade-off resolutions. Pass `phase` (number) to attach to a specific phase; defaults to the current phase. Decision and rationale should each be one line.",
+			"Append a one-line decision + rationale to the Decisions table in .soly/STATE.md (creates it if missing). For meaningful choices: scope cuts, library picks, trade-offs. `phase` defaults to current.",
 		parameters: Type.Object({
 			decision: Type.String({ description: "The decision made (one line)." }),
 			rationale: Type.String({ description: "Why this decision was made (one line)." }),
@@ -274,7 +274,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_list_tasks",
 		label: "soly list tasks",
 		description:
-			"list all tasks across all features with kind, status, priority, and dependencies. Use when you need an overview of available tasks — e.g. before `soly execute <task-id>` or `soly execute --all`.",
+			"List all tasks across features (kind, status, priority, deps). Use before `soly execute <task-id>` / `--all`.",
 		parameters: Type.Object({}),
 		async execute(_id, _params, _signal, _onUpdate, _ctx) {
 			const state = getState();
@@ -300,7 +300,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_list_phases",
 		label: "soly list phases",
 		description:
-			"list all phases in .soly/phases/ with plan count, CONTEXT/RESEARCH presence markers (C/R), and the current position marker (→). Use when you need an overview of which phases exist, which have plans, and which have research/context notes — e.g. before suggesting `soly plan <N>` or `soly execute <N>`.",
+			"List phases with plan count, C/R (context/research) markers, and current-position marker (→). Use before `soly plan <N>` / `execute <N>`.",
 		parameters: Type.Object({}),
 		async execute(_id, _params, _signal, _onUpdate, _ctx) {
 			const state = getState();
@@ -329,7 +329,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_todos",
 		label: "soly todos",
 		description:
-			"scan the working tree for TODO / FIXME / HACK / XXX / NOTE comments, grouped by file. Use for a quick audit of outstanding cleanup work. Scans .ts/.tsx/.js/.jsx/.py/.go/.rs only, excluding node_modules, .git, dist, build, .soly, coverage. Requires `rg` (ripgrep) on PATH — silently returns empty if missing. Pass `paths` to override the scan root, `limit` to cap (default 200).",
+			"Scan the tree for TODO/FIXME/HACK/XXX/NOTE comments, grouped by file (common source extensions; excludes node_modules/.git/dist/build/.soly). Needs ripgrep on PATH. `paths` overrides root, `limit` caps (default 200).",
 		parameters: Type.Object({
 			paths: Type.Optional(
 				Type.Array(Type.String(), {
@@ -461,7 +461,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_env",
 		label: "soly env",
 		description:
-			"detect the project's runtime environment and return it as a one-screen summary. Use to answer 'what test runner?', 'is docker used here?', 'what's the package manager?' etc. Detects: package manager, runtimes (node/bun), key dependencies, available scripts (dev/build/test/lint/...), services (postgres/redis/etc from compose), tooling flags (ts/tests/docker/ci).",
+			"Detect the project's environment as a one-screen summary: package manager, runtimes, key deps, scripts, services (from compose), and tooling flags (ts/tests/docker/ci). Answers 'what test runner / package manager / is docker used'.",
 		parameters: Type.Object({}),
 		async execute(_id, _params, _signal, _onUpdate, ctx) {
 			const env = detectEnv(ctx.cwd);
@@ -499,19 +499,14 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_snippet",
 		label: "soly snippet",
 		description:
-			"read a bounded range of lines from a file with line numbers (lazy context). Use when you need a specific function/class/section without loading the whole file. Path is relative to cwd unless absolute. `offset` is 0-indexed start, `limit` defaults to 100 (cap 500). For .html files, pass `format=\"stripped\"` to strip HTML tags (text-only output, useful for intent docs).",
+			"Read a bounded line range from a file with line numbers — a specific function/section without the whole file. `offset` 0-indexed, `limit` default 100 (cap 500). For .html, `format=\"stripped\"` removes tags.",
 		parameters: Type.Object({
 			path: Type.String({ description: "File path (relative to cwd or absolute)." }),
-			offset: Type.Optional(
-				Type.Number({ description: "0-indexed start line. Default 0." }),
-			),
-			limit: Type.Optional(
-				Type.Number({ description: "Max lines to return. Default 100, cap 500." }),
-			),
+			offset: Type.Optional(Type.Number({ description: "0-indexed start line. Default 0." })),
+			limit: Type.Optional(Type.Number({ description: "Max lines. Default 100, cap 500." })),
 			format: Type.Optional(
 				StringEnum(["raw", "stripped"] as const, {
-					description:
-						"Output format. \"raw\" returns content as-is. \"stripped\" removes HTML tags (for .html files). Default \"raw\".",
+					description: '"raw" (default) or "stripped" (remove HTML tags).',
 				}),
 			),
 		}),
@@ -574,7 +569,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_doc_search",
 		label: "soly doc search",
 		description:
-			"search .md and .html files under cwd (excluding node_modules, dist, etc.) for a query. Use to discover relevant docs before loading a specific file with soly_snippet. Intent docs (from `.soly/docs/` and `.soly/phases/<N>/docs/`) are prioritized via a source-priority bonus — hits are tagged `[intent]`, `[phase-intent]`, or `[project]` so you can tell at a glance. `limit` defaults to 10 (cap 50).",
+			"Search .md/.html under cwd for a query (intent docs prioritized, hits tagged [intent]/[phase-intent]/[project]). Use to find docs before loading one with soly_snippet. `limit` default 10 (cap 50).",
 		parameters: Type.Object({
 			query: Type.String({ description: "Search query (substring, case-insensitive)." }),
 			limit: Type.Optional(
@@ -632,7 +627,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_scratchpad",
 		label: "soly scratchpad",
 		description:
-			"return a compact summary of the recent conversation (one line per turn: user prompt + first line of assistant response). Use to recover shared context after a long break, or to brief a sibling subagent without sharing the full session history. `limit` defaults to 20 user-turns (cap 50).",
+			"Compact recap of the recent conversation (one line per turn). Use to recover context after a break or brief a sibling subagent. `limit` default 20 user-turns (cap 50).",
 		parameters: Type.Object({
 			limit: Type.Optional(
 				Type.Number({
@@ -689,29 +684,18 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_ask_user",
 		label: "soly ask user",
 		description:
-			"DEPRECATED fallback — prefer `ask_pro` (always available; multi-question tabbed picker with previews + notes). Use `soly_ask_user` only if `ask_pro` is somehow unavailable. Asks the user one multiple-choice question via pi's UI picker, for progressive Q&A flows (e.g. `soly discuss <N>`). The first option is treated as the recommended answer — mark it with a ⭐ prefix in its label and add a 1-sentence rationale in the `rationale` parameter. Returns the chosen option text (or the custom string if `allowOther: true` and the user picked 'Other…'). The picker has ↑/↓/j/k navigation, Enter to confirm, Esc to cancel (cancelled → returns 'cancelled' in details).",
+			"DEPRECATED — prefer `ask_pro` (multi-question picker). Fallback only. Asks one multiple-choice question via pi's picker; option #1 is the recommended answer (⭐ prefix + a `rationale`). `allowOther` adds a custom-text 'Other…'. Returns the chosen text (or custom string); Esc → cancelled.",
 		parameters: Type.Object({
-			title: Type.String({
-				description: "Short title shown above the picker (e.g. 'Q1: Session handling').",
-			}),
-			question: Type.String({
-				description: "The question to ask the user (one short sentence).",
-			}),
+			title: Type.String({ description: "Title above the picker." }),
+			question: Type.String({ description: "The question (one sentence)." }),
 			options: Type.Array(Type.String(), {
-				description:
-					"2-4 concrete options. Option #1 is the recommended answer (mark with ⭐ prefix in the label).",
+				description: "2-4 options; #1 is recommended (⭐ prefix).",
 			}),
 			rationale: Type.Optional(
-				Type.String({
-					description:
-						"1-2 sentence note explaining why option #1 is recommended. Shown above the picker.",
-				}),
+				Type.String({ description: "Why #1 is recommended (shown above the picker)." }),
 			),
 			allowOther: Type.Optional(
-				Type.Boolean({
-					description:
-						"If true, appends an 'Other…' option that opens a text-input dialog for a custom answer. The custom string is returned in place of the option index.",
-				}),
+				Type.Boolean({ description: "Add a custom-text 'Other…' choice." }),
 			),
 		}),
 		async execute(_id, params, _signal, _onUpdate, ctx) {
@@ -834,45 +818,35 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_finish_discuss",
 		label: "soly finish discuss",
 		description:
-			"Finalize a `soly discuss <N>` session: write the canonical `<phase>-CONTEXT.md` with all captured decisions, and delete the checkpoint file (if any). Call this AFTER asking all gray-area questions and recording the user's answers via `soly_ask_user`. Do NOT call this for partial progress — use the checkpoint file (auto-saved by soly_finish_discuss_checkpoint) for resume.",
+			"Finalize a `soly discuss <N>` session: write `<phase>-CONTEXT.md` with all decisions and delete the checkpoint. Call AFTER all gray-area questions are answered — not for partial progress (use soly_save_discuss_checkpoint for that).",
 		parameters: Type.Object({
-			phase_number: Type.Number({
-				description: "Phase number being discussed (e.g. 5).",
-			}),
+			phase_number: Type.Number({ description: "Phase number being discussed." }),
 			domain: Type.String({
 				description:
-					"1-2 paragraphs: what this phase delivers, grounded in ROADMAP + intent. No implementation details.",
+					"1-2 paragraphs: what this phase delivers (grounded in ROADMAP + intent, no implementation details).",
 			}),
 			decisions: Type.Array(
 				Type.Object({
-					category: Type.String({
-						description:
-							"Category of the decision (e.g. 'Session handling', 'Error responses', 'Token storage').",
-					}),
+					category: Type.String({ description: "Decision category (e.g. 'Session handling')." }),
 					choice: Type.String({ description: "What was chosen." }),
 					rationale: Type.Optional(
-						Type.String({
-							description: "Why this choice — default 'user discretion' if not specified.",
-						}),
+						Type.String({ description: "Why (default 'user discretion')." }),
 					),
 				}),
-				{ description: "All decisions captured during this discussion round." },
+				{ description: "All decisions captured this round." },
 			),
 			canonical_refs: Type.Optional(
 				Type.Array(Type.String(), {
 					description:
-						"MANDATORY. List of files the planner will need (intent docs, REQUIREMENTS, contracts, prior CONTEXT.md). Full relative paths starting with `.soly/`.",
+						"MANDATORY. Files the planner needs (intent docs, REQUIREMENTS, contracts), full paths from `.soly/`.",
 				}),
 			),
 			deferred_ideas: Type.Optional(
-				Type.Array(Type.String(), {
-					description: "Scope-creep items for future phases (or empty array).",
-				}),
+				Type.Array(Type.String(), { description: "Scope-creep items for future phases." }),
 			),
 			codebase_context: Type.Optional(
 				Type.Array(Type.String(), {
-					description:
-						"Reusable assets/patterns the planner should know (e.g. 'src/components/Card.tsx — already has rounded/shadow variants, reuse for consistency').",
+					description: "Reusable assets/patterns the planner should know (path — what to reuse).",
 				}),
 			),
 		}),
@@ -1028,7 +1002,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_save_discuss_checkpoint",
 		label: "soly save discuss checkpoint",
 		description:
-			"Save a partial-progress checkpoint for `soly discuss <N>`. Call after each captured decision (so a session quit doesn't lose progress). The next `soly discuss <N>` invocation will pick up from the checkpoint. After all decisions captured, call `soly_finish_discuss` (which deletes the checkpoint and writes CONTEXT.md).",
+			"Save a partial-progress checkpoint for `soly discuss <N>` (call after each decision so a quit doesn't lose progress; the next `soly discuss <N>` resumes from it). When done, call `soly_finish_discuss`.",
 		parameters: Type.Object({
 			phase_number: Type.Number({ description: "Phase number being discussed." }),
 			decisions: Type.Array(

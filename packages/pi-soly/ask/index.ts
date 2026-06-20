@@ -79,78 +79,49 @@ export default function piAskExtension(pi: ExtensionAPI) {
 		name: "ask_pro",
 		label: "soly · ask_pro",
 		description:
-			"Ask the user multiple questions at once via a tabbed picker. Each question is a tab at the top. Options are numbered (1-N instant-pick), the recommended answer is marked ⭐. Supports single-select (default, auto-advance on pick), multi-select (Space toggles; `minSelect`/`maxSelect` bound the count), and `freeText: true` questions (no options — the user types an answer). Per option, `preview` shows a side-panel snippet while focused (fenced ```code is syntax-highlighted); per question, `allowOther: true` adds a free-text 'Other…' choice. The user can press `n` to attach a note or `s` to skip a question (returned as skipped). All answers returned in one call. Use for progressive Q&A flows like `soly discuss`.",
+			"Ask the user several questions at once via a tabbed picker; returns all answers in one call. Per question: single-select (default), `multiSelect` (+ `minSelect`/`maxSelect`), `allowOther` (free-text choice), or `freeText` (typed answer, no options). Per option: `recommended` (⭐) and `preview` (side panel, fenced code highlighted). User can skip (`s`) or note (`n`). Prefer over one-by-one questions; good for `soly discuss`.",
 		parameters: Type.Object({
 			questions: Type.Array(
 				Type.Object({
-					header: Type.String({
-						description: "Short label for the tab (1-2 words, max 12 chars).",
-					}),
-					question: Type.String({
-						description: "The full question to ask.",
-					}),
+					header: Type.String({ description: "Tab label (1-2 words)." }),
+					question: Type.String({ description: "The question." }),
 					options: Type.Array(
 						Type.Object({
-							label: Type.String({
-								description: "Short label (1-5 words).",
-							}),
+							label: Type.String({ description: "Short label." }),
 							description: Type.Optional(
-								Type.String({
-									description: "1-2 sentence explanation. Shown below the label.",
-								}),
+								Type.String({ description: "1-2 sentence explanation, shown below the label." }),
 							),
 							recommended: Type.Optional(
-								Type.Boolean({
-									description: "Mark as ⭐ recommended answer.",
-								}),
+								Type.Boolean({ description: "Mark ⭐ recommended (at most one)." }),
 							),
 							preview: Type.Optional(
 								Type.String({
 									description:
-										"Markdown/plain snippet shown in a side panel while this option is focused (e.g. a code shape, API signature, config sample) so the user can compare options without follow-ups.",
+										"Snippet shown in a side panel when focused (code shape, signature, sample). Fenced ```code is highlighted.",
 								}),
 							),
 						}),
-						{
-							description:
-								"2-4 concrete options. Leave empty ([]) when freeText is true.",
-						},
+						{ description: "2-4 options. Empty ([]) when freeText is true." },
 					),
 					multiSelect: Type.Optional(
-						Type.Boolean({
-							description:
-								"If true, user can pick multiple (checkboxes, Enter toggles). If false (default), single-select with auto-advance.",
-						}),
+						Type.Boolean({ description: "Allow multiple picks (default single-select)." }),
 					),
 					allowOther: Type.Optional(
-						Type.Boolean({
-							description:
-								"If true, append a synthetic 'Other…' option that opens a free-text input, so the user isn't boxed into the listed choices.",
-						}),
+						Type.Boolean({ description: "Add a free-text 'Other…' choice." }),
 					),
 					minSelect: Type.Optional(
-						Type.Number({
-							description:
-								"Multi-select only: minimum options the user must choose (default 1).",
-						}),
+						Type.Number({ description: "Multi-select: min picks (default 1)." }),
 					),
 					maxSelect: Type.Optional(
-						Type.Number({
-							description:
-								"Multi-select only: maximum options the user may choose (default: no limit).",
-						}),
+						Type.Number({ description: "Multi-select: max picks (default: no limit)." }),
 					),
 					freeText: Type.Optional(
 						Type.Boolean({
-							description:
-								"If true, the question has no options — the user types a free-text answer. Leave options empty. Use for open-ended input (names, descriptions); the answer is optional (blank allowed).",
+							description: "No options — user types an answer (optional, blank allowed).",
 						}),
 					),
 				}),
-				{
-					description:
-						"Questions to ask, in tab order. Max ~5 recommended (more hurts UX).",
-				},
+				{ description: "Questions in tab order (≤5 recommended)." },
 			),
 		}),
 		async execute(_id, params, _signal, _onUpdate, ctx) {

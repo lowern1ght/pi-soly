@@ -14,14 +14,5 @@ export function buildArtifactSection(): string {
 
 ## pi-artifact — when to use \`html_artifact\`
 
-\`html_artifact\` renders HTML to a self-contained local file and opens it in the browser — soly's version of artifacts. Reach for it when a **visual, rendered** result beats terminal text:
-- A gallery of code examples with explanations, or before/after comparisons
-- Side-by-side options, comparison tables, or a styled cheat-sheet
-- Diagrams, a small rendered HTML/CSS/SVG demo, or anything where layout/color carries meaning
-
-How: pass \`title\` and \`html\`. \`html\` can be a full document OR just body content — a fragment is wrapped in a styled skeleton (clean typography, nice \`<pre><code>\` blocks, tables, light/dark aware), so usually you only send the body. Put code in \`<pre><code>…</code></pre>\`.
-
-**Hard constraint — self-contained:** inline all CSS and JS, embed images as data: URIs. No external stylesheets, fonts, scripts, or CDN/network requests (the file is opened from disk).
-
-Don't use it for: a single short snippet (use a markdown code block), plain prose answers, or interactive choices (use \`ask_pro\` / \`decision_deck\`). The file is written to a temp dir and the path is returned to you — mention it to the user.`;
+\`html_artifact\` renders HTML to a self-contained local file and opens it in the browser — soly's artifacts. Reach for it when a visual, rendered result beats terminal text: example galleries, before/after or side-by-side comparisons, tables, diagrams, a small HTML/CSS/SVG demo. Pass \`title\` + \`html\` (a body fragment is fine — it's wrapped in a styled skeleton; put code in \`<pre><code>\`). **Self-contained only:** inline all CSS/JS, embed images as data: URIs, no external/CDN requests. Don't use it for a single snippet (markdown code block), prose, or interactive choices (\`ask_pro\`/\`decision_deck\`). Mention the returned file path to the user.`;
 }

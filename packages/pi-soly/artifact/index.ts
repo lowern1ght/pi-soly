@@ -58,19 +58,15 @@ export default function piArtifactExtension(
 		name: "html_artifact",
 		label: "soly · html_artifact",
 		description:
-			"Render HTML to a self-contained local file and open it in the browser — soly's version of artifacts. Pass `html` as either a full document or a body fragment (it gets wrapped in a styled skeleton with good code-block, table, and light/dark styling). Use it when a visual, rendered result beats terminal text: styled code examples, side-by-side comparisons, diagrams, tables, or an HTML/CSS demo. Self-contained only — inline all CSS/JS, no external URLs. Returns the file path.",
+			"Render HTML to a self-contained local file and open it in the browser — soly's artifacts. `html` is a full document or a body fragment (wrapped in a styled light/dark skeleton with good code/table styling). Use when a visual rendered result beats terminal text: example galleries, comparisons, diagrams, HTML/CSS demos. Self-contained only — inline CSS/JS, no external URLs. Returns the file path.",
 		parameters: Type.Object({
-			title: Type.String({
-				description: "Short title (used for the <title>, header bar, and filename).",
-			}),
+			title: Type.String({ description: "Title (used for <title>, header, filename)." }),
 			html: Type.String({
 				description:
-					"HTML content: a full document or a body fragment. Put code examples in <pre><code>…</code></pre>. Must be self-contained (inline CSS/JS, no CDN/external requests).",
+					"Full document or body fragment. Code in <pre><code>…</code></pre>. Self-contained (inline CSS/JS, no external requests).",
 			}),
 			open: Type.Optional(
-				Type.Boolean({
-					description: "Open in the browser after writing. Defaults to the artifacts.open config.",
-				}),
+				Type.Boolean({ description: "Open in browser after writing (default: artifacts.open)." }),
 			),
 		}),
 		async execute(_id, params, _signal, _onUpdate, ctx) {
