@@ -286,7 +286,12 @@ When the subagent completes, synthesize the result. Do not re-execute its work. 
 	}
 
 	const isPlanLevel = target.plan != null;
-	const workflowName = isPlanLevel ? "execute-plan.md" : "execute-phase.md";
+	// Unified model: a phase with tasks/ executes those (dependency-ordered) via
+	// the task-centric workflow; legacy phases (plan files, no tasks) keep the
+	// wave/plan workflow.
+	const phaseTasks = phase.tasks ?? [];
+	const useTasks = !isPlanLevel && phaseTasks.length > 0;
+	const workflowName = isPlanLevel ? "execute-plan.md" : useTasks ? "execute-task.md" : "execute-phase.md";
 	const workflow = loadWorkflowMarkdown(workflowName);
 	if (!workflow) {
 		return {
@@ -329,11 +334,6 @@ When the subagent completes, synthesize the result. Do not re-execute its work. 
 
 	// Build the LLM instruction. Keep it terse at the top, then dump the
 	// workflow markdown verbatim so the LLM has full context.
-	// Unified model: when the phase has tasks under tasks/, execute those (in
-	// dependency order) instead of legacy plan files. Legacy phases (plans, no
-	// tasks) keep the original behavior.
-	const phaseTasks = phase.tasks ?? [];
-	const useTasks = !isPlanLevel && phaseTasks.length > 0;
 	const targetDesc = isPlanLevel
 		? `phase ${target.phase} plan ${String(target.plan).padStart(2, "0")}`
 		: useTasks
