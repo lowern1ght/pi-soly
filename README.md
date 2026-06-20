@@ -32,6 +32,8 @@ Restart pi (`/reload`), and you have:
 - **Workflow engine** — `/plan`, `/execute`, `/resume`, `/inspect`, `/discuss`, `/quick`
 - **Mandatory rules** — strict-mode directives injected every turn
 - **Multi-question picker** — `ask_pro` tool for the LLM
+- **Decision deck** — `decision_deck` tool: full-screen TUI cards for comparing design options by code shape
+- **HTML artifacts** — `html_artifact` tool renders self-contained HTML to a temp file and opens it in the browser
 - **Skill-based execution** — LLM reads the `soly-framework` skill on demand
 
 The LLM drives execution; `plan`/`execute` delegate to a `worker` subagent when one is available (via pi-subagents), with first-party delegation on the roadmap. You focus on the work.

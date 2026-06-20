@@ -29,10 +29,12 @@ Restart pi (`/reload`), and you have:
 - **Project management** — plans, state, phases, decisions
 - **Workflow engine** — plain-text verbs: `soly discuss` · `plan` · `execute` · `verify` · `pause`/`resume`
 - **Self-review loop** — `soly verify` re-reviews the work until "No issues found."
-- **Visual chrome** — native footer, snowflake working spinner with live telemetry, gradient welcome banner
+- **Visual chrome** — native footer, equalizer working spinner with live telemetry, gradient welcome banner
 - **Rules & docs modal** — `/rules` and `/docs` open a fuzzy list + preview panel (no chat dumps)
 - **Mandatory rules** — strict-mode directives injected every turn
-- **Multi-question picker** — `ask_pro` tool for the LLM
+- **Multi-question picker** — `ask_pro` tool for the LLM (single/multi-select, free-text, skip)
+- **Decision deck** — `decision_deck` tool: full-screen TUI cards for comparing design options by code shape
+- **HTML artifacts** — `html_artifact` tool renders self-contained HTML to a temp file and opens it in the browser
 - **Skill-based execution** — LLM reads the `soly-framework` skill on demand
 
 The LLM drives execution; `plan`/`execute` delegate to a `worker` subagent when one is available (via pi-subagents), with first-party delegation on the roadmap. You focus on the work.
@@ -181,6 +183,42 @@ ask_pro({
 ```
 
 The LLM calls `ask_pro` when it needs structured input. Tab through questions, pick ⭐ options, confirm.
+Per-option `preview` shows a side panel (fenced code is syntax-highlighted); `freeText: true` makes a typed-answer question; multi-select takes `minSelect`/`maxSelect`; press `s` to skip a question.
+
+---
+
+## 🃏 Decision Deck
+
+`decision_deck` tool for the LLM. A full-screen TUI deck — one framed card per option, each with a syntax-highlighted code snippet and pros/cons — for design/architecture forks where the choice hinges on seeing the concrete shape, not a label.
+
+```ts
+decision_deck({
+  title: "State management",
+  prompt: "How should modules communicate?",
+  options: [
+    { title: "Direct calls", summary: "Call modules directly.", pros: ["simple"], cons: ["coupling"] },
+    { title: "Event bus", code: "const bus = new Bus()\nbus.emit('x')", lang: "ts",
+      pros: ["decoupled"], cons: ["harder to trace"], recommended: true }
+  ]
+})
+```
+
+Flip cards with ←/→ (or 1-N), choose with Enter, Esc to cancel. Native TUI — no browser, no server.
+
+---
+
+## 🖼 HTML Artifacts
+
+`html_artifact` tool for the LLM — soly's local "artifacts". Renders HTML (a full document or just body content, wrapped in a styled light/dark skeleton with good code-block and table styling) to a self-contained file in a temp dir and opens it in the browser.
+
+```ts
+html_artifact({
+  title: "API examples",
+  html: "<h2>Usage</h2><pre><code>client.send(msg)</code></pre>"
+})
+```
+
+Use it when a visual, rendered result beats terminal text (example galleries, comparisons, diagrams). Self-contained only — inline CSS/JS, no external requests. Config under `artifacts` (`open`, `dir`).
 
 ---
 

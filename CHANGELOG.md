@@ -6,14 +6,24 @@ All notable changes to the monorepo are documented here.
 
 ### Added
 - **Visual chrome** — native, dependency-free status layer: custom footer, top
-  bar, snowflake working spinner with live telemetry (elapsed · ↑↓ tokens ·
+  bar, equalizer working spinner with live telemetry (elapsed · ↑↓ tokens ·
   tok/s), and a gradient welcome banner. Config under `chrome`.
 - **`soly verify`** — self-review loop (re-review until "No issues found." or a
   cap; `fresh`-context mode), built on a new single-owner `context` channel.
 - **`/rules` / `/docs` modal** — overlay list panel (fuzzy search, live preview,
   in-place enable/disable/reload) instead of chat dumps.
-- **`ask_pro`** now supports per-option `preview` (side panel) and per-question
-  `allowOther` (free-text "Other…").
+- **`decision_deck`** — native full-screen TUI deck for design/architecture
+  forks: one framed card per option with a syntax-highlighted code snippet and
+  pros/cons; flip with ←/→ or 1-N, choose with Enter.
+- **`html_artifact`** — render LLM-supplied HTML (full doc or body fragment,
+  wrapped in a styled light/dark skeleton) to a self-contained file in a temp
+  dir and open it in the browser — soly's local "artifacts". Config under
+  `artifacts` (`open`, `dir`).
+- **`ask_pro`** gained per-option `preview` (side panel, with fenced code
+  syntax-highlighted), per-question `allowOther` (free-text "Other…"),
+  `freeText` questions (no options — typed answer), multi-select `minSelect`/
+  `maxSelect` bounds, `s` to skip a question, and a cursor that starts on the
+  ⭐ recommended option.
 - **Top bar** lights up for the active workflow verb (execute/plan/discuss/
   resume/verify).
 
