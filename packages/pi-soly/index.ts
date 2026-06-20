@@ -70,6 +70,7 @@ import { createContextManager } from "./context-manager.ts";
 
 // Built-in sub-features (merged from former pi-asked, pi-agented packages):
 import piAskExtension from "./ask/index.ts";
+import piDeckExtension from "./deck/index.ts";
 
 /** Compact phase label for the chrome top bar, e.g. "plan 2/5". Null when idle. */
 function phaseLabelFromState(s: SolyState): string | null {
@@ -829,6 +830,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 
 	// Mount built-in sub-features
 	piAskExtension(pi);
+	piDeckExtension(pi);
 
 	// MCP adapter (was: separate pi-mcp-adapter plugin by nicobailon).
 	// Bundled into pi-soly as of v1.11.0 with UE5 session-retry fix + framed
