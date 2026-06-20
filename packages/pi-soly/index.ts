@@ -55,6 +55,7 @@ import {
 	type SolyConfig,
 } from "./config.ts";
 import { classifyTaskHeuristics, buildNudgeSection } from "./nudge.ts";
+import { detectToolHints, buildToolHintSection } from "./tool-hints.ts";
 import { notifyNudge, notifyDeprecation } from "./notification.ts";
 import { registerCommands, type CommandUI } from "./commands.ts";
 import { registerTools } from "./tools.ts";
@@ -689,6 +690,13 @@ export default function solyExtension(pi: ExtensionAPI) {
 		// 7. Behavioral nudge
 		const heuristics = classifyTaskHeuristics(event.prompt);
 		sections.push(buildNudgeSection(heuristics, { hasProject: state.exists }));
+
+		// 7.1 Interactive-tool affordance hints (examples → html_artifact, options
+		// → decision_deck, …) — only on turns whose wording mentions them.
+		if (getActiveConfig().agent.toolHints) {
+			const toolHint = buildToolHintSection(detectToolHints(event.prompt));
+			if (toolHint) sections.push(toolHint);
+		}
 
 		// 7.5 Soly drift reminder — injected when the user has been doing
 		// non-soly work for several turns. Throttled: at most once per

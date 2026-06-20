@@ -38,6 +38,9 @@ export interface SolyConfig {
 		/** Show the soft "non-trivial / research" nudge as a chat box. Default off
 		 *  (it was noisy). The system-prompt nudge guides the LLM regardless. */
 		nudgeNotify: boolean;
+		/** Inject per-turn affordance hints (examples → html_artifact, options →
+		 *  decision_deck, …) when the prompt mentions those. Default on. */
+		toolHints: boolean;
 	};
 	display: {
 		/** Always show the recommended (⭐) option as the first row. */
@@ -116,6 +119,7 @@ export const DEFAULT_CONFIG: SolyConfig = {
 		preferAskPro: true,
 		autoCheckpointOnPause: true,
 		nudgeNotify: false,
+		toolHints: true,
 	},
 	display: {
 		defaultRecommendedFirst: true,
@@ -199,6 +203,8 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 			merged.agent.autoCheckpointOnPause = over.agent.autoCheckpointOnPause;
 		if (typeof over.agent.nudgeNotify === "boolean")
 			merged.agent.nudgeNotify = over.agent.nudgeNotify;
+		if (typeof over.agent.toolHints === "boolean")
+			merged.agent.toolHints = over.agent.toolHints;
 	}
 	if (over.display) {
 		if (typeof over.display.defaultRecommendedFirst === "boolean")

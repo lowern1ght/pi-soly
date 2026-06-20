@@ -28,6 +28,10 @@ All notable changes to the monorepo are documented here.
 - **`/soly`** now opens the ListPanel modal (like `/rules`) with a live preview
   per subcommand and Enter-to-open — replacing the plain picker (and its
   duplicated entries).
+- **Tool affordance hints** — when a prompt mentions examples/tables (→
+  `html_artifact`), options/compare (→ `decision_deck`), or clarifying questions
+  (→ `ask_pro`), a soft one-line hint is injected for that turn only. Bilingual
+  RU/EN triggers; toggle with `agent.toolHints` (default on).
 - **`ask_pro`** gained per-option `preview` (side panel, with fenced code
   syntax-highlighted), per-question `allowOther` (free-text "Other…"),
   `freeText` questions (no options — typed answer), multi-select `minSelect`/
