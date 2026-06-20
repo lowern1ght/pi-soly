@@ -163,7 +163,15 @@ export class AskProComponent extends Container {
 		this.footerText = new Text("", 1, 0);
 		this.addChild(this.footerText);
 
+		this.selectedIndex = this.defaultIndexFor(0);
 		this.repaint();
+	}
+
+	/** Cursor lands on the recommended (⭐) option when entering a question. */
+	private defaultIndexFor(qIdx: number): number {
+		const opts = this.questions[qIdx]?.options ?? [];
+		const rec = opts.findIndex((o) => o.recommended);
+		return rec >= 0 ? rec : 0;
 	}
 
 	// -------------------------------------------------------------------------
@@ -533,7 +541,7 @@ export class AskProComponent extends Container {
 		if (keyData === KEY_TAB || keyData === KEY_RIGHT) {
 			if (this.currentIndex < this.questions.length - 1) {
 				this.currentIndex++;
-				this.selectedIndex = 0;
+				this.selectedIndex = this.defaultIndexFor(this.currentIndex);
 				this.repaint();
 			}
 			return;
@@ -543,7 +551,7 @@ export class AskProComponent extends Container {
 		if (keyData === KEY_SHIFT_TAB || keyData === KEY_LEFT) {
 			if (this.currentIndex > 0) {
 				this.currentIndex--;
-				this.selectedIndex = 0;
+				this.selectedIndex = this.defaultIndexFor(this.currentIndex);
 				this.repaint();
 			}
 			return;
@@ -613,7 +621,7 @@ export class AskProComponent extends Container {
 				}
 				if (this.currentIndex < this.questions.length - 1) {
 					this.currentIndex++;
-					this.selectedIndex = 0;
+					this.selectedIndex = this.defaultIndexFor(this.currentIndex);
 				}
 				this.repaint();
 			} else {
@@ -621,7 +629,7 @@ export class AskProComponent extends Container {
 				this.answers.set(this.currentIndex, this.selectedIndex);
 				if (this.currentIndex < this.questions.length - 1) {
 					this.currentIndex++;
-					this.selectedIndex = 0;
+					this.selectedIndex = this.defaultIndexFor(this.currentIndex);
 					this.repaint();
 				} else if (this.allAnswered()) {
 					this.submit();
@@ -666,7 +674,7 @@ export class AskProComponent extends Container {
 			if (this.currentIndex < this.questions.length - 1) {
 				// Advance to next question; don't submit yet
 				this.currentIndex++;
-				this.selectedIndex = 0;
+				this.selectedIndex = this.defaultIndexFor(this.currentIndex);
 				this.repaint();
 			} else if (this.allAnswered()) {
 				// Last question + all answered → submit
@@ -785,7 +793,7 @@ export class AskProComponent extends Container {
 		if (commit && !isMulti && trimmed !== "") {
 			if (this.currentIndex < this.questions.length - 1) {
 				this.currentIndex++;
-				this.selectedIndex = 0;
+				this.selectedIndex = this.defaultIndexFor(this.currentIndex);
 				this.repaint();
 			} else if (this.allAnswered()) {
 				this.submit();
