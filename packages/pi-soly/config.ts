@@ -119,7 +119,7 @@ export const DEFAULT_CONFIG: SolyConfig = {
 	chrome: {
 		enabled: true,
 		ascii: false,
-		spinnerFrames: ["❅", "❆", "✻", "✼", "✽", "✼", "✻", "❆", "❅"],
+		spinnerFrames: ["▁", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃"],
 		spinnerIntervalMs: 180,
 		telemetry: true,
 		bannerColors: [], // empty → gradient derived from the theme accent

@@ -452,7 +452,7 @@ describe("chrome.install (integration)", () => {
 describe("config.chrome defaults", () => {
 	test("ships enabled with the snowflake spinner", () => {
 		expect(DEFAULT_CONFIG.chrome.enabled).toBe(true);
-		expect(DEFAULT_CONFIG.chrome.spinnerFrames.length).toBe(9);
+		expect(DEFAULT_CONFIG.chrome.spinnerFrames.length).toBe(12);
 		expect(DEFAULT_CONFIG.chrome.spinnerIntervalMs).toBe(180);
 		expect(DEFAULT_CONFIG.chrome.telemetry).toBe(true);
 	});
