@@ -16,12 +16,13 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 2. **Project state** (`.soly/STATE.md`, `ROADMAP.md`) — where we are, current phase, recent decisions.
 3. **Project rules** (`.soly/rules/`, `~/.soly/rules/`) — how to behave in this project.
 
-**Workflow model — phases and plans:**
+**Workflow model — phases and tasks (unified):**
 
-- A **phase** is a milestone (e.g. "01-foundation"). Has one or more `PLAN.md` files.
-- A **plan** is one ordered execution unit. Has `<task>` blocks.
-- A **task** is the smallest unit. Has type, description, verify, accept.
-- **Close-out**: production code commits → `SUMMARY.md` → `STATE.md` updated → ROADMAP check.
+- A **phase** is a milestone (e.g. "01-foundation"). It groups **tasks** under `phases/<NN>-<slug>/tasks/`.
+- A **task** is the unit of execution: its own dir with `PLAN.md` (frontmatter: `id`, `kind`, `status`, `depends-on`, optional `feature`) and, when done, `SUMMARY.md`. Tasks run in dependency order.
+- `soly plan <N>` writes a phase's tasks · `soly execute <N>` runs its ready tasks (deps met) in order · `soly verify` reviews.
+- **Close-out** (per task): production commits → task `SUMMARY.md` → flip `status: done` → `STATE.md` / ROADMAP check.
+- Legacy projects (standalone `NN-MM-PLAN.md` files, or a `features/` dir) still load and run; `soly migrate` converts them to this layout.
 
 ## Commands
 
@@ -78,10 +79,12 @@ were removed in 1.4.0.
 │   │   ├── 01-foundation/
 │   │   │   ├── 01-CONTEXT.md     # domain + decisions for phase 1
 │   │   │   ├── 01-RESEARCH.md    # what we looked up
-│   │   │   ├── 01-PLAN-01.md     # plan 1
-│   │   │   ├── 01-PLAN-01-SUMMARY.md
-│   │   │   ├── 01-PLAN-02.md
-│   │   │   └── 01-PLAN-02-SUMMARY.md
+│   │   │   └── tasks/            # unified model: one dir per task
+│   │   │       ├── auth-login-a3f9/
+│   │   │       │   ├── PLAN.md   # frontmatter: id, kind, status, depends-on
+│   │   │       │   └── SUMMARY.md
+│   │   │       └── auth-token-b1c2/
+│   │   │           └── PLAN.md
 │   │   └── 02-feature-x/
 │   │       └── ...
 │   ├── iterations/                # per-execution context bundles (auto)

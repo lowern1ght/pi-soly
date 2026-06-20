@@ -240,10 +240,15 @@ State lives in `.soly/` — portable, git-friendly, human-readable. Migrate to v
 ├── rules/               # rules (glob-matched or always-on)
 └── phases/
     └── 01-foundation/
-        ├── 01-CONTEXT.md    # domain + decisions for this phase
-        ├── 01-RESEARCH.md   # what we looked up
-        └── 01-PLAN.md       # ordered steps to execute
+        ├── 01-CONTEXT.md       # domain + decisions for this phase
+        ├── 01-RESEARCH.md      # what we looked up
+        └── tasks/              # unified model: one dir per task
+            └── auth-login-a3f9/
+                ├── PLAN.md     # frontmatter: id, kind, status, depends-on
+                └── SUMMARY.md
 ```
+
+> Legacy projects (standalone `NN-MM-PLAN.md` / a `features/` dir) still work; run `soly migrate` to convert them to this layout.
 
 ---
 
