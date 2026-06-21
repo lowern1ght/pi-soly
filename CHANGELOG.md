@@ -35,6 +35,10 @@ All notable changes to the monorepo are documented here.
   result in the browser (`html_artifact` / `decision_deck`) or just as text in
   chat, then proceed; clarifying-question wording points at `ask_pro`. Injected
   for that turn only. Bilingual RU/EN triggers; toggle `agent.toolHints` (default on).
+- **Confirm before coding** — for non-trivial tasks the behavioral nudge now
+  tells the LLM to state its approach + open questions and ask the user to
+  greenlight ("ready to implement, or discuss/plan first?") before editing files,
+  instead of diving straight into code. Toggle `agent.confirmBeforeCode` (default on).
 - **`ask_pro`** gained per-option `preview` (side panel, with fenced code
   syntax-highlighted), per-question `allowOther` (free-text "Other…"),
   `freeText` questions (no options — typed answer), multi-select `minSelect`/

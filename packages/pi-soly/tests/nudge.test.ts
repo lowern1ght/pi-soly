@@ -205,3 +205,22 @@ describe("buildNudgeSection — workflow routing (point 4)", () => {
 		expect(buildNudgeSection(trivial, { hasProject: true }).includes("Route project work")).toBe(false);
 	});
 });
+
+describe("buildNudgeSection — confirm before coding", () => {
+	const nonTrivial = classifyTaskHeuristics("implement the auth refactor across src/auth/login.ts and src/auth/token.ts");
+	const trivial = classifyTaskHeuristics("fix typo");
+
+	test("added for non-trivial tasks when enabled", () => {
+		const s = buildNudgeSection(nonTrivial, { confirmBeforeCode: true });
+		expect(s.includes("Confirm before coding")).toBe(true);
+		expect(s.toLowerCase().includes("before touching files")).toBe(true);
+	});
+
+	test("off by default (flag omitted)", () => {
+		expect(buildNudgeSection(nonTrivial).includes("Confirm before coding")).toBe(false);
+	});
+
+	test("not added for trivial tasks even when enabled", () => {
+		expect(buildNudgeSection(trivial, { confirmBeforeCode: true }).includes("Confirm before coding")).toBe(false);
+	});
+});

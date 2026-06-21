@@ -41,6 +41,10 @@ export interface SolyConfig {
 		/** Inject per-turn affordance hints (examples → html_artifact, options →
 		 *  decision_deck, …) when the prompt mentions those. Default on. */
 		toolHints: boolean;
+		/** For non-trivial tasks, tell the LLM to confirm the approach with the
+		 *  user (ask "ready to implement, or discuss first?") before writing code.
+		 *  Default on. */
+		confirmBeforeCode: boolean;
 	};
 	display: {
 		/** Always show the recommended (⭐) option as the first row. */
@@ -120,6 +124,7 @@ export const DEFAULT_CONFIG: SolyConfig = {
 		autoCheckpointOnPause: true,
 		nudgeNotify: false,
 		toolHints: true,
+		confirmBeforeCode: true,
 	},
 	display: {
 		defaultRecommendedFirst: true,
@@ -205,6 +210,8 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 			merged.agent.nudgeNotify = over.agent.nudgeNotify;
 		if (typeof over.agent.toolHints === "boolean")
 			merged.agent.toolHints = over.agent.toolHints;
+		if (typeof over.agent.confirmBeforeCode === "boolean")
+			merged.agent.confirmBeforeCode = over.agent.confirmBeforeCode;
 	}
 	if (over.display) {
 		if (typeof over.display.defaultRecommendedFirst === "boolean")

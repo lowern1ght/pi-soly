@@ -689,7 +689,12 @@ export default function solyExtension(pi: ExtensionAPI) {
 
 		// 7. Behavioral nudge
 		const heuristics = classifyTaskHeuristics(event.prompt);
-		sections.push(buildNudgeSection(heuristics, { hasProject: state.exists }));
+		sections.push(
+			buildNudgeSection(heuristics, {
+				hasProject: state.exists,
+				confirmBeforeCode: getActiveConfig().agent.confirmBeforeCode,
+			}),
+		);
 
 		// 7.1 Interactive-tool affordance hints (examples → html_artifact, options
 		// → decision_deck, …) — only on turns whose wording mentions them.

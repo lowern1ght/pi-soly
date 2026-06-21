@@ -84,7 +84,7 @@ export function classifyTaskHeuristics(prompt: string): TaskHeuristics {
 
 export function buildNudgeSection(
 	heuristics: TaskHeuristics,
-	opts: { hasProject?: boolean } = {},
+	opts: { hasProject?: boolean; confirmBeforeCode?: boolean } = {},
 ): string {
 	// Always-on rules (cheap to add, high signal):
 	//   - Don't dive in on non-trivial tasks without a brief check
@@ -115,13 +115,20 @@ export function buildNudgeSection(
 			? `\n\n4. **Route project work through the soly workflow.** For phase/task work in \`.soly/\`, prefer the lifecycle over ad-hoc edits: \`soly discuss <N>\` (scope) → \`soly plan <N>\` (write tasks) → \`soly execute <N>\` (do them) → \`soly verify\` (review). Run \`soly status\` to see where you are. Skip only for a genuine one-off.`
 			: "";
 
+	// Confirm-before-coding gate: for non-trivial implementation, don't start
+	// editing files until the user has greenlit the approach.
+	const confirmBlock =
+		opts.confirmBeforeCode && heuristics.nonTrivial
+			? `\n\n   **Confirm before coding.** Don't jump straight into writing/editing code. First state your understanding and intended approach in 1–3 sentences, list anything still open or worth deciding, then explicitly ask the user whether to proceed — e.g. "ready for me to implement this, or is there more to discuss/plan first?" Wait for a go-ahead before touching files. Skip only for trivial fixes, or when the user already said to proceed ("just do it", "go", "yes").`
+			: "";
+
 	return `
 
 ## soly behavioral nudge (always on)
 
 The following are user-set defaults, not project rules. They tell you how the user wants you to behave in this session.
 
-1. **Pre-action gate.** Before starting non-trivial work, take a 10-second pause and decide: do I have enough to act, or should I ask? If the prompt has ambiguity, missing scope, or a hidden assumption, surface one short clarifying question (or a small set of multi-choice options) instead of starting to code. Skip the gate for trivial fixes ("rename X", "add log line", "fix typo") and for follow-up turns in an already-clarified task.
+1. **Pre-action gate.** Before starting non-trivial work, take a 10-second pause and decide: do I have enough to act, or should I ask? If the prompt has ambiguity, missing scope, or a hidden assumption, surface one short clarifying question (or a small set of multi-choice options) instead of starting to code. Skip the gate for trivial fixes ("rename X", "add log line", "fix typo") and for follow-up turns in an already-clarified task.${confirmBlock}
    ${triggerLine}${anglesBlock}
 
 2. **Background subagents by default.** When you need to read unfamiliar code, scout a directory, gather external evidence, or run a multi-step review, prefer \`subagent(...)\` with \`async: true\` and \`context: "fresh"\` over doing it inline. Reserve your own context for the actual decision the user is paying you to make. If the work needs the parent conversation history, use \`context: "fork"\` instead. Do not silently block on long runs — launch async and continue with independent work.
