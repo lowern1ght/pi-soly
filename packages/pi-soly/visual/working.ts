@@ -19,9 +19,14 @@
 import { fitParts, type Segment } from "./segments.ts";
 import { formatElapsed, formatTokens } from "./format.ts";
 
-/** Default snowflake spinner frames + interval (user-chosen). */
-export const SPINNER_FRAMES = ["▁", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃"] as const;
-export const SPINNER_INTERVAL_MS = 180;
+/** Default spinner frames + interval (user-chosen): braille "breathing"
+ *  (grow→shrink) → a quadrant arrow sweep → breathing again, slowed down. */
+export const SPINNER_FRAMES = [
+	"⠁", "⠉", "⠙", "⠹", "⠽", "⠿", "⠾", "⠼", "⠶", "⠦", "⠆", "⠂",
+	"◴", "◷", "◶", "◵",
+	"⠁", "⠉", "⠙", "⠹", "⠽", "⠿", "⠾", "⠼", "⠶", "⠦", "⠆", "⠂",
+] as const;
+export const SPINNER_INTERVAL_MS = 150;
 
 export type WorkingTelemetry = {
 	/** Leading word, e.g. "Working". */

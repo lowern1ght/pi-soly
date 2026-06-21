@@ -144,8 +144,12 @@ export const DEFAULT_CONFIG: SolyConfig = {
 	chrome: {
 		enabled: true,
 		ascii: false,
-		spinnerFrames: ["▁", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃"],
-		spinnerIntervalMs: 180,
+		spinnerFrames: [
+			"⠁", "⠉", "⠙", "⠹", "⠽", "⠿", "⠾", "⠼", "⠶", "⠦", "⠆", "⠂",
+			"◴", "◷", "◶", "◵",
+			"⠁", "⠉", "⠙", "⠹", "⠽", "⠿", "⠾", "⠼", "⠶", "⠦", "⠆", "⠂",
+		],
+		spinnerIntervalMs: 150,
 		telemetry: true,
 		bannerColors: [], // empty → gradient derived from the theme accent
 	},
