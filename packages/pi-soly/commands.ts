@@ -953,11 +953,12 @@ What must the LLM do?
 			if (ctx.mode === "tui") {
 				await openListPanel(ctx, {
 					title: "soly · artifacts",
-					headerRight: `${server.count} · ${gallery}`,
+					// BMP-only header (no long URL — it overflowed the bar). Count only.
+					headerRight: `${server.count} artifact${server.count === 1 ? "" : "s"}`,
 					build: () =>
 						(getArtifactServer()?.list() ?? []).map((a) => ({
 							id: a.id,
-							marker: "🖼",
+							marker: "▦", // BMP glyph — an astral emoji (🖼) breaks ListPanel width
 							label: a.title,
 							meta: new Date(a.createdAt).toLocaleTimeString(),
 							body: a.url,
