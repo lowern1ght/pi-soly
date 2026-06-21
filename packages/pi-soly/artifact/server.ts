@@ -19,6 +19,7 @@ import * as http from "node:http";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { randomBytes } from "node:crypto";
+import { atomicWriteFileSync } from "../util.ts";
 import { buildGalleryShell, type GalleryEntry } from "./render.ts";
 
 const MIME: Record<string, string> = {
@@ -50,9 +51,36 @@ export class ArtifactServer {
 	private readonly entries: GalleryEntry[] = [];
 	private readonly clients = new Set<http.ServerResponse>();
 	private opened = false;
+	private readonly manifestPath: string;
 
 	/** @param dir absolute session artifact directory (files are served from here) */
-	constructor(private readonly dir: string) {}
+	constructor(private readonly dir: string) {
+		this.manifestPath = path.join(dir, "index.json");
+		// Restore artifacts persisted by a previous session/reload for this project.
+		this.entries.push(...this.loadManifest());
+	}
+
+	/** Read the on-disk manifest, keeping only entries whose file still exists. */
+	private loadManifest(): GalleryEntry[] {
+		try {
+			const raw = JSON.parse(fs.readFileSync(this.manifestPath, "utf-8")) as GalleryEntry[];
+			if (!Array.isArray(raw)) return [];
+			return raw
+				.filter((e) => e && typeof e.file === "string" && fs.existsSync(path.join(this.dir, e.file)))
+				.sort((a, b) => b.createdAt - a.createdAt);
+		} catch {
+			return [];
+		}
+	}
+
+	/** Persist the entry list so it survives /reload and pi restarts. */
+	private persist(): void {
+		try {
+			atomicWriteFileSync(this.manifestPath, JSON.stringify(this.entries));
+		} catch {
+			// best effort
+		}
+	}
 
 	get started(): boolean {
 		return this.server !== null;
@@ -89,6 +117,7 @@ export class ArtifactServer {
 		if (i < 0) return false;
 		const [e] = this.entries.splice(i, 1);
 		if (e) this.deleteFile(e.file);
+		this.persist();
 		this.broadcast();
 		return true;
 	}
@@ -98,6 +127,7 @@ export class ArtifactServer {
 		const n = this.entries.length;
 		for (const e of this.entries) this.deleteFile(e.file);
 		this.entries.length = 0;
+		this.persist();
 		this.broadcast();
 		return n;
 	}
@@ -153,6 +183,7 @@ export class ArtifactServer {
 				createdAt: Date.now(),
 			});
 		}
+		this.persist();
 		this.broadcast();
 		return this.artifactUrl(base);
 	}

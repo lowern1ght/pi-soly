@@ -158,4 +158,23 @@ describe("artifact — session server", () => {
 			fs.rmSync(dir, { recursive: true, force: true });
 		}
 	});
+
+	test("a fresh server restores persisted artifacts from the manifest (survives /reload)", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "soly-art-persist-"));
+		fs.writeFileSync(path.join(dir, "a.html"), "<h1>A</h1>");
+		try {
+			const s1 = new ArtifactServer(dir);
+			s1.register("Alpha", path.join(dir, "a.html"), "alpha"); // persists index.json
+			// Simulate /reload: a brand-new server over the same project dir.
+			const s2 = new ArtifactServer(dir);
+			expect(s2.count).toBe(1);
+			expect(s2.list()[0]?.id).toBe("alpha");
+			expect(s2.list()[0]?.title).toBe("Alpha");
+			// An entry whose file was deleted is dropped on restore.
+			fs.unlinkSync(path.join(dir, "a.html"));
+			expect(new ArtifactServer(dir).count).toBe(0);
+		} finally {
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
+	});
 });

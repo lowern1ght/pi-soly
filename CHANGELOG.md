@@ -16,7 +16,7 @@ All notable changes to the monorepo are documented here.
   forks: one framed card per option with a syntax-highlighted code snippet and
   pros/cons; flip with ←/→ or 1-N, choose with Enter.
 - **`html_artifact`** — render LLM-supplied HTML (full doc or body fragment,
-  themed light/dark) and serve it from a per-session **gallery SPA** (sidebar +
+  themed light/dark) and serve it from a per-project **gallery SPA** (sidebar +
   iframe viewer + filter + theme toggle + live SSE updates) on one stable
   localhost URL — soly's local "artifacts". `id` updates an artifact in place;
   `assets` writes sibling files (images/css/json) the HTML can reference; the
@@ -24,7 +24,9 @@ All notable changes to the monorepo are documented here.
   file directly when the server is off. Config under `artifacts` (`open`, `dir`,
   `server`, `theme`, `retentionDays`). **`/artifacts`** browses the gallery from
   the terminal (modal: Enter opens, `g` gallery, `x` delete, `clear` all); a
-  `▦ N` footer indicator shows the live count.
+  `▦ N` footer indicator shows the live count. Artifacts persist **per project**
+  (stable temp dir keyed by cwd + an `index.json` manifest), so the gallery
+  survives `/reload` and pi restarts; `/artifacts` (or the next artifact) restores it.
 - **`/soly`** now opens the ListPanel modal (like `/rules`) with a live preview
   per subcommand and Enter-to-open — replacing the plain picker (and its
   duplicated entries).

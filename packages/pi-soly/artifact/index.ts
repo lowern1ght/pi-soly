@@ -14,16 +14,19 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { platform } from "node:os";
-import * as os from "node:os";
 import * as path from "node:path";
 import * as fs from "node:fs";
-import { randomBytes } from "node:crypto";
 import { Type } from "typebox";
 import type { SolyConfig } from "../config.ts";
 import { atomicWriteFileSync } from "../util.ts";
 import { buildArtifactHtml, artifactFileName, artifactFileNameForId, DEFAULT_CSS } from "./render.ts";
-import { ArtifactServer } from "./server.ts";
-import { setArtifactServer } from "./session.ts";
+import {
+	artifactDir,
+	resolveArtifactBase,
+	ensureArtifactServer,
+	getArtifactServer,
+	setArtifactServer,
+} from "./session.ts";
 
 type ToolText = { content: { type: "text"; text: string }[]; details: Record<string, unknown> };
 type Asset = { path: string; content: string; encoding?: string };
@@ -98,17 +101,6 @@ async function openInBrowser(pi: ExtensionAPI, target: string): Promise<void> {
 	if (r.code !== 0) throw new Error(r.stderr || `open failed (exit ${r.code})`);
 }
 
-/** Resolve the artifact base directory: config override (abs / ~ / relative to
- *  cwd) or the OS temp dir under pi-soly-artifacts/. */
-function resolveDir(configDir: string, cwd: string): string {
-	const d = configDir.trim();
-	if (!d) return path.join(os.tmpdir(), "pi-soly-artifacts");
-	if (d === "~" || d.startsWith("~/") || d.startsWith("~\\")) {
-		return path.join(os.homedir(), d.slice(1).replace(/^[/\\]/, ""));
-	}
-	return path.isAbsolute(d) ? d : path.join(cwd, d);
-}
-
 /** Direct-file fallback: open the .html file itself (no server). */
 async function fileMode(
 	pi: ExtensionAPI,
@@ -136,18 +128,20 @@ async function fileMode(
 }
 
 export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => SolyConfig) {
-	let server: ArtifactServer | null = null;
-	const sessionId = randomBytes(6).toString("hex");
+	// A stale server may linger in the shared holder after /reload — stop it so
+	// its port is freed; the next artifact (or /artifacts) starts a fresh one
+	// that restores the persisted per-project manifest.
+	getArtifactServer()?.stop();
+	setArtifactServer(null);
 
 	// Usage guidance lives in the soly-framework skill + the main soly prompt
 	// pointer — not injected here.
 	pi.on("session_start", async (_event, ctx) => {
 		const cfg = getConfig().artifacts;
-		pruneOldSessions(resolveDir(cfg.dir, ctx.cwd), cfg.retentionDays);
+		pruneOldSessions(resolveArtifactBase(cfg.dir, ctx.cwd), cfg.retentionDays);
 	});
 	pi.on("session_shutdown", async () => {
-		server?.stop();
-		server = null;
+		getArtifactServer()?.stop();
 		setArtifactServer(null);
 	});
 
@@ -181,21 +175,21 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 		}),
 		async execute(_id, params, _signal, _onUpdate, ctx): Promise<ToolText> {
 			const cfg = getConfig().artifacts;
-			const sessionDir = path.join(resolveDir(cfg.dir, ctx.cwd), sessionId);
+			const dir = artifactDir(cfg.dir, ctx.cwd);
 			try {
-				fs.mkdirSync(sessionDir, { recursive: true });
+				fs.mkdirSync(dir, { recursive: true });
 			} catch (err) {
 				return {
-					content: [{ type: "text", text: `html_artifact: could not create ${sessionDir}: ${String(err)}` }],
-					details: { error: "mkdir_failed", dir: sessionDir },
+					content: [{ type: "text", text: `html_artifact: could not create ${dir}: ${String(err)}` }],
+					details: { error: "mkdir_failed", dir },
 				};
 			}
 
-			if (params.assets?.length) writeAssets(sessionDir, params.assets);
+			if (params.assets?.length) writeAssets(dir, params.assets);
 
 			const css = loadCss(cfg.theme, ctx.cwd);
 			const name = params.id ? artifactFileNameForId(params.id) : artifactFileName(params.title, Date.now().toString(36));
-			const file = path.join(sessionDir, name);
+			const file = path.join(dir, name);
 			const html = buildArtifactHtml(params.title, params.html, css);
 			atomicWriteFileSync(file, html);
 			const bytes = Buffer.byteLength(html);
@@ -203,12 +197,9 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 
 			if (!cfg.server) return fileMode(pi, file, bytes, shouldOpen);
 
-			if (!server) {
-				server = new ArtifactServer(sessionDir);
-				setArtifactServer(server);
-			}
+			let server: Awaited<ReturnType<typeof ensureArtifactServer>>;
 			try {
-				await server.ensureStarted();
+				server = await ensureArtifactServer(dir);
 			} catch (err) {
 				return fileMode(pi, file, bytes, shouldOpen, `session server unavailable: ${String(err)}`);
 			}

@@ -46,7 +46,7 @@ import type { SolyConfig } from "./config.ts";
 import { migrateSolyDir } from "./migrate.js";
 import { initSolyProject } from "./init.js";
 import { ListPanel, type ListItem, type ListAction } from "./visual/list-panel.ts";
-import { getArtifactServer } from "./artifact/session.ts";
+import { getArtifactServer, ensureArtifactServer, artifactDir } from "./artifact/session.ts";
 
 /** Minimum ui surface the command handlers actually need. */
 export interface CommandUI {
@@ -915,9 +915,21 @@ What must the LLM do?
 	pi.registerCommand("artifacts", {
 		description: "browse this session's html_artifact gallery (list, open, clear)",
 		handler: async (args, ctx) => {
-			const server = getArtifactServer();
+			if (!getConfig().artifacts.server) {
+				ctx.ui.notify("soly: artifact session server is disabled (artifacts.server=false)", "info");
+				return;
+			}
+			let server = getArtifactServer();
+			if (!server) {
+				// Restore the persisted per-project gallery (survives /reload + restart).
+				try {
+					server = await ensureArtifactServer(artifactDir(getConfig().artifacts.dir, ctx.cwd));
+				} catch {
+					// ignore — handled by the count check below
+				}
+			}
 			if (!server || server.count === 0) {
-				ctx.ui.notify("soly: no artifacts created this session yet (use the html_artifact tool)", "info");
+				ctx.ui.notify("soly: no artifacts for this project yet (use the html_artifact tool)", "info");
 				return;
 			}
 			const gallery = server.galleryUrl();
