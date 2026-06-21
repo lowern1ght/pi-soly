@@ -119,7 +119,7 @@ export function buildNudgeSection(
 	// editing files until the user has greenlit the approach.
 	const confirmBlock =
 		opts.confirmBeforeCode && heuristics.nonTrivial
-			? `\n\n   **Confirm before coding.** Don't jump straight into writing/editing code. First state your understanding and intended approach in 1–3 sentences, list anything still open or worth deciding, then explicitly ask the user whether to proceed — e.g. "ready for me to implement this, or is there more to discuss/plan first?" Wait for a go-ahead before touching files. Skip only for trivial fixes, or when the user already said to proceed ("just do it", "go", "yes").`
+			? `\n\n   **Confirm before coding.** Don't jump straight into writing/editing code. First state your understanding and intended approach in 1–3 sentences and list anything still open, then ask via the \`ask_pro\` picker whether to proceed — one question with options like "Go — implement now", "Discuss / refine the approach", "Adjust scope first" (add an \`allowOther\` for a free-text steer). Wait for the choice before touching files. Skip only for trivial fixes, or when the user already said to proceed ("just do it", "go", "yes").`
 			: "";
 
 	return `
