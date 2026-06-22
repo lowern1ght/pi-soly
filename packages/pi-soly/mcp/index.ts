@@ -1,6 +1,7 @@
 // @ts-nocheck — upstream MCP code with pre-existing strict-mode issues
-import type { ExtensionAPI, ToolInfo } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, ToolInfo } from "@earendil-works/pi-coding-agent";
 import type { McpExtensionState } from "./state.ts";
+import type { DirectToolSpec } from "./types.ts";
 import { Type } from "typebox";
 import { showStatus, showTools, reconnectServers, authenticateServer, logoutServer, openMcpAuthPanel, openMcpPanel, openMcpSetup } from "./commands.ts";
 import { loadMcpConfig } from "./config.ts";
@@ -11,11 +12,30 @@ import { executeAuthComplete, executeAuthStart, executeCall, executeConnect, exe
 import { getConfigPathFromArgv, truncateAtWord } from "./utils.ts";
 import { initializeOAuth, shutdownOAuth } from "./mcp-auth-flow.ts";
 import { createMcpDirectToolCallRenderer, renderMcpProxyToolCall, renderMcpToolResult } from "./tool-result-renderer.ts";
+import { ToolCache, cacheKey as makeCacheKey } from "./tool-cache.ts";
+
+/** Default TTL for cached MCP tool results (60s). Tools that hit a stable
+ *  server benefit; volatile ones are penalized for 60s — call sites can
+ *  invalidate via cache.invalidateServer(name) on reconnect. */
+const TOOL_CACHE_TTL_MS = 60_000;
 
 export default function mcpAdapter(pi: ExtensionAPI) {
   let state: McpExtensionState | null = null;
   let initPromise: Promise<McpExtensionState> | null = null;
   let lifecycleGeneration = 0;
+  /** In-memory TTL cache for direct MCP tool results. Per-session; cleared on
+   *  shutdown and on per-server invalidation (e.g. after reconnect). The
+   *  onChange callback refreshes the footer segment so cache activity stays
+   *  visible without an explicit refresh. */
+  const toolCache = new ToolCache(TOOL_CACHE_TTL_MS, Date.now, () => {
+    // state may be null briefly during session_restart / session_shutdown —
+    // skip the refresh in that case, the next init will set it again.
+    if (state) updateStatusBar(state);
+  });
+
+  /** Registry of direct-tool specs keyed by their registered (prefixed) name,
+   *  so mcp_retry can look up a spec by name when the LLM asks for a retry. */
+  const specByPrefixedName = new Map<string, DirectToolSpec>();
 
   async function shutdownState(currentState: McpExtensionState | null, reason: string): Promise<void> {
     if (!currentState) return;
@@ -68,13 +88,14 @@ export default function mcpAdapter(pi: ExtensionAPI) {
     || missingConfiguredDirectToolServers.length > 0;
 
   for (const spec of directSpecs) {
+    specByPrefixedName.set(spec.prefixedName, spec);
     (pi.registerTool as (tool: unknown) => unknown)({
       name: spec.prefixedName,
       label: `MCP: ${spec.originalName}`,
       description: spec.description || "(no description)",
       promptSnippet: truncateAtWord(spec.description, 100) || `MCP tool from ${spec.serverName}`,
       parameters: Type.Unsafe((spec.inputSchema || { type: "object", properties: {} }) as never),
-      execute: createDirectToolExecutor(() => state, () => initPromise, spec),
+      execute: createDirectToolExecutor(() => state, () => initPromise, spec, toolCache),
       renderCall: createMcpDirectToolCallRenderer(spec.prefixedName),
       renderResult: renderMcpToolResult,
     });
@@ -124,6 +145,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
       }
 
       state = nextState;
+      nextState.toolCache = toolCache;
       updateStatusBar(nextState);
       initPromise = null;
     }).catch(err => {
@@ -143,6 +165,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
     const currentState = state;
     state = null;
     initPromise = null;
+    toolCache.clear();
 
     try {
       await Promise.all([
@@ -359,4 +382,123 @@ export default function mcpAdapter(pi: ExtensionAPI) {
       },
     });
   }
+
+  // ============================================================================
+  // LLM-callable retry / reconnect
+  //
+  // Direct tools fail with `server_unavailable`, `not_connected`, or
+  // `call_failed` when the underlying connection drops. The LLM used to need
+  // the user to run `/mcp reconnect <server>` manually; these tools let it
+  // self-recover without bothering the user.
+  // ============================================================================
+
+  /** Pull the live state out of the lazy init promise; structured error on failure. */
+  async function getStateForTool() {
+    let s = state;
+    if (!s && initPromise) {
+      try {
+        s = await initPromise;
+      } catch (error) {
+        return {
+          ok: false as const,
+          result: {
+            content: [{
+              type: "text" as const,
+              text: `MCP initialization failed: ${error instanceof Error ? error.message : String(error)}`,
+            }],
+            details: { error: "init_failed" },
+          },
+        };
+      }
+    }
+    if (!s) {
+      return {
+        ok: false as const,
+        result: {
+          content: [{ type: "text" as const, text: "MCP not initialized" }],
+          details: { error: "not_initialized" },
+        },
+      };
+    }
+    return { ok: true as const, state: s };
+  }
+
+  (pi.registerTool as (tool: unknown) => unknown)({
+    name: "mcp_reconnect",
+    label: "MCP reconnect",
+    description: "Reconnect to one or all MCP servers after a connection failure. Use this when direct tool calls return `server_unavailable`, `not_connected`, or `call_failed` errors. Without `server`, reconnects all configured servers. The tool cache for the affected server is invalidated so the next call gets a fresh result.",
+    promptSnippet: "MCP reconnect - restore a server connection after failure",
+    parameters: Type.Object({
+      server: Type.Optional(Type.String({ description: "Server name to reconnect; omit to reconnect all configured servers" })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx: ExtensionContext) {
+      const got = await getStateForTool();
+      if (!got.ok) return got.result;
+      const targetServer = params.server;
+      if (targetServer) toolCache.invalidateServer(targetServer);
+      else toolCache.clear();
+      await reconnectServers(got.state, ctx, targetServer);
+      return {
+        content: [{
+          type: "text" as const,
+          text: targetServer
+            ? `Reconnect attempted for "${targetServer}". Check server status with /mcp status, then re-call the failed tool.`
+            : "Reconnect attempted for all configured servers. Re-call any failed tool.",
+        }],
+        details: { server: targetServer ?? null, action: "reconnect" },
+      };
+    },
+  });
+
+  (pi.registerTool as (tool: unknown) => unknown)({
+    name: "mcp_retry",
+    label: "MCP retry",
+    description: "Reconnect to an MCP server and re-execute a specific direct tool call in one shot. Use after `mcp_reconnect`, or directly when you know the original tool name and arguments. The `tool` must be a registered direct tool name (the prefixed form, e.g. 'demo_search'). The tool cache for the server is invalidated before the retry so the response is fresh.",
+    promptSnippet: "MCP retry - reconnect server and re-execute a tool call",
+    parameters: Type.Object({
+      server: Type.String({ description: "Server name to reconnect" }),
+      tool: Type.String({ description: "Direct tool name as registered (prefixedName, e.g. 'demo_search')" }),
+      args: Type.Optional(Type.Record(Type.String(), Type.Unknown(), { description: "Original tool arguments as a JSON object; omit or pass {} if the tool takes no arguments" })),
+    }),
+    async execute(toolCallId, params, signal, onUpdate, ctx: ExtensionContext) {
+      const got = await getStateForTool();
+      if (!got.ok) return got.result;
+
+      const spec = specByPrefixedName.get(params.tool);
+      if (!spec) {
+        return {
+          content: [{
+            type: "text" as const,
+            text: `Tool "${params.tool}" not found. Use the proxy tool mcp({ server: "${params.server}" }) to see available tools for this server.`,
+          }],
+          details: { error: "tool_not_found", requestedTool: params.tool },
+        };
+      }
+      if (spec.serverName !== params.server) {
+        return {
+          content: [{
+            type: "text" as const,
+            text: `Tool "${params.tool}" belongs to server "${spec.serverName}", not "${params.server}".`,
+          }],
+          details: {
+            error: "server_mismatch",
+            requestedTool: params.tool,
+            requestedServer: params.server,
+            actualServer: spec.serverName,
+          },
+        };
+      }
+
+      toolCache.invalidateServer(params.server);
+      await reconnectServers(got.state, ctx, params.server);
+
+      const executor = createDirectToolExecutor(
+        () => got.state,
+        () => null,
+        spec,
+        toolCache,
+      );
+      return executor(toolCallId, params.args ?? {}, signal, onUpdate, ctx);
+    },
+  });
 }

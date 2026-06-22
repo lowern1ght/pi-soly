@@ -3,6 +3,7 @@ import type { ConsentManager } from "./consent-manager.ts";
 import type { McpLifecycleManager } from "./lifecycle.ts";
 import type { McpServerManager } from "./server-manager.ts";
 import type { ToolMetadata, McpConfig, UiSessionMessages, UiStreamSummary } from "./types.ts";
+import type { ToolCache } from "./tool-cache.ts";
 import type { UiResourceHandler } from "./ui-resource-handler.ts";
 import type { UiServerHandle } from "./ui-server.ts";
 
@@ -35,6 +36,12 @@ export interface McpExtensionState {
   consentManager: ConsentManager;
   uiServer: UiServerHandle | null;
   completedUiSessions: CompletedUiSession[];
+  /** In-memory TTL cache for direct tool call results. Attached by index.ts
+   *  right after initializeMcp resolves; consumed by updateStatusBar for the
+   *  footer and by showStatus for the /mcp status panel. Optional because
+   *  initializeMcp constructs the state without it; index.ts assigns before
+   *  any consumer can see the state. */
+  toolCache?: ToolCache;
   openBrowser: (url: string) => Promise<void>;
   ui?: ExtensionContext["ui"];
   sendMessage?: SendMessageFn;

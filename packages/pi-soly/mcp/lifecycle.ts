@@ -55,7 +55,7 @@ export class McpLifecycleManager {
   private async checkConnections(): Promise<void> {
     for (const [name, definition] of this.keepAliveServers) {
       const connection = this.manager.getConnection(name);
-      
+
       if (!connection || connection.status !== "connected") {
         try {
           await this.manager.connect(name, definition);
@@ -63,7 +63,14 @@ export class McpLifecycleManager {
           // Notify extension to update metadata
           this.onReconnect?.(name);
         } catch (error) {
-          console.error(`MCP: Failed to reconnect to ${name}:`, error);
+          // Silent retry: a downed MCP server would otherwise spam the
+          // terminal every 30s until the next health check succeeds. The
+          // failure stays visible via MCP_UI_DEBUG=1 if a developer needs
+          // to inspect the underlying error.
+          logger.debug(`Reconnect attempt failed for ${name}`, {
+            server: name,
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       }
     }

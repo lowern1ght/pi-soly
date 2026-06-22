@@ -12,6 +12,7 @@ import { formatToolName, isToolExcluded } from "./types.ts";
 import { resourceNameToToolName } from "./resource-tools.ts";
 import { authenticate, supportsOAuth } from "./mcp-auth-flow.ts";
 import { formatAuthRequiredMessage } from "./utils.ts";
+import { ToolCache, cacheKey } from "./tool-cache.ts";
 
 const BUILTIN_NAMES = new Set(["read", "bash", "edit", "write", "grep", "find", "ls", "mcp"]);
 
@@ -274,9 +275,19 @@ type DirectToolExecute = (
 export function createDirectToolExecutor(
   getState: () => McpExtensionState | null,
   getInitPromise: () => Promise<McpExtensionState> | null,
-  spec: DirectToolSpec
+  spec: DirectToolSpec,
+  cache?: ToolCache,
 ): DirectToolExecute {
   return async function execute(_toolCallId, params) {
+    // Cache fast-path: skip connect/init/auth on hit. UI tools and resources
+    // are never cached (UI has side effects, user asked for tools only).
+    if (cache && !spec.resourceUri && !spec.uiResourceUri) {
+      const hit = cache.get(cacheKey(spec.serverName, spec.originalName, params));
+      if (hit !== undefined) {
+        return hit as Awaited<ReturnType<DirectToolExecute>>;
+      }
+    }
+
     let state = getState();
     const initPromise = getInitPromise();
 
@@ -402,10 +413,16 @@ export function createDirectToolExecutor(
         };
       }
 
-      return {
+      const successResult: Awaited<ReturnType<DirectToolExecute>> = {
         content: content.length > 0 ? content : [{ type: "text" as const, text: "(empty result)" }],
         details: { server: spec.serverName, tool: spec.originalName },
       };
+      // Cache only plain (non-UI) tool success; resources and UI tools are
+      // never cached (see fast-path above for the matching skip condition).
+      if (cache) {
+        cache.set(cacheKey(spec.serverName, spec.originalName, params), successResult);
+      }
+      return successResult;
     } catch (error) {
       if (error instanceof UrlElicitationRequiredError) {
         const action = await state.manager.handleUrlElicitationRequired(spec.serverName, error);

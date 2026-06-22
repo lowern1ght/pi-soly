@@ -58,6 +58,18 @@ export async function showStatus(state: McpExtensionState, ctx: ExtensionContext
     lines.push("Run /mcp setup to adopt imports or scaffold a starter .mcp.json");
   }
 
+  // Tool result cache stats — appended after the per-server list. Hidden if
+  // the cache has not seen any traffic yet (fresh session, no calls made).
+  const cacheStats = state.toolCache?.stats();
+  if (cacheStats && (cacheStats.hits > 0 || cacheStats.misses > 0 || cacheStats.expirations > 0 || cacheStats.size > 0)) {
+    const total = cacheStats.hits + cacheStats.misses;
+    const hitRate = total > 0 ? Math.round((cacheStats.hits / total) * 100) : 0;
+    lines.push("");
+    lines.push(
+      `Cache: ${cacheStats.size} entries · ${cacheStats.hits} hits · ${cacheStats.misses} misses · ${cacheStats.expirations} expired (${hitRate}% hit rate)`,
+    );
+  }
+
   ctx.ui.notify(lines.join("\n"), "info");
 }
 

@@ -328,6 +328,17 @@ export function updateStatusBar(state: McpExtensionState): void {
     }
     parts.push(`${name} ${fg(color, icon)}`);
   }
+
+  // Cache stats segment — appended last so the footer stays scannable. Hidden
+  // until the cache has actually seen traffic so a fresh session stays quiet.
+  //   ⚡ 12/3   = 12 hits, 3 misses   (expirations appear inline when >0)
+  const cacheStats = state.toolCache?.stats();
+  if (cacheStats && (cacheStats.hits > 0 || cacheStats.misses > 0 || cacheStats.expirations > 0 || cacheStats.size > 0)) {
+    const exp = cacheStats.expirations > 0 ? `/${cacheStats.expirations}e` : "";
+    const cacheText = `⚡ ${cacheStats.hits}h/${cacheStats.misses}m${exp}`;
+    parts.push(fg("muted", cacheText));
+  }
+
   ui.setStatus("mcp", parts.join(" · "));
 }
 
