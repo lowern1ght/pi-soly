@@ -381,6 +381,34 @@ export class McpServerManager {
    * session id internally; our fix works because `close()` + `connect()`
    * creates a brand new transport + client, so the SDK starts fresh.
    */
+  /** Call the SDK client's callTool with arguments in the CORRECT positions.
+   *
+   * SDK signature is `callTool(params, resultSchema?, options?)`. We pass
+   * `undefined` for resultSchema (→ SDK default `CallToolResultSchema`) and
+   * forward only `signal` as the options. The previous inline cast treated
+   * the method as `(params, options?)` and passed our options object as the
+   * 2nd argument — landing it in the resultSchema slot. The SDK then
+   * validated every response via `safeParse({_bookkeep, signal}, result)`,
+   * and since a plain object has no `.safeParse`, every call crashed with
+   * `v3Schema.safeParse is not a function` — breaking ALL tool calls (and,
+   * via the same result-validation path in `request()`, tool listings too,
+   * so only the adapter's own meta-tools stayed visible). */
+  private async sdkCallTool(
+    client: Client,
+    params: CallToolRequest["params"],
+    options?: { signal?: AbortSignal },
+  ): Promise<CallToolResult> {
+    return (client.callTool as (
+      p: CallToolRequest["params"],
+      resultSchema: unknown,
+      o?: { signal?: AbortSignal },
+    ) => Promise<CallToolResult>)(
+      params,
+      undefined, // → SDK default CallToolResultSchema
+      options?.signal ? { signal: options.signal } : undefined,
+    );
+  }
+
   async callTool(
     name: string,
     params: CallToolRequest["params"],
@@ -398,17 +426,7 @@ export class McpServerManager {
         this.incrementInFlight(name);
       }
       try {
-        // The SDK's callTool signature changed in 1.28 to accept an optional
-        // resultSchema; we still target 1.27.1. Cast through unknown to
-        // bridge the type skew without losing type safety elsewhere.
-        const result = await (connection.client.callTool as (
-          p: CallToolRequest["params"],
-          o?: unknown,
-        ) => Promise<CallToolResult>)(
-          params as CallToolRequest["params"],
-          options,
-        );
-        return result;
+        return this.sdkCallTool(connection.client, params, options);
       } finally {
         if (bookkeeping) {
           this.decrementInFlight(name);
@@ -433,13 +451,7 @@ export class McpServerManager {
       }
       await this.connect(name, connection.definition);
       try {
-        const result = await (connection.client.callTool as (
-          p: CallToolRequest["params"],
-          o?: unknown,
-        ) => Promise<CallToolResult>)(
-          params as CallToolRequest["params"],
-          options,
-        );
+        const result = await this.sdkCallTool(connection.client, params, options);
         this.onSessionRecover?.(name, true, errMsg);
         return result;
       } catch (retryErr) {
