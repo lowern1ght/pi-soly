@@ -102,6 +102,74 @@ describe("decision_deck — navigation & selection", () => {
 	});
 });
 
+describe("decision_deck — notes (n key)", () => {
+	/** Type `text` into the active note field, mirroring real char-by-char dispatch. */
+	function type(c: DeckComponent, text: string): void {
+		for (const ch of text) c.handleInput(ch);
+	}
+
+	test("`n` opens the note field without choosing or cancelling", () => {
+		const { c, result } = mk(OPTS);
+		expect(() => c.handleInput("n")).not.toThrow();
+		expect(c.getIndex()).toBe(1); // unchanged
+		expect(result()).toBeNull(); // not done
+		expect(c.getNote()).toBe("");
+	});
+
+	test("typed note is stored on Enter and included in the chosen result", () => {
+		const { c, result } = mk(OPTS);
+		c.handleInput("n");
+		type(c, "avoid lock contention");
+		c.handleInput(ENTER); // commit note
+		expect(c.getNote()).toBe("avoid lock contention");
+		c.handleInput(ENTER); // choose the current (recommended) card
+		expect(result()).toEqual({ chosen: 1, note: "avoid lock contention" });
+	});
+
+	test("Esc cancels the note field, leaving no note", () => {
+		const { c, result } = mk(OPTS);
+		c.handleInput("n");
+		type(c, "ignored");
+		c.handleInput(ESC); // cancel note (NOT the deck)
+		expect(c.getNote()).toBe("");
+		expect(result()).toBeNull(); // deck still active
+		c.handleInput(ENTER); // choose → submit
+		expect(result()).toEqual({ chosen: 1 }); // no `note` key
+	});
+
+	test("committing an empty note clears any existing note", () => {
+		const { c, result } = mk(OPTS);
+		c.handleInput("n");
+		type(c, "first");
+		c.handleInput(ENTER); // commit "first"
+		expect(c.getNote()).toBe("first");
+		c.handleInput("n"); // re-open, then clear
+		c.handleInput("\x15"); // ^U — delete to line start (Input default)
+		c.handleInput(ENTER); // commit empty → note cleared
+		expect(c.getNote()).toBe("");
+		c.handleInput(ENTER); // choose
+		expect(result()).toEqual({ chosen: 1 }); // no `note`
+	});
+
+	test("note is never attached to a cancellation", () => {
+		const { c, result } = mk(OPTS);
+		c.handleInput("n");
+		type(c, "won't ship");
+		c.handleInput(ENTER); // commit note
+		c.handleInput(ESC); // cancel the DECK
+		expect(result()).toEqual({ cancelled: true }); // no `note`
+	});
+
+	test("opening the note field does not break render", () => {
+		const { c } = mk(OPTS);
+		c.handleInput("n");
+		const lines = c.render(80);
+		expect(lines.length).toBeGreaterThan(0);
+		expect(lines.join("\n")).toContain("Note:");
+		for (const line of lines) expect(visibleWidth(line)).toBeLessThanOrEqual(80);
+	});
+});
+
 describe("decision_deck — render", () => {
 	test("shows title, current card, pager, pros/cons", () => {
 		const { c } = mk(OPTS, { title: "State", prompt: "How to wire modules?" });

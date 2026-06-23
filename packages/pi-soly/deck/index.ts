@@ -24,7 +24,7 @@ export default function piDeckExtension(pi: ExtensionAPI) {
 		name: "decision_deck",
 		label: "soly · decision_deck",
 		description:
-			"Present ONE design/architecture decision as a full-screen deck of cards (one per option) the user flips through (←/→ or 1-N) and picks with Enter. Use instead of ask_pro when the choice hinges on comparing each option's concrete code shape, not a label. 2-6 options. Native TUI. Returns the chosen option.",
+			"Present ONE design/architecture decision as a full-screen deck of cards (one per option) the user flips through (←/→ or 1-N) and picks with Enter. Use instead of ask_pro when the choice hinges on comparing each option's concrete code shape, not a label. 2-6 options. The user can attach a free-text note (rationale, caveats) via `n`; it's returned in the result. Native TUI. Returns the chosen option.",
 		parameters: Type.Object({
 			title: Type.Optional(Type.String({ description: "Decision title." })),
 			prompt: Type.Optional(Type.String({ description: "Question shown above the cards." })),
@@ -100,14 +100,13 @@ export default function piDeckExtension(pi: ExtensionAPI) {
 
 			const chosen = result.chosen;
 			const opt = params.options[chosen];
+			const note = result.note?.trim() ?? "";
+			const text = note
+				? `User chose option ${chosen + 1}: "${opt?.title ?? "?"}".  // note: "${note}"`
+				: `User chose option ${chosen + 1}: "${opt?.title ?? "?"}".`;
 			return {
-				content: [
-					{
-						type: "text",
-						text: `User chose option ${chosen + 1}: "${opt?.title ?? "?"}".`,
-					},
-				],
-				details: { chosen, title: opt?.title },
+				content: [{ type: "text", text }],
+				details: { chosen, title: opt?.title, note: note || undefined },
 			};
 		},
 	});

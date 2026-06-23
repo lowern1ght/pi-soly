@@ -17,6 +17,7 @@
 import {
 	Container,
 	Text,
+	Input,
 	truncateToWidth,
 	type Component,
 	type KeybindingsManager,
@@ -50,6 +51,8 @@ export interface DeckResult {
 	chosen?: number;
 	/** Set when the user cancelled (Esc). */
 	cancelled?: boolean;
+	/** Optional free-text note the user attached to the decision (via `n`). */
+	note?: string;
 }
 
 interface DeckComponentDeps {
@@ -72,6 +75,8 @@ const KEY_UP = "\x1b[A";
 const KEY_DOWN = "\x1b[B";
 const KEY_RIGHT = "\x1b[C";
 const KEY_LEFT = "\x1b[D";
+const KEY_BACKSPACE = "\x7f";
+const KEY_TAB = "\t";
 
 /** Max card width; cards never grow wider than this even on huge terminals. */
 const MAX_BOX = 96;
@@ -88,6 +93,12 @@ export class DeckComponent extends Container {
 	private index = 0;
 	private completed = false;
 	private body!: Text;
+	/** Free-text note attached to the decision (via `n`). */
+	private note = "";
+	/** True while the inline note field owns the keyboard. */
+	private noteMode = false;
+	/** The inline Input rendered while noteMode is active. */
+	private noteInput: Input | null = null;
 
 	constructor(deps: DeckComponentDeps) {
 		super();
@@ -110,14 +121,31 @@ export class DeckComponent extends Container {
 		return this.index;
 	}
 
+	/** The note currently attached to the decision ("" until one is added). */
+	getNote(): string {
+		return this.note;
+	}
+
 	// --------------------------------------------------------------------------
 	// Input
 	// --------------------------------------------------------------------------
 
 	handleInput(keyData: string): void {
 		if (this.completed) return;
+
+		// --- inline note field owns the keyboard (Enter commits, Esc cancels) ---
+		if (this.noteMode) {
+			this.handleNoteKey(keyData);
+			return;
+		}
+
 		if (keyData === KEY_ESC) {
 			this.finish({ cancelled: true });
+			return;
+		}
+		// `n` — open the inline note field (pre-fills any existing note).
+		if (keyData === "n") {
+			this.openNoteInput();
 			return;
 		}
 		if (
@@ -147,11 +175,70 @@ export class DeckComponent extends Container {
 
 	private finish(result: DeckResult): void {
 		this.completed = true;
+		// Attach the note (if any) to a choice — never to a cancellation.
+		if (!result.cancelled && this.note) result.note = this.note;
 		this.done(result);
+	}
+
+	/** Build a fresh inline Input pre-filled with `value`, cursor at the end so
+	 *  the user can extend or backspace-edit it. */
+	private makeInput(value: string): Input {
+		const input = new Input();
+		for (const ch of value) input.handleInput(ch);
+		return input;
+	}
+
+	/** Open the inline note field, pre-filled with any existing note so it can
+	 *  be edited. While open, all keys route to the field except Enter/Esc. */
+	private openNoteInput(): void {
+		this.noteInput = this.makeInput(this.note);
+		this.noteMode = true;
+		this.body.invalidate();
+	}
+
+	/** Route a keystroke to the active note field, intercepting Enter (commit)
+	 *  and Esc (cancel). Mirrors ask_pro's inline-input behavior. */
+	private handleNoteKey(keyData: string): void {
+		if (!this.noteInput) return;
+		if (keyData === KEY_ESC) {
+			this.closeNote(false);
+			return;
+		}
+		if (
+			this.keybindings.matches(keyData, "tui.select.confirm") ||
+			keyData === KEY_ENTER ||
+			keyData === KEY_ENTER_CR
+		) {
+			this.closeNote(true);
+			return;
+		}
+		// Tab also commits (common "done typing" gesture) so the field doesn't
+		// swallow Tab trying to insert a literal tab.
+		if (keyData === KEY_TAB) {
+			this.closeNote(true);
+			return;
+		}
+		this.noteInput.handleInput(keyData);
+		this.body.invalidate();
+	}
+
+	/** Commit (commit=true) or discard the note field, then return to the
+	 *  card deck. A committed empty value clears any existing note. */
+	private closeNote(commit: boolean): void {
+		const text = this.noteInput?.getValue() ?? "";
+		this.noteInput = null;
+		this.noteMode = false;
+		if (commit) {
+			const trimmed = text.trim();
+			this.note = trimmed === "" ? "" : trimmed;
+		}
+		this.body.invalidate();
 	}
 
 	dispose(): void {
 		this.completed = true;
+		this.noteMode = false;
+		this.noteInput = null;
 	}
 
 	// --------------------------------------------------------------------------
@@ -172,6 +259,20 @@ export class DeckComponent extends Container {
 		out.push(this.center(this.renderPager(), boxWidth));
 		out.push("");
 		if (opt) for (const l of this.renderCard(opt, boxWidth, inner)) out.push(l);
+		// Inline note field — shown below the card when noteMode is active.
+		// It owns the keyboard (Enter commits, Esc cancels); see handleNoteKey.
+		if (this.noteMode && this.noteInput) {
+			out.push("");
+			out.push(
+				this.center(
+					this.theme.fg("dim", "Note: (enter ⏎ confirm · esc cancel)"),
+					boxWidth,
+				),
+			);
+			for (const l of this.noteInput.render(inner)) {
+				out.push(truncateToWidth(l, width, "", false));
+			}
+		}
 		out.push("");
 		out.push(this.center(this.theme.fg("dim", this.footerHints()), boxWidth));
 
@@ -226,7 +327,11 @@ export class DeckComponent extends Container {
 	}
 
 	private footerHints(): string {
-		return "←/→ flip · 1-N jump · ⏎ choose · esc cancel";
+		// While the note field is open it owns the keyboard — show only its
+		// affordances.
+		if (this.noteMode) return "⏎ confirm · esc cancel";
+		const noteHint = this.note ? "n ✓note" : "n note";
+		return `←/→ flip · 1-N jump · ${noteHint} · ⏎ choose · esc cancel`;
 	}
 
 	/** Highlight (or dim-fallback) a code snippet into per-line styled strings. */
