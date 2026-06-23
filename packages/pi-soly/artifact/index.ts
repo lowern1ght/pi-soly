@@ -3,7 +3,7 @@
 // =============================================================================
 //
 // Registers one LLM tool: `html_artifact`. Renders LLM-supplied HTML to a
-// self-contained file in a per-session temp dir and (by default) serves it from
+// self-contained file in a per-project dir and (by default) serves it from
 // a session-scoped HTTP server with a live gallery of every artifact made this
 // session — soly's local equivalent of Claude Code artifacts. Falls back to
 // opening the file directly when the server is disabled or can't bind.
@@ -24,8 +24,8 @@ import {
 	artifactDir,
 	resolveArtifactBase,
 	ensureArtifactServer,
-	getArtifactServer,
-	setArtifactServer,
+	disposeArtifactServer,
+	invalidateArtifactServer,
 } from "./session.ts";
 
 type ToolText = { content: { type: "text"; text: string }[]; details: Record<string, unknown> };
@@ -128,11 +128,11 @@ async function fileMode(
 }
 
 export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => SolyConfig) {
-	// A stale server may linger in the shared holder after /reload — stop it so
-	// its port is freed; the next artifact (or /artifacts) starts a fresh one
-	// that restores the persisted per-project manifest.
-	getArtifactServer()?.stop();
-	setArtifactServer(null);
+	// A stale owner server may linger in the shared holder after /reload — stop
+	// it (and clear its registry) so its pinned port is freed; the next artifact
+	// (or /artifacts) re-resolves and re-binds it, restoring the per-project
+	// manifest. No-op when nothing is running (fresh process).
+	disposeArtifactServer();
 
 	// Usage guidance lives in the soly-framework skill + the main soly prompt
 	// pointer — not injected here.
@@ -141,15 +141,16 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 		pruneOldSessions(resolveArtifactBase(cfg.dir, ctx.cwd), cfg.retentionDays);
 	});
 	pi.on("session_shutdown", async () => {
-		getArtifactServer()?.stop();
-		setArtifactServer(null);
+		// Stop the server only if we own it; if we were a client reusing another
+		// window's server, leave it running.
+		disposeArtifactServer();
 	});
 
 	pi.registerTool({
 		name: "html_artifact",
 		label: "soly · html_artifact",
 		description:
-			"Render HTML to a self-contained file and serve it from a per-session gallery in the browser — soly's artifacts. `html` is a full document or a body fragment (wrapped in a styled light/dark skeleton; theme overridable via .soly/artifact-theme.css). Pass `id` to update an existing artifact in place (re-render). Pass `assets` to write sibling files (images/css/json) the HTML references via relative paths. Use when a visual rendered result beats terminal text. Self-contained otherwise — no external URLs. Returns the localhost URL + session gallery.",
+			"Render HTML to a self-contained file and serve it from a per-project gallery in the browser — soly's artifacts. `html` is a full document or a body fragment (wrapped in a styled light/dark skeleton; theme overridable via .soly/artifact-theme.css). Pass `id` to update an existing artifact in place (re-render). Pass `assets` to write sibling files (images/css/json) the HTML references via relative paths. Use when a visual rendered result beats terminal text. Self-contained otherwise — no external URLs. The gallery is shared across every pi window in this folder and survives restarts. Returns the localhost URL + gallery.",
 		parameters: Type.Object({
 			title: Type.String({ description: "Title (used for <title>, header, gallery, filename)." }),
 			html: Type.String({
@@ -199,12 +200,22 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 
 			let server: Awaited<ReturnType<typeof ensureArtifactServer>>;
 			try {
-				server = await ensureArtifactServer(dir);
+				server = await ensureArtifactServer(dir, ctx.cwd);
 			} catch (err) {
-				return fileMode(pi, file, bytes, shouldOpen, `session server unavailable: ${String(err)}`);
+				return fileMode(pi, file, bytes, shouldOpen, `artifact server unavailable: ${String(err)}`);
 			}
 
-			const url = server.register(params.title, file, params.id);
+			// Register over the shared server. If the owning window died mid-call
+			// (client POST fails), re-resolve — probe finds nothing, so we start our
+			// own server on the same pinned port (same URL) — then retry once.
+			let url: string;
+			try {
+				url = await server.register(params.title, file, params.id);
+			} catch {
+				invalidateArtifactServer();
+				server = await ensureArtifactServer(dir, ctx.cwd);
+				url = await server.register(params.title, file, params.id);
+			}
 			const gallery = server.galleryUrl();
 			let opened = false;
 			let openError: string | undefined;
@@ -221,7 +232,7 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 			// with the footer + duplicated streamed lines). The user still sees the
 			// artifact via auto-open, the `🖼 N` footer indicator, this tool result,
 			// and `/artifacts`.
-			const lines = [`Artifact: ${url}`, `Gallery (all session artifacts): ${gallery}`];
+			const lines = [`Artifact: ${url}`, `Gallery (all project artifacts): ${gallery}`];
 			if (opened) lines.push("Opened the gallery in your browser.");
 			else if (openError) lines.push(`(could not auto-open: ${openError})`);
 			return { content: [{ type: "text", text: lines.join("\n") }], details: { url, gallery, path: file, bytes, opened } };

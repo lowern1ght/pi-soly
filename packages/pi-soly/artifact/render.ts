@@ -103,7 +103,7 @@ export function buildGalleryShell(token: string): string {
 </head>
 <body>
 <aside id="side">
-  <header><span>soly artifacts <span class="sub">this session</span></span><button id="theme" title="Toggle theme">◐</button></header>
+  <header><span>soly artifacts <span class="sub">this project</span></span><button id="theme" title="Toggle theme">◐</button></header>
   <input id="q" placeholder="Filter…" autocomplete="off">
   <ul id="list"></ul>
   <p id="empty">No artifacts yet — they'll appear here as they're created.</p>

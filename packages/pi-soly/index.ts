@@ -94,7 +94,7 @@ const SOLY_TOOLS_POINTER = `
 When terminal text isn't the best medium, reach for these (details + when-NOT in the soly-framework skill):
 - \`ask_pro\` — multi-question picker (single/multi-select, free-text, per-option previews).
 - \`decision_deck\` — full-screen cards comparing design options by their concrete code shape.
-- \`html_artifact\` — render HTML to a self-contained, browseable per-session gallery.`;
+- \`html_artifact\` — render HTML to a self-contained, browseable per-project gallery.`;
 
 export default function solyExtension(pi: ExtensionAPI) {
 	// ============================================================================

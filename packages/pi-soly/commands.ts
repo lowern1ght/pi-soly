@@ -913,20 +913,19 @@ What must the LLM do?
 	// ============================================================================
 
 	pi.registerCommand("artifacts", {
-		description: "browse this session's html_artifact gallery (list, open, clear)",
+		description: "browse this project's html_artifact gallery (list, open, clear)",
 		handler: async (args, ctx) => {
 			if (!getConfig().artifacts.server) {
-				ctx.ui.notify("soly: artifact session server is disabled (artifacts.server=false)", "info");
+				ctx.ui.notify("soly: artifact server is disabled (artifacts.server=false)", "info");
 				return;
 			}
+			// Always re-resolve: reuse another window's server or start ours, and
+			// re-probe a stale client whose owner may have died in the meantime.
 			let server = getArtifactServer();
-			if (!server) {
-				// Restore the persisted per-project gallery (survives /reload + restart).
-				try {
-					server = await ensureArtifactServer(artifactDir(getConfig().artifacts.dir, ctx.cwd));
-				} catch {
-					// ignore — handled by the count check below
-				}
+			try {
+				server = await ensureArtifactServer(artifactDir(getConfig().artifacts.dir, ctx.cwd), ctx.cwd);
+			} catch {
+				// ignore — handled by the count check below
 			}
 			if (!server || server.count === 0) {
 				ctx.ui.notify("soly: no artifacts for this project yet (use the html_artifact tool)", "info");

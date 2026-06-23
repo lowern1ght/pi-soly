@@ -15,6 +15,14 @@ import {
 	buildGalleryShell,
 } from "../artifact/render.ts";
 import { ArtifactServer } from "../artifact/server.ts";
+import {
+	pinnedToken,
+	pinnedPort,
+	artifactDir,
+	ensureArtifactServer,
+	disposeArtifactServer,
+	RemoteArtifactClient,
+} from "../artifact/session.ts";
 import { DEFAULT_CONFIG } from "../config.ts";
 
 describe("artifact — slug & filename", () => {
@@ -98,11 +106,11 @@ describe("artifact — session server", () => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "soly-art-"));
 		fs.writeFileSync(path.join(dir, "demo.html"), "<!doctype html><h1>Demo Body</h1>");
 		fs.writeFileSync(path.join(dir, "data.json"), '{"x":1}');
-		const srv = new ArtifactServer(dir);
+		const srv = new ArtifactServer(dir, 0, "abcdef0123456789");
 		await srv.ensureStarted();
 		try {
 			const base = srv.galleryUrl(); // http://127.0.0.1:PORT/<token>/
-			const url = srv.register("Demo", path.join(dir, "demo.html"), "demo");
+			const url = await srv.register("Demo", path.join(dir, "demo.html"), "demo");
 
 			// Artifact served as HTML
 			const aRes = await fetch(url);
@@ -121,7 +129,7 @@ describe("artifact — session server", () => {
 			expect(list[0]?.id).toBe("demo");
 
 			// Update-in-place: same id → still one entry, new title
-			srv.register("Demo v2", path.join(dir, "demo.html"), "demo");
+			await srv.register("Demo v2", path.join(dir, "demo.html"), "demo");
 			const list2 = (await (await fetch(base + "list")).json()) as { title: string }[];
 			expect(list2.length).toBe(1);
 			expect(list2[0]?.title).toBe("Demo v2");
@@ -140,7 +148,7 @@ describe("artifact — session server", () => {
 			expect([403, 404]).toContain((await fetch(trav)).status);
 
 			// count / list / remove / clear
-			srv.register("Second", path.join(dir, "data.json"), "two");
+			await srv.register("Second", path.join(dir, "data.json"), "two");
 			expect(srv.count).toBe(2);
 			expect(srv.list().map((e) => e.id).sort()).toEqual(["demo", "two"]);
 			expect(srv.list()[0]?.url).toContain("/a/");
@@ -163,18 +171,122 @@ describe("artifact — session server", () => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "soly-art-persist-"));
 		fs.writeFileSync(path.join(dir, "a.html"), "<h1>A</h1>");
 		try {
-			const s1 = new ArtifactServer(dir);
+			const s1 = new ArtifactServer(dir, 0, "0123456789abcdef");
 			s1.register("Alpha", path.join(dir, "a.html"), "alpha"); // persists index.json
 			// Simulate /reload: a brand-new server over the same project dir.
-			const s2 = new ArtifactServer(dir);
+			const s2 = new ArtifactServer(dir, 0, "0123456789abcdef");
 			expect(s2.count).toBe(1);
 			expect(s2.list()[0]?.id).toBe("alpha");
 			expect(s2.list()[0]?.title).toBe("Alpha");
 			// An entry whose file was deleted is dropped on restore.
 			fs.unlinkSync(path.join(dir, "a.html"));
-			expect(new ArtifactServer(dir).count).toBe(0);
+			expect(new ArtifactServer(dir, 0, "0123456789abcdef").count).toBe(0);
 		} finally {
 			fs.rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("artifact — per-project discovery (shared across windows)", () => {
+	test("pinnedToken/pinnedPort are stable for a cwd and vary across cwds", () => {
+		const a = path.join(os.tmpdir(), "soly-proj-a");
+		const b = path.join(os.tmpdir(), "soly-proj-b");
+		expect(pinnedToken(a)).toBe(pinnedToken(a)); // stable
+		expect(pinnedToken(a)).not.toBe(pinnedToken(b)); // differs per project
+		expect(pinnedPort(a)).toBeGreaterThanOrEqual(43120);
+		expect(pinnedPort(a)).toBeLessThan(43120 + 2048);
+		expect(pinnedPort(a)).not.toBe(pinnedPort(b));
+	});
+
+	test("ensureArtifactServer reuses a running owner as a remote client", async () => {
+		const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "soly-disc-"));
+		const dir = artifactDir("", cwd);
+		fs.mkdirSync(dir, { recursive: true });
+		fs.writeFileSync(path.join(dir, "x.html"), "<h1>X</h1>");
+		try {
+			// Another "window" already runs the server for this project.
+			const token = pinnedToken(cwd);
+			const owner = new ArtifactServer(dir, pinnedPort(cwd), token);
+			await owner.ensureStarted();
+			fs.writeFileSync(
+				path.join(dir, "server.json"),
+				JSON.stringify({ port: owner.boundPort, token, pid: 0, startedAt: Date.now() }),
+			);
+
+			disposeArtifactServer(); // no cached handle → forces a fresh resolve
+			const handle = await ensureArtifactServer(dir, cwd);
+			expect(handle).toBeInstanceOf(RemoteArtifactClient); // reused, not re-started
+			expect(handle.galleryUrl()).toBe(owner.galleryUrl());
+			expect(handle.count).toBe(0);
+
+			// register over HTTP → owner's list AND the client cache both update
+			const url = await handle.register("Hi", path.join(dir, "x.html"), "x");
+			expect(url).toContain(`/${token}/a/`);
+			expect(owner.count).toBe(1);
+			expect(handle.count).toBe(1);
+			expect(handle.list()[0]?.id).toBe("x");
+
+			owner.stop();
+		} finally {
+			disposeArtifactServer();
+			fs.rmSync(dir, { recursive: true, force: true });
+			fs.rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	test("ensureArtifactServer starts + owns a server when none is running", async () => {
+		const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "soly-owner-"));
+		const dir = artifactDir("", cwd);
+		fs.mkdirSync(dir, { recursive: true });
+		fs.writeFileSync(path.join(dir, "o.html"), "<h1>O</h1>");
+		try {
+			disposeArtifactServer();
+			const handle = await ensureArtifactServer(dir, cwd);
+			expect(handle).toBeInstanceOf(ArtifactServer); // we own it
+			const url = await handle.register("Owned", path.join(dir, "o.html"), "o");
+			expect((await fetch(handle.galleryUrl() + "list")).status).toBe(200);
+			expect(url).toContain(`/${pinnedToken(cwd)}/a/`);
+			// registry was written pointing at our port + token
+			const reg = JSON.parse(fs.readFileSync(path.join(dir, "server.json"), "utf-8"));
+			expect(reg.token).toBe(pinnedToken(cwd));
+			expect(reg.port).toBe((handle as ArtifactServer).boundPort);
+		} finally {
+			disposeArtifactServer();
+			fs.rmSync(dir, { recursive: true, force: true });
+			fs.rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	test("ensureArtifactServer starts its own when the reused owner has died", async () => {
+		const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "soly-died-"));
+		const dir = artifactDir("", cwd);
+		fs.mkdirSync(dir, { recursive: true });
+		fs.writeFileSync(path.join(dir, "d.html"), "<h1>D</h1>");
+		try {
+			const token = pinnedToken(cwd);
+			const owner = new ArtifactServer(dir, pinnedPort(cwd), token);
+			await owner.ensureStarted();
+			fs.writeFileSync(
+				path.join(dir, "server.json"),
+				JSON.stringify({ port: owner.boundPort, token, pid: 0, startedAt: Date.now() }),
+			);
+
+			disposeArtifactServer();
+			const h1 = await ensureArtifactServer(dir, cwd);
+			expect(h1).toBeInstanceOf(RemoteArtifactClient);
+
+			// The owning window exits — its server goes down.
+			owner.stop();
+
+			// Next resolve detects the dead owner and starts our own (same token
+			// → same URL path), so the gallery keeps working from this window.
+			const h2 = await ensureArtifactServer(dir, cwd);
+			expect(h2).toBeInstanceOf(ArtifactServer);
+			expect(h2.galleryUrl()).toContain(`/${token}/`);
+		} finally {
+			disposeArtifactServer();
+			fs.rmSync(dir, { recursive: true, force: true });
+			fs.rmSync(cwd, { recursive: true, force: true });
 		}
 	});
 });
