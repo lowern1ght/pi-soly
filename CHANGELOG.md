@@ -4,6 +4,26 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.12.2] — 2026-06-24
+
+### Changed
+- **Added global/local + counterweight vocabulary** to `decision_deck`
+  and `ask_pro` descriptions and the per-turn `toolHints` rule. The
+  prior 1.12.1 wording ("code + pros/cons per option") was concrete
+  but missed the higher-level distinction the user cares about:
+  - `decision_deck` = **global** architectural fork with real
+    **counterweight** between options (trade-offs that genuinely
+    pull in different directions — e.g. consistency vs availability,
+    sync vs async).
+  - `ask_pro` = **local** sub-question inside an already-decided
+    theme, simple label-vs-label «или/или», or 2+ related questions
+    in one batch.
+- Hint now reads **"Default to `ask_pro` unless the stakes are
+  global"** and explicitly mentions `global` / `counterweight` as
+  the contrast words.
+
+No API change, no new fields — only the LLM-facing contract strings.
+
 ## [1.12.1] — 2026-06-24
 
 ### Changed

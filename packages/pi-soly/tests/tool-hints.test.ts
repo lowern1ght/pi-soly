@@ -51,6 +51,10 @@ describe("buildToolHintSection", () => {
 		expect(s?.toLowerCase()).toContain("default to");
 		// Hard rule: never use decision_deck for 2+ questions.
 		expect(s?.toLowerCase()).toContain("never use `decision_deck` for 2+ questions");
+		// 1.12.2: explicitly use the global/counterweight vocabulary so the LLM
+		// sees the contrast in plain terms, not just "code + trade-offs".
+		expect(s?.toLowerCase()).toContain("global");
+		expect(s?.toLowerCase()).toContain("counterweight");
 	});
 
 	test("ask branch names deck as the wrong tool so LLM doesn't use it for multi-question", () => {
