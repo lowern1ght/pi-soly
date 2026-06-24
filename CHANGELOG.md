@@ -2,7 +2,9 @@
 
 All notable changes to the monorepo are documented here.
 
-## [Unreleased] — pi-soly
+## [Unreleased]
+
+## [1.12.0] — 2026-06-24
 
 ### Added
 - **Visual chrome** — native, dependency-free status layer: custom footer, top
