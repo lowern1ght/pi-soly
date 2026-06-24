@@ -24,7 +24,7 @@ export default function piDeckExtension(pi: ExtensionAPI) {
 		name: "decision_deck",
 		label: "soly · decision_deck",
 		description:
-			"Present ONE design/architecture decision as a full-screen deck of cards (one per option) the user flips through (←/→ or 1-N) and picks with Enter. Use instead of ask_pro when the choice hinges on comparing each option's concrete code shape, not a label. 2-6 options. The user can attach a free-text note (rationale, caveats) via `n`; it's returned in the result. Native TUI. Returns the chosen option.",
+			"Present ONE design/architecture decision as a full-screen deck of cards (one per option) the user flips through (←/→ or 1-N) and picks with Enter. Use when 2-6 options each need their own card with code + pros/cons to be properly compared (e.g. architectural forks, API shapes, data-model choices). STRICTLY ONE question per call — for 2+ related questions in one batch, use `ask_pro` instead. Each option SHOULD carry either a non-trivial code snippet or explicit pros/cons; for plain label-vs-label choices, `ask_pro` is lighter. The user can attach a free-text note (rationale, caveats) via `n`; it's returned in the result. Native TUI. Returns the chosen option.",
 		parameters: Type.Object({
 			title: Type.Optional(Type.String({ description: "Decision title." })),
 			prompt: Type.Optional(Type.String({ description: "Question shown above the cards." })),

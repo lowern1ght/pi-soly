@@ -52,9 +52,9 @@ export function buildToolHintSection(h: ToolHint): string | null {
 	if (h.artifact)
 		bits.push("- Examples / a table / a visual result: **ask the user first** — render it in the browser as an artifact (`html_artifact`), or just as text here? Then proceed accordingly.");
 	if (h.deck)
-		bits.push("- Comparing options/alternatives: **ask the user first** — show them as a full-screen deck (`decision_deck`, code + pros/cons), or inline as text? Then proceed.");
+		bits.push("- Comparing 2-6 options: if it's ONE question and each option needs code + pros/cons on its own card → use `decision_deck`. If it's 2+ related questions in one batch → use `ask_pro`. **Default to `ask_pro` unless you have explicit code or trade-offs per option.** Never use `decision_deck` for 2+ questions.");
 	if (h.ask)
-		bits.push("- Several things to clarify → use `ask_pro` (one batched picker).");
+		bits.push("- Several things to clarify → use `ask_pro` (one batched picker). `decision_deck` does NOT support multi-question — never reach for it here.");
 	if (bits.length === 0) return null;
 	return `\n## soly — interactive output for this turn\n\n${bits.join(
 		"\n",

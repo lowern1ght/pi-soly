@@ -71,7 +71,7 @@ export default function piAskExtension(pi: ExtensionAPI) {
 		name: "ask_pro",
 		label: "soly · ask_pro",
 		description:
-			"Ask the user several questions at once via a tabbed picker; returns all answers in one call. Per question: single-select (default), `multiSelect` (+ `minSelect`/`maxSelect`), `allowOther` (free-text choice), or `freeText` (typed answer, no options). Per option: `recommended` (⭐) and `preview` (side panel, fenced code highlighted). User can skip (`s`) or note (`n`). Prefer over one-by-one questions; good for `soly discuss`.",
+			"Ask the user one or more questions at once via a tabbed picker (≤6 questions); returns all answers in one call. USE WHEN: (a) you have 2+ related questions to gather in one batch, OR (b) you have ONE simple choice among 2-4 options where each option is a short label + 1-2 sentence description (no per-option code, no pros/cons). For ONE architectural/design comparison where each option needs its own code + pros/cons card on a full screen, use `decision_deck` instead. Per question: single-select (default), `multiSelect` (+ `minSelect`/`maxSelect`), `allowOther` (free-text 'Other…'), or `freeText` (typed answer, no options). Per option: `recommended` (⭐) and `preview` (side panel, fenced code highlighted). User can skip (`s`) or note (`n`). Prefer this over one-by-one questions.",
 		parameters: Type.Object({
 			questions: Type.Array(
 				Type.Object({

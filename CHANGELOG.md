@@ -4,6 +4,29 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.12.1] — 2026-06-24
+
+### Changed
+- **Clarified `decision_deck` vs `ask_pro` tool descriptions** so the LLM
+  reaches for the right picker. Hard rules now live in **both** tool
+  descriptions and the per-turn `toolHints` rule:
+  - `decision_deck` = strictly **ONE question** per call, options need
+    code + pros/cons, "for 2+ related questions, use `ask_pro` instead".
+  - `ask_pro` = **default** for simple label-vs-label choices and any
+    flow with 2+ related questions; names `decision_deck` as the
+    contrast for the architectural-fork case.
+  - Hint steers with **"default to `ask_pro` unless you have explicit
+    code or trade-offs per option"** and **"never use `decision_deck`
+    for 2+ questions"**.
+- **`tests/tool-hints.test.ts` rewritten** to lock in the new contract
+  (deck branch must name `ask_pro` as the contrast even when
+  `ask=false`; ask branch must name `decision_deck` as the wrong tool).
+  The old test had codified the gap that hid the deck-vs-ask_pro
+  distinction from the LLM.
+
+No API change, no new fields, no runtime dependencies — only the
+LLM-facing contract strings.
+
 ## [1.12.0] — 2026-06-24
 
 ### Added
