@@ -572,6 +572,68 @@ ${blocks.join("\n\n---\n\n")}${skippedNote}
 }
 
 // ============================================================================
+// Per-file rule lookup (used by pre-action reminder in tool_result hook)
+// ============================================================================
+//
+// Returns the subset of `rules` that apply to a single file path. Mirrors the
+// glob logic in `buildRulesSection` (always/no-globs = universal; otherwise
+// match `filePath` against `meta.globs`). Excludes disabled rules. Use this
+// to feed the pre-action reminder — LLM should see applicable rules AT THE
+// MOMENT of edit, not just at the start of the turn (where they decay).
+export function getApplicableRulesForFile(
+  filePath: string,
+  rules: RuleFile[],
+): RuleFile[] {
+  return rules.filter((r) => {
+    if (!r.enabled) return false;
+    if (r.meta.always === true) return true;
+    const globs = r.meta.globs;
+    if (!globs || globs.length === 0) return true;
+    return globs.some((g) => matchesGlob(filePath, g));
+  });
+}
+
+// Formats a compact reminder block for the LLM to see right after editing
+// `filePath`. Sorted by priority (high → medium → low → undefined), capped
+// at `cap` rules (default 3) so the LLM isn't flooded. Returns "" when no
+// rules apply — caller should treat that as "don't inject anything".
+export function formatRuleReminder(
+  rules: RuleFile[],
+  filePath: string,
+  cap = 3,
+): string {
+  if (rules.length === 0) return "";
+
+  const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  const sorted = [...rules].sort((a, b) => {
+    const pa = priorityOrder[a.meta.priority ?? ""] ?? 1;
+    const pb = priorityOrder[b.meta.priority ?? ""] ?? 1;
+    if (pa !== pb) return pa - pb;
+    return a.relPath.localeCompare(b.relPath);
+  });
+
+  const shown = sorted.slice(0, cap);
+  const remaining = rules.length - shown.length;
+
+  const lines: string[] = [];
+  lines.push(`\n\n---\n\n📋 **Applicable rules for \`${filePath}\`:**\n`);
+  shown.forEach((r, i) => {
+    const desc = r.meta.description ? ` — ${r.meta.description}` : "";
+    lines.push(`${i + 1}. [\`${r.relPath}\`]${desc}`);
+  });
+  if (remaining > 0) {
+    lines.push(
+      `\n_…and ${remaining} more — use \`/why ${filePath}\` to see all._`,
+    );
+  }
+  lines.push(
+    `\nIn your next message, briefly confirm which were applied (or note why not).`,
+  );
+
+  return lines.join("\n");
+}
+
+// ============================================================================
 // Phase-scoped rules loader
 // ============================================================================
 //

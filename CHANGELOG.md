@@ -4,6 +4,26 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.13.0] — 2026-06-24
+
+### Added
+- **Pre-action rule reminder** — for every `edit`/`write` tool call, soly
+  now appends a compact list of rules applicable to the file just
+  changed to the tool's result. The LLM is asked to confirm in its
+  next message which rules were applied (or why not). Closes the gap
+  where MANDATORY rules loaded at the start of a turn are forgotten
+  by the time the agent actually edits something.
+  - Behaviour: top 3 rules by `priority` (high → medium → low →
+    unspecified), sorted by `relPath`. Capped to avoid flooding
+    per-edit context.
+  - Skips when no rules match, when the tool errored, or when
+    `agent.preActionRuleReminder` is `false`.
+  - Helpers in `core.ts`: `getApplicableRulesForFile(path, rules)`
+    and `formatRuleReminder(rules, filePath, cap=3)`.
+- **`agent.preActionRuleReminder` config flag** (default `true`) —
+  opt-out for projects with very large rule sets that would
+  otherwise flood per-edit context.
+
 ## [1.12.2] — 2026-06-24
 
 ### Changed

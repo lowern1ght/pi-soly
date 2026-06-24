@@ -45,6 +45,13 @@ export interface SolyConfig {
 		 *  user (ask "ready to implement, or discuss first?") before writing code.
 		 *  Default on. */
 		confirmBeforeCode: boolean;
+		/** Inject a compact list of rules applicable to the file being
+		 *  edited/written, appended to the tool's result. Forces the LLM to
+		 *  confirm in the next message which rules were applied — closes the
+		 *  "rules read at start of turn, forgotten by edit time" gap.
+		 *  Default on. Disable for verbose rule sets that would otherwise
+		 *  flood the per-edit context. */
+		preActionRuleReminder: boolean;
 	};
 	display: {
 		/** Always show the recommended (⭐) option as the first row. */
@@ -125,6 +132,7 @@ export const DEFAULT_CONFIG: SolyConfig = {
 		nudgeNotify: false,
 		toolHints: true,
 		confirmBeforeCode: true,
+		preActionRuleReminder: true,
 	},
 	display: {
 		defaultRecommendedFirst: true,
@@ -216,6 +224,8 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 			merged.agent.toolHints = over.agent.toolHints;
 		if (typeof over.agent.confirmBeforeCode === "boolean")
 			merged.agent.confirmBeforeCode = over.agent.confirmBeforeCode;
+		if (typeof over.agent.preActionRuleReminder === "boolean")
+			merged.agent.preActionRuleReminder = over.agent.preActionRuleReminder;
 	}
 	if (over.display) {
 		if (typeof over.display.defaultRecommendedFirst === "boolean")

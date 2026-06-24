@@ -32,7 +32,9 @@ import {
 	CONTEXT_WINDOW_TOKENS,
 	DEFAULT_PROGRESS,
 	extractFilePathsFromPrompt,
+	formatRuleReminder,
 	formatTok,
+	getApplicableRulesForFile,
 	loadAllRules,
 	loadPhaseRules,
 	loadProjectState,
@@ -832,6 +834,29 @@ export default function solyExtension(pi: ExtensionAPI) {
 		if (input?.path) {
 			editedFilesThisTurn.add(input.path);
 		}
+	});
+
+	// ============================================================================
+	// tool_result: inject a compact reminder of rules applicable to the file
+	// just edited/written, so the LLM sees them AT THE MOMENT of action (not
+	// 30 turns later when they've decayed in attention). The LLM is asked to
+	// confirm in its next message which rules were applied — closing the gap
+	// where rules loaded at the start of a turn are forgotten by the time the
+	// agent actually edits something.
+	// ============================================================================
+	pi.on("tool_result", async (event, _ctx) => {
+		if (!getActiveConfig().agent.preActionRuleReminder) return;
+		if (event.toolName !== "edit" && event.toolName !== "write") return;
+		if (event.isError) return; // tool failed — don't pile on
+		const input = event.input as { path?: string };
+		const filePath = input?.path;
+		if (!filePath) return;
+		const applicable = getApplicableRulesForFile(filePath, combinedRules());
+		const reminder = formatRuleReminder(applicable, filePath);
+		if (!reminder) return;
+		return {
+			content: [...event.content, { type: "text" as const, text: reminder }],
+		};
 	});
 
 	// ============================================================================
