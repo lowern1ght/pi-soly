@@ -29,14 +29,25 @@
 
 import type { ExtensionAPI, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import { loadConfig, configPath } from "./config.ts";
-import { notifyRotation } from "./notification.ts";
+import { notifyRotation, notifyOverloaded, notifyExhausted } from "./notification.ts";
 import {
 	initKeyStates,
 	isAvailable,
 	markBad,
+	markOverloaded,
 	pickNextKey,
 } from "./rotation.ts";
 import type { KeyRouterConfig, RotationEvent, KeyState } from "./types.ts";
+
+/** Regex matching overloaded-style errors. Covers Anthropic 429 + "overloaded",
+ *  standard HTTP 529, and "service overloaded" variants. Case-insensitive. */
+const OVERLOADED_RE = /\boverloaded\b|\b529\b/i;
+
+/** Regex matching rate-limit style errors (key-specific failures). */
+const RATE_LIMITED_RE = /\b429\b|rate.?limit|too many requests/i;
+
+/** Regex matching auth errors (key-specific failures). */
+const UNAUTHORIZED_RE = /\b40[13]\b|unauthorized|forbidden/i;
 
 interface ProviderRuntime {
 	keys: KeyState[];
@@ -195,26 +206,35 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 		const errMsg = msg.errorMessage ?? "";
 		if (!errMsg) return;
 
-		// Detect error type from the message string.
-		// pi's error messages look like: "429 Usage limit reached..."
-		// or "401 Unauthorized" / "403 Forbidden".
-		let reason: "rate-limited" | "unauthorized" | null = null;
-		let status = 0;
-		if (/\b429\b|rate.?limit|too many requests/i.test(errMsg)) {
-			reason = "rate-limited";
-			status = 429;
-		} else if (/\b40[13]\b|unauthorized|forbidden/i.test(errMsg)) {
-			reason = "unauthorized";
-			status = errMsg.includes("401") ? 401 : 403;
-		}
-		if (!reason) return; // not a rotatable error
-
-		// Determine provider from current model
+		// Determine provider from current model first — we need it for both
+		// the overload path and the rotation path.
 		const model = ctx.model;
 		if (!model) return;
 		const providerName = resolveProviderName(model.provider);
 		const rt = runtimes.get(providerName);
 		if (!rt) return; // not a managed provider
+
+		// Overload branch: provider-wide cooldown, NO rotation, NO failure
+		// counter bump. Marks every key of this provider so pickNextKey
+		// skips them until the window expires.
+		if (OVERLOADED_RE.test(errMsg)) {
+			const now = Date.now();
+			for (const k of rt.keys) markOverloaded(k, config.overloadedCooldownMs, now);
+			if (uiCtx) notifyOverloaded(uiCtx, providerName, config.overloadedCooldownMs);
+			return;
+		}
+
+		// Rotation branch: 429 (key-rate-limited) or 401/403 (key-bad).
+		let reason: "rate-limited" | "unauthorized" | null = null;
+		let status = 0;
+		if (RATE_LIMITED_RE.test(errMsg)) {
+			reason = "rate-limited";
+			status = 429;
+		} else if (UNAUTHORIZED_RE.test(errMsg)) {
+			reason = "unauthorized";
+			status = errMsg.includes("401") ? 401 : 403;
+		}
+		if (!reason) return; // not a rotatable error
 
 		const authStorage = ctx.modelRegistry.authStorage;
 		const rotated = rotate(providerName, reason, status, (key) => {
@@ -225,11 +245,7 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 			// All keys exhausted — let pi surface the real error.
 			if (uiCtx) {
 				const failed = rt.keys.filter((k) => k.failures > 0).map((k) => k.name);
-				uiCtx.notify(
-					`🔑 keyrouter: ${providerName} — all keys exhausted (${failed.join(", ")}). ` +
-						`Letting pi surface the original error.`,
-					"error",
-				);
+				notifyExhausted(uiCtx, providerName, failed);
 			}
 		}
 	});

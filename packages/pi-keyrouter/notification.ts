@@ -1,99 +1,89 @@
 // =============================================================================
-// notification.ts — yellow Box widget for key rotation events
+// notification.ts — user-facing notifications for key-router events
 // =============================================================================
 //
-// Uses the same pattern as pi-soly's notification.ts:
-//   ui.setWidget(key, (tui, theme) => Component, { placement })
+// Compact, theme-friendly notifications via `ui.notify(message, severity)`.
+// We do NOT paint raw ANSI backgrounds and we do NOT stack a Box widget
+// over the editor — both were too loud. Rotations and overloads are
+// informational; a single warning-level line that the TUI can theme
+// (background tint per severity) reads cleanly in light and dark mode.
 //
-// Why yellow? Rotations are not errors (the request will succeed on the next
-// key), so red toolErrorBg would be misleading. They're warnings, so we use
-// yellow (\x1b[43m) which isn't in pi's ThemeBg palette but is universally
-// supported across terminals (8-color ANSI, always available).
-//
-// Reset codes:
-//   \x1b[49m — reset background
-//   \x1b[39m — reset foreground (text color)
+// Severity map:
+//   rotation   -> "warning"  (we just swapped a key, not a failure)
+//   overload   -> "warning"  (provider-wide, no key change)
+//   exhaustion -> "error"    (all keys failed; pi will surface the real error)
 
-import { Box, Spacer, Text } from "@earendil-works/pi-tui";
 import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import type { RotationEvent } from "./types.ts";
 
-const WIDGET_KEY = "keyrouter-rotation";
-const AUTO_CLEAR_MS = 8000;
+const ROTATION_WIDGET_KEY = "keyrouter-rotation";
 
-// Standard ANSI yellow background (works in all terminals — 8-color minimum).
-// Truecolor would be nicer but detection is terminal-specific; 43m is safe.
-const YELLOW_BG = "\x1b[43m";
-const BLACK_FG = "\x1b[30m";
-const RESET_BG = "\x1b[49m";
-const RESET_FG = "\x1b[39m";
-const BOLD = "\x1b[1m";
-
-/** Wrap text in a yellow box (background + black text for contrast). */
-function yellowBg(text: string): string {
-	return `${YELLOW_BG}${BLACK_FG}${text}${RESET_BG}${RESET_FG}`;
-}
-
-/** Build the rotation widget. */
-function buildRotationBox(event: RotationEvent): Box {
-	const box = new Box(1, 0, (t) => yellowBg(t));
-
-	// Title: 🔑 keyrouter: provider — fromKey → toKey
-	const title = `${BOLD}🔑 keyrouter: ${event.provider} — ${event.fromKey} → ${event.toKey}${BOLD === "\x1b[1m" ? "\x1b[22m" : ""}`;
-	box.addChild(new Text(title, 1, 0));
-	box.addChild(new Spacer(1));
-
-	// Body: reason + status
-	const reasonText =
-		event.reason === "rate-limited"
-			? `Rate-limited (HTTP ${event.status}) — rotated to next key`
-			: `Unauthorized (HTTP ${event.status}) — skipping bad key`;
-	box.addChild(new Text(reasonText, 1, 0));
-
-	// Retry hint
-	box.addChild(new Text(`pi will retry with ${event.toKey}…`, 1, 0));
-
-	return box;
+/**
+ * Show a one-line notification for a key rotation event.
+ *
+ * Format: "🔑 keyrouter: <provider> <fromKey> → <toKey> (HTTP <status>, <reason>)"
+ */
+export function notifyRotation(ui: ExtensionUIContext, event: RotationEvent): void {
+	const text =
+		`🔑 keyrouter: ${event.provider} ${event.fromKey} → ${event.toKey} ` +
+		`(HTTP ${event.status}, ${event.reason})`;
+	try {
+		ui.notify(text, "warning");
+	} catch {
+		// no UI available (print mode, headless) — silent
+	}
 }
 
 /**
- * Show a yellow box widget for a key rotation event.
- * Auto-clears after 8s.
+ * Show a one-line notification for a provider-wide overload event.
+ * No rotation occurred — just a heads-up that the provider is busy.
+ *
+ * Format: "🔑 keyrouter: <provider> overloaded — retrying in <N>s (no key change)"
  */
-export function notifyRotation(ui: ExtensionUIContext, event: RotationEvent): void {
+export function notifyOverloaded(
+	ui: ExtensionUIContext,
+	provider: string,
+	cooldownMs: number,
+): void {
+	const seconds = Math.max(1, Math.ceil(cooldownMs / 1000));
+	const text =
+		`🔑 keyrouter: ${provider} overloaded — retrying in ${seconds}s (no key change)`;
 	try {
-		ui.setWidget(
-			WIDGET_KEY,
-			() => buildRotationBox(event),
-			{ placement: "aboveEditor" },
-		);
+		ui.notify(text, "warning");
 	} catch {
-		// setWidget may fail if UI not available (print mode) — fall back to notify
-		try {
-			ui.notify(
-				`🔑 keyrouter: ${event.provider} — ${event.fromKey} → ${event.toKey} (HTTP ${event.status}, ${event.reason})`,
-				"warning",
-			);
-		} catch {
-			// no UI at all — silent
-		}
-		return;
+		// silent
 	}
-	// Auto-clear after 8 seconds
-	setTimeout(() => {
-		try {
-			ui.setWidget(WIDGET_KEY, undefined);
-		} catch {
-			// session may have ended — ignore
-		}
-	}, AUTO_CLEAR_MS);
 }
 
-/** Clear the rotation widget manually. */
-export function clearRotationWidget(ui: ExtensionUIContext): void {
+/**
+ * Notify that all keys of a provider have been exhausted.
+ * Kept on the same path as the other notifications so the user sees
+ * one consistent surface.
+ */
+export function notifyExhausted(
+	ui: ExtensionUIContext,
+	provider: string,
+	failedKeys: ReadonlyArray<string>,
+): void {
+	const list = failedKeys.length > 0 ? failedKeys.join(", ") : "(none)";
+	const text = `🔑 keyrouter: ${provider} — all keys exhausted (${list}). Surfacing original error.`;
 	try {
-		ui.setWidget(WIDGET_KEY, undefined);
+		ui.notify(text, "error");
 	} catch {
-		// ignore
+		// silent
+	}
+}
+
+/**
+ * Clear the rotation widget if it exists. Kept as a no-op for backward
+ * compatibility with callers that previously expected a Box widget
+ * here. New code should not rely on a widget — use ui.notify instead.
+ */
+export function clearRotationWidget(_ui: ExtensionUIContext): void {
+	try {
+		_ui.setWidget(ROTATION_WIDGET_KEY, undefined);
+	} catch {
+		// ignore — session may have ended, or setWidget may not exist on
+		// this ExtensionUIContext variant
 	}
 }

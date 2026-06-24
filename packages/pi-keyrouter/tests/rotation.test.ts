@@ -7,8 +7,10 @@ import { describe, test, expect } from "bun:test";
 import {
 	initKeyStates,
 	isAvailable,
+	isOverloaded,
 	markBad,
 	markOk,
+	markOverloaded,
 	matchProvider,
 	pickNextKey,
 	recordUse,
@@ -37,6 +39,7 @@ describe("isAvailable", () => {
 			value: "k",
 			lastStatus: "untried",
 			cooldownUntil: 0,
+			overloadedUntil: 0,
 			uses: 0,
 			failures: 0,
 		};
@@ -49,12 +52,114 @@ describe("isAvailable", () => {
 			value: "k",
 			lastStatus: "rate-limited",
 			cooldownUntil: 2000,
+			overloadedUntil: 0,
 			uses: 0,
 			failures: 0,
 		};
 		expect(isAvailable(s, 1000)).toBe(false);
 		expect(isAvailable(s, 2000)).toBe(true);
 		expect(isAvailable(s, 2001)).toBe(true);
+	});
+
+	test("key in overload window is not available", () => {
+		const s: KeyState = {
+			name: "a",
+			value: "k",
+			lastStatus: "untried",
+			cooldownUntil: 0,
+			overloadedUntil: 2000,
+			uses: 0,
+			failures: 0,
+		};
+		expect(isAvailable(s, 1000)).toBe(false);
+		expect(isAvailable(s, 2000)).toBe(true);
+		expect(isAvailable(s, 2001)).toBe(true);
+	});
+
+	test("overload and cooldown are checked independently", () => {
+		const s: KeyState = {
+			name: "a",
+			value: "k",
+			lastStatus: "rate-limited",
+			cooldownUntil: 3000,
+			overloadedUntil: 1500,
+			uses: 0,
+			failures: 1,
+		};
+		// At t=1000: cooldown blocks (until 3000)
+		expect(isAvailable(s, 1000)).toBe(false);
+		// At t=1600: overload cleared (1500), but cooldown still active
+		expect(isAvailable(s, 1600)).toBe(false);
+		// At t=3000: both cleared
+		expect(isAvailable(s, 3000)).toBe(true);
+	});
+});
+
+describe("markOverloaded / isOverloaded", () => {
+	test("markOverloaded sets overloadedUntil, no failure bump", () => {
+		const s: KeyState = {
+			name: "a",
+			value: "k",
+			lastStatus: "ok",
+			cooldownUntil: 0,
+			overloadedUntil: 0,
+			uses: 5,
+			failures: 2,
+		};
+		markOverloaded(s, 30000, 1000);
+		expect(s.overloadedUntil).toBe(31000);
+		// Overload is provider-wide, not a key-specific failure.
+		expect(s.failures).toBe(2);
+		expect(s.lastStatus).toBe("ok");
+		expect(s.cooldownUntil).toBe(0);
+	});
+
+	test("isOverloaded reflects window", () => {
+		const s: KeyState = {
+			name: "a",
+			value: "k",
+			lastStatus: "untried",
+			cooldownUntil: 0,
+			overloadedUntil: 0,
+			uses: 0,
+			failures: 0,
+		};
+		expect(isOverloaded(s, 1000)).toBe(false);
+		markOverloaded(s, 5000, 1000);
+		expect(isOverloaded(s, 1000)).toBe(true);
+		expect(isOverloaded(s, 5999)).toBe(true);
+		expect(isOverloaded(s, 6000)).toBe(false);
+	});
+});
+
+describe("pickNextKey with overload", () => {
+	test("skips keys in overload window even if cooldown is clear", () => {
+		const states = initKeyStates([
+			{ name: "a", value: "k1" },
+			{ name: "b", value: "k2" },
+		]);
+		markOverloaded(states[0]!, 5000, 1000); // a overloaded until 6000
+		// b is the only available one
+		expect(pickNextKey(states, 0, 1000)).toBe(1);
+	});
+
+	test("returns soonest-expiring overload when all overloaded", () => {
+		const states = initKeyStates([
+			{ name: "a", value: "k1" },
+			{ name: "b", value: "k2" },
+		]);
+		markOverloaded(states[0]!, 5000, 1000); // until 6000
+		markOverloaded(states[1]!, 2000, 1000); // until 3000
+		expect(pickNextKey(states, 0, 1000)).toBe(1); // b recovers first
+	});
+
+	test("single key in overload is still returned (best available option)", () => {
+		// pickNextKey returns the only candidate rather than -1 — callers
+		// that want to wait should consult waitForNextKey or the overload
+		// status themselves. This documents the current behavior.
+		const states = initKeyStates([{ name: "a", value: "k1" }]);
+		markOverloaded(states[0]!, 1000, 1000); // until 2000
+		expect(pickNextKey(states, 0, 1500)).toBe(0);
 	});
 });
 
@@ -65,6 +170,7 @@ describe("markBad / markOk", () => {
 			value: "k",
 			lastStatus: "untried",
 			cooldownUntil: 0,
+			overloadedUntil: 0,
 			uses: 0,
 			failures: 0,
 		};
@@ -80,6 +186,7 @@ describe("markBad / markOk", () => {
 			value: "k",
 			lastStatus: "untried",
 			cooldownUntil: 0,
+			overloadedUntil: 0,
 			uses: 0,
 			failures: 0,
 		};
@@ -93,6 +200,7 @@ describe("markBad / markOk", () => {
 			value: "k",
 			lastStatus: "rate-limited",
 			cooldownUntil: 5000,
+			overloadedUntil: 0,
 			uses: 0,
 			failures: 1,
 		};
@@ -109,6 +217,7 @@ describe("recordUse", () => {
 			value: "k",
 			lastStatus: "untried",
 			cooldownUntil: 0,
+			overloadedUntil: 0,
 			uses: 0,
 			failures: 0,
 		};

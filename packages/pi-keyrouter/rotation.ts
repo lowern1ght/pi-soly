@@ -23,14 +23,23 @@ export function initKeyStates(
     value: k.value,
     lastStatus: "untried",
     cooldownUntil: 0,
+    overloadedUntil: 0,
     uses: 0,
     failures: 0,
   }));
 }
 
-/** Returns true if the key is currently available (past cooldown). */
+/** Returns true if the key is currently available (past cooldown AND
+ *  not in a provider-wide overload window). */
 export function isAvailable(state: KeyState, now: number): boolean {
-  return state.cooldownUntil === 0 || state.cooldownUntil <= now;
+  if (state.cooldownUntil !== 0 && state.cooldownUntil > now) return false;
+  if (state.overloadedUntil !== 0 && state.overloadedUntil > now) return false;
+  return true;
+}
+
+/** Returns true if this key's provider is currently marked overloaded. */
+export function isOverloaded(state: KeyState, now: number): boolean {
+  return state.overloadedUntil !== 0 && state.overloadedUntil > now;
 }
 
 /** Mark a key as bad for `cooldownMs`. */
@@ -43,6 +52,14 @@ export function markBad(
   state.lastStatus = reason === "rate-limited" ? "rate-limited" : "unauthorized";
   state.cooldownUntil = now + cooldownMs;
   state.failures += 1;
+}
+
+/** Mark a key's PROVIDER as overloaded for `cooldownMs`. Provider-wide:
+ *  call this on EVERY key of the affected provider so pickNextKey treats
+ *  them all as unavailable until the window expires. Does NOT count as a
+ *  key failure and does NOT change lastStatus. */
+export function markOverloaded(state: KeyState, cooldownMs: number, now: number): void {
+  state.overloadedUntil = now + cooldownMs;
 }
 
 /** Mark a key as used successfully. Clears any cooldown. */
@@ -90,11 +107,20 @@ export function pickNextKey(
     }
   }
 
-  // 3. All on cooldown — pick the one that becomes available soonest
+  // 3. All on cooldown or in overload — pick the one that becomes
+  //    available soonest. "Available" here means the earliest moment
+  //    when EITHER cooldownUntil OR overloadedUntil clears (whichever
+  //    is later defines when the key is usable again, so the soonest
+  //    such moment is what we want).
+  const soonest = (s: KeyState): number => {
+    const cd = s.cooldownUntil;
+    const ov = s.overloadedUntil;
+    return Math.max(cd, ov);
+  };
   let bestIdx = 0;
-  let bestUntil = states[0]?.cooldownUntil ?? 0;
+  let bestUntil = soonest(states[0] ?? { cooldownUntil: 0, overloadedUntil: 0 } as KeyState);
   for (let i = 1; i < states.length; i++) {
-    const u = states[i]?.cooldownUntil ?? 0;
+    const u = soonest(states[i] ?? { cooldownUntil: 0, overloadedUntil: 0 } as KeyState);
     if (u < bestUntil) {
       bestUntil = u;
       bestIdx = i;

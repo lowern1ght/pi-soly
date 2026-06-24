@@ -23,7 +23,8 @@
 //     }
 //   ],
 //   "maxRetries": 3,
-//   "cooldownMs": 60000
+//   "cooldownMs": 60000,
+//   "overloadedCooldownMs": 30000
 // }
 
 import * as fs from "node:fs";
@@ -36,6 +37,7 @@ export function defaultConfig(): KeyRouterConfig {
 		providers: [],
 		maxRetries: 3,
 		cooldownMs: 60_000,
+		overloadedCooldownMs: 30_000,
 	};
 }
 
@@ -85,5 +87,7 @@ function normalize(input: Partial<KeyRouterConfig>): KeyRouterConfig {
 		providers,
 		maxRetries: typeof input.maxRetries === "number" ? input.maxRetries : 3,
 		cooldownMs: typeof input.cooldownMs === "number" ? input.cooldownMs : 60_000,
+		overloadedCooldownMs:
+			typeof input.overloadedCooldownMs === "number" ? input.overloadedCooldownMs : 30_000,
 	};
 }
