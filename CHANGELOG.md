@@ -4,6 +4,30 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.13.1] — 2026-06-24
+
+### Fixed
+- **Missing `context-manager.ts` in published tarball** — `index.ts` (and
+  `workflows/index.ts`, `workflows/verify.ts`) imported
+  `./context-manager.ts`, but `package.json#files` didn't list it, so
+  every published version from before 1.12.0 onward shipped a tarball
+  missing that file. Consumers hit `Cannot find module './context-manager.ts'`
+  on import. `bun test` and `tsc --noEmit` both ran from source, so the
+  bug was invisible to CI until users installed the package. Added the
+  file to `files` (alphabetically, between `config.ts` and `core.ts`).
+  **Upgrade is required**: 1.13.0 (and all earlier 1.12.x) are broken
+  on import — `npm install pi-soly@latest` now resolves to 1.13.1.
+
+### Added
+- **`scripts/check-publish-integrity.mjs`** — packs the package to a
+  temp dir, lists every file in the tarball, then walks every source
+  `.ts` and checks each `from "./..."` import resolves to a packed
+  file (or to a directory packed recursively). Exits 1 with a list of
+  missing imports. Wired into the publish job in `.github/workflows/ci.yml`
+  via `node scripts/check-publish-integrity.mjs packages/<pkg>` so this
+  class of bug can never ship again. Handles TS `.js` → `.ts` import
+  convention and `npm pack` / `bun pm pack` / Windows tar quirks.
+
 ## [1.13.0] — 2026-06-24
 
 ### Added

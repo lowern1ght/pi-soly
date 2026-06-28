@@ -94,6 +94,16 @@ jobs:
           echo "--- .npmrc (token masked) ---"
           sed 's/_authToken=.*/_authToken=***MASKED***/' .npmrc
 
+      # Verify the tarball will contain every file referenced by a source
+      # import. Catches the class of bug where a new source file is added
+      # but `package.json#files` is forgotten — `bun test` passes because
+      # it runs from source, but consumers crash on `import` because the
+      # file is missing from the tarball. Self-tests from the actual pack
+      # output so it's the same thing npm will publish.
+      - name: Verify tarball integrity (no missing imports in files)
+        working-directory: ${{ github.workspace }}
+        run: node scripts/check-publish-integrity.mjs "packages/${{ steps.detect.outputs.package }}"
+
       - name: Publish to npmjs.com
         run: |
           cd "packages/${{ steps.detect.outputs.package }}"
