@@ -892,12 +892,23 @@ export default function solyExtension(pi: ExtensionAPI) {
 	// Bundled into pi-soly as of v1.11.0 with UE5 session-retry fix + framed
 	// notifications + compact per-server status footer.
 	// We import dynamically because mcp/ has heavy deps (modelcontextprotocol/sdk)
-	// and we want soly to still load if MCP fails for any reason.
-	void import("./mcp/index.ts").then((m) => {
-		try {
-			m.default(pi);
-		} catch (err) {
-			console.error("[soly] MCP adapter failed to initialize:", err);
-		}
-	});
+	// and we want soly to still load if MCP fails for any reason. The import()
+	// itself can reject (e.g. `pi install` didn't resolve a transitive peer dep
+	// like @modelcontextprotocol/sdk) or throw synchronously under jiti — both
+	// must be swallowed so a broken MCP never takes down the whole agent.
+	try {
+		void import("./mcp/index.ts")
+			.then((m) => {
+				try {
+					m.default(pi);
+				} catch (err) {
+					console.error("[soly] MCP adapter failed to initialize:", err);
+				}
+			})
+			.catch((err) => {
+				console.error("[soly] MCP adapter unavailable (load failed):", err);
+			});
+	} catch (err) {
+		console.error("[soly] MCP adapter unavailable (load threw):", err);
+	}
 }

@@ -1,4 +1,4 @@
-import { RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/app-bridge";
+import { resourceMimeType } from "./ext-apps-bridge.ts";
 import { UrlElicitationRequiredError, type ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { ResourceFetchError, ResourceParseError } from "./errors.ts";
 import { logger } from "./logger.ts";
@@ -47,7 +47,7 @@ export class UiResourceHandler {
       log.warn("Unsupported MIME type", { mimeType });
       throw new ResourceParseError(
         uri,
-        `unsupported MIME type "${mimeType}" (expected text/html or ${RESOURCE_MIME_TYPE})`,
+        `unsupported MIME type "${mimeType}" (expected text/html or ${resourceMimeType()})`,
         { server: serverName, mimeType }
       );
     }
@@ -69,7 +69,7 @@ export class UiResourceHandler {
     return {
       uri: content.uri ?? uri,
       html,
-      mimeType: mimeType ?? RESOURCE_MIME_TYPE,
+      mimeType: mimeType ?? resourceMimeType(),
       meta: {
         csp: contentMeta.csp ?? listMeta.csp,
         permissions: contentMeta.permissions ?? listMeta.permissions,
@@ -107,7 +107,7 @@ function selectContent(result: ReadResourceResult, preferredUri: string): Resour
 
 function isHtmlMimeType(mimeType: string): boolean {
   const normalized = mimeType.toLowerCase();
-  return normalized.startsWith("text/html") || normalized === RESOURCE_MIME_TYPE.toLowerCase();
+  return normalized.startsWith("text/html") || normalized === resourceMimeType().toLowerCase();
 }
 
 function toHtml(content: ResourceContentRecord): string {

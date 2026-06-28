@@ -1,4 +1,4 @@
-import { getToolUiResourceUri } from "@modelcontextprotocol/ext-apps/app-bridge";
+import { getToolUiResourceUri } from "./ext-apps-bridge.ts";
 import type { McpExtensionState } from "./state.ts";
 import type { ToolMetadata, McpTool, McpResource, ServerEntry } from "./types.ts";
 import { formatToolName, isToolExcluded } from "./types.ts";

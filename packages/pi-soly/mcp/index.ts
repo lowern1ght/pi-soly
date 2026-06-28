@@ -13,6 +13,7 @@ import { getConfigPathFromArgv, truncateAtWord } from "./utils.ts";
 import { initializeOAuth, shutdownOAuth } from "./mcp-auth-flow.ts";
 import { createMcpDirectToolCallRenderer, renderMcpProxyToolCall, renderMcpToolResult } from "./tool-result-renderer.ts";
 import { ToolCache, cacheKey as makeCacheKey } from "./tool-cache.ts";
+import { preloadAppBridge } from "./ext-apps-bridge.ts";
 
 /** Default TTL for cached MCP tool results (60s). Tools that hit a stable
  *  server benefit; volatile ones are penalized for 60s — call sites can
@@ -130,6 +131,10 @@ export default function mcpAdapter(pi: ExtensionAPI) {
     await initializeOAuth().catch(err => {
       console.error("MCP OAuth initialization failed:", err);
     });
+
+    // Load the (optional, sometimes-broken upstream) ext-apps UI bridge once,
+    // before metadata is built. Guarded — a failure disables UI features only.
+    await preloadAppBridge();
 
     const promise = initializeMcp(pi, ctx);
     initPromise = promise;
