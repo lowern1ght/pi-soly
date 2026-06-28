@@ -122,4 +122,89 @@ describe("pi-soly e2e: real install + load", () => {
 			fs.rmSync(tmp, { recursive: true, force: true });
 		}
 	}, 180_000);
+
+	// Static structural check: every non-optional peer dep declared by any
+	// package in pi-soly's `dependencies` must itself be reachable as a
+	// direct dep OR come in transitively via another declared dep. Catches
+	// the case where a dep adds a peer dep that we forget to declare
+	// (e.g. @modelcontextprotocol/ext-apps peer-requires
+	// @modelcontextprotocol/sdk — we must declare sdk ourselves).
+	//
+	// pi-soly's OWN peer deps (@earendil-works/pi-coding-agent,
+	// @earendil-works/pi-tui) are the host's responsibility — not checked.
+	test("every non-optional peer dep of our deps is reachable in our dep tree", async () => {
+		// Only our direct deps. Self is excluded — pi-soly's peer deps are
+		// the consumer's responsibility (host/runtime concern).
+		const ourDeps = new Set(Object.keys(pkgJson.dependencies ?? {}));
+
+		const registry = "https://registry.npmjs.org";
+		const cache = new Map<string, { deps: Record<string, string>; peers: Record<string, string>; optionalPeers: Record<string, { optional?: boolean }>; version: string }>();
+
+		async function fetchMeta(name: string) {
+			if (cache.has(name)) return cache.get(name)!;
+			const empty = { version: "?", deps: {} as Record<string, string>, peers: {} as Record<string, string>, optionalPeers: {} as Record<string, { optional?: boolean }> };
+			try {
+				const resp = await fetch(`${registry}/${name}/latest`);
+				const meta = (await resp.json()) as { version?: string; dependencies?: Record<string, string>; peerDependencies?: Record<string, string>; peerDependenciesMeta?: Record<string, { optional?: boolean }> };
+				const out = {
+					version: meta.version ?? "?",
+					deps: meta.dependencies ?? {},
+					peers: meta.peerDependencies ?? {},
+					optionalPeers: meta.peerDependenciesMeta ?? {},
+				};
+				cache.set(name, out);
+				return out;
+			} catch {
+				cache.set(name, empty);
+				return empty;
+			}
+		}
+
+		// BFS: what packages are reachable from our direct deps (transitively)?
+		const reachable = new Set<string>(ourDeps);
+		const queue = [...ourDeps];
+		const maxDepth = 4; // bounded to keep test fast
+		let depth = 0;
+		let frontier = queue;
+		while (frontier.length > 0 && depth < maxDepth) {
+			const next: string[] = [];
+			for (const name of frontier) {
+				if (name.startsWith(".")) continue;
+				const meta = await fetchMeta(name);
+				for (const d of Object.keys(meta.deps)) {
+					if (!reachable.has(d)) {
+						reachable.add(d);
+						next.push(d);
+					}
+				}
+			}
+			frontier = next;
+			depth++;
+		}
+
+		// Now: for each direct dep, every non-optional peer must be in reachable.
+		const missing: string[] = [];
+		for (const dep of ourDeps) {
+			if (dep.startsWith(".")) continue;
+			const meta = await fetchMeta(dep);
+			for (const [peer, range] of Object.entries(meta.peers)) {
+				if (meta.optionalPeers[peer]?.optional) continue;
+				if (!reachable.has(peer)) {
+					missing.push(
+						`${dep}@${meta.version} declares peer dep '${peer}' (${range as string}); not reachable in pi-soly's dep tree`,
+					);
+				}
+			}
+		}
+
+		if (missing.length > 0) {
+			console.error("\nUnreachable peer dependencies:");
+			for (const m of missing) console.error("  - " + m);
+			console.error(
+				"\nFix: add the missing package(s) to pi-soly's `dependencies` " +
+					"or install them via peerDependenciesMeta.optional.",
+			);
+		}
+		expect(missing).toEqual([]);
+	}, 60_000);
 });

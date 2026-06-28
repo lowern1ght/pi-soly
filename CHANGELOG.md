@@ -4,6 +4,20 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.13.3] — 2026-06-24
+
+### Added
+- **Peer-dep structural test** — `tests/integration/pi-install-e2e.test.ts`
+  gains a second test that walks every non-optional `peerDependency`
+  declared by each of pi-soly's `dependencies` (against the npm registry)
+  and fails if any peer isn't reachable in pi-soly's full dep tree.
+  Catches the class of bug we hit on 1.13.0: a dep declares a peer
+  (`@modelcontextprotocol/ext-apps` peer-requires `@modelcontextprotocol/sdk`),
+  we forget to declare it, and `npm install --omit=dev` installs only
+  the direct dep. Future deps that add a new peer will fail this test
+  with a clear "add X to dependencies" message before they ship.
+  Bounded BFS (4 levels deep) with a registry cache to keep it fast.
+
 ## [1.13.2] — 2026-06-24
 
 ### Fixed
