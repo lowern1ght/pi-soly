@@ -4,6 +4,19 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.13.4] — 2026-06-24
+
+### Changed
+- **README — documented upstream `pi install` bug workaround**. After
+  `pi install npm:pi-soly`, transitive `peerDependencies` (notably
+  `@modelcontextprotocol/sdk` required by `@modelcontextprotocol/ext-apps`)
+  may be missing from `~/.pi/agent/npm/node_modules/`. Symptom:
+  `Cannot find module '@modelcontextprotocol/sdk/types.js'` from
+  `ext-apps/dist/src/app-bridge.js`. Fix: `cd ~/.pi/agent/npm && npm install`.
+  Tracked upstream — this is a `pi install` behaviour, not a
+  pi-soly bug. Future users will see the workaround in the install
+  section of the README and can resolve it in one line.
+
 ## [1.13.3] — 2026-06-24
 
 ### Added

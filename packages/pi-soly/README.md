@@ -39,6 +39,26 @@ Restart pi (`/reload`), and you have:
 
 The LLM drives execution; `plan`/`execute` delegate to a `worker` subagent when one is available (via pi-subagents), with first-party delegation on the roadmap. You focus on the work.
 
+### Known install issue (upstream `pi install`)
+
+`pi install` currently does **not** install transitive `peerDependencies` (it skips them the way `--omit=optional` would). pi-soly's MCP stack depends on `@modelcontextprotocol/ext-apps`, which in turn peer-requires `@modelcontextprotocol/sdk` (declared non-optional upstream). After `pi install npm:pi-soly` you may see:
+
+```
+Error: Cannot find module '@modelcontextprotocol/sdk/types.js'
+Require stack:
+- ~/.pi/agent/npm/node_modules/@modelcontextprotocol/ext-apps/dist/src/app-bridge.js
+```
+
+**Workaround** (one-time, after each `pi install` of pi-soly or any pi-soly-related upgrade):
+
+```bash
+cd ~/.pi/agent/npm && npm install
+```
+
+This makes plain npm resolve the transitive peer deps that `pi install` skipped. After this, restart pi (`/reload`) and the MCP features work.
+
+Tracked upstream — fix is expected on the pi side, not here.
+
 ---
 
 ## 🎯 Why pi-soly?
