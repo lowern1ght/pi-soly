@@ -4,6 +4,45 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.13.2] — 2026-06-24
+
+### Fixed
+- **Missing runtime deps in published tarball** — 7 packages were
+  declared in `devDependencies` but imported at runtime by source
+  code, so `npm install --omit=dev` (= `pi install npm:pi-soly`)
+  skipped them and consumers hit `Cannot find module` on first load.
+  Moved to `dependencies`:
+  - `@earendil-works/pi-ai` (`tools.ts` imports `StringEnum`;
+    `mcp/sampling-handler.ts` imports `complete` + types)
+  - `@modelcontextprotocol/ext-apps` (mcp `metadata-cache.ts`,
+    `elicitation-handler.ts`, etc. import `app-bridge`)
+  - `@modelcontextprotocol/sdk` (mcp OAuth, sampling, server-manager)
+  - `open` (mcp OAuth URL opening in 2 files)
+  - `recheck` (mcp `proxy-modes.ts`)
+  - `typebox` (`deck/index.ts` and 4 other files)
+  - `zod` (mcp `ui-stream-types.ts`)
+
+  **Architecture rule deviation**: the project rule says pi-soly should
+  have empty `dependencies`. This release deliberately deviates from
+  that rule for these 7 deps. The alternative (lazy dynamic imports
+  inside MCP) was a bigger refactor with worse UX (silent failures
+  until MCP is actually used). Documented here so the next review
+  doesn't undo it without understanding why. Track: if MCP becomes
+  optional / tree-shakable in the future, consider switching back to
+  lazy imports and dropping these from `dependencies`.
+
+### Added
+- **`tests/integration/pi-install-e2e.test.ts`** — E2E test that
+  catches this entire class of bug going forward. It:
+  1. Packs the current pi-soly into a tarball.
+  2. Installs it in a fresh tmp dir with `npm install --omit=dev`
+     (mirroring real user install via `pi install npm:pi-soly`).
+  3. Runs `bun -e 'import("pi-soly")'` and asserts no
+     `MODULE_NOT_FOUND` is reported.
+  Previously failed with a list of every missing runtime dep; now
+  passes. Runs in ~20s as part of `bun test` (CI). If this test
+  ever fails, the missing import is right there in the error.
+
 ## [1.13.1] — 2026-06-24
 
 ### Fixed
