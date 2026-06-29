@@ -2,8 +2,8 @@
 // config.ts — soly config loader (per-project + global)
 // =============================================================================
 //
-// Per-project: `.soly/config.json` (version-controlled, repo-specific).
-// Global:     `~/.soly/config.json` (per-user, applies to all projects).
+// Per-project: `.agents/soly.json` (version-controlled, repo-specific).
+// Global:     `~/.agents/soly.json` (per-user, applies to all projects).
 //
 // Lookup order: per-project overrides global overrides defaults. Missing
 // files are silently ignored (defaults apply). Malformed JSON returns a
@@ -291,7 +291,7 @@ export function loadConfig(cwd: string, homeDir?: string): LoadConfigResult {
 	const sources = { global: null as string | null, project: null as string | null };
 
 	const home = homeDir ?? os.homedir();
-	const globalPath = path.join(home, ".soly", "config.json");
+	const globalPath = path.join(home, ".agents", "soly.json");
 	const globalRaw = readJsonIfExists(globalPath);
 	if (globalRaw) {
 		sources.global = globalPath;
@@ -301,8 +301,7 @@ export function loadConfig(cwd: string, homeDir?: string): LoadConfigResult {
 			);
 		}
 	}
-	const projectSolyDir = path.join(cwd, ".soly");
-	const projectPath = path.join(projectSolyDir, "config.json");
+	const projectPath = path.join(cwd, ".agents", "soly.json");
 	const projectRaw = readJsonIfExists(projectPath);
 	if (projectRaw) {
 		sources.project = projectPath;

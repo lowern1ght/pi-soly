@@ -24,19 +24,19 @@ let originalHome: string | undefined;
 
 beforeAll(() => {
 	tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "soly-cfg-"));
-	// The "project" is at tmpRoot/.soly (cwd is tmpRoot).
-	projectSolyDir = path.join(tmpRoot, ".soly");
+	// The "project" is at tmpRoot/.agents (cwd is tmpRoot).
+	projectSolyDir = path.join(tmpRoot, ".agents");
 	fs.mkdirSync(projectSolyDir, { recursive: true });
 	// The "fake home" is a SEPARATE subtree so the global config doesn't
 	// accidentally look like a project config.
 	fakeHome = path.join(tmpRoot, "_home");
-	fs.mkdirSync(path.join(fakeHome, ".soly"), { recursive: true });
+	fs.mkdirSync(path.join(fakeHome, ".agents"), { recursive: true });
 	// Redirect HOME / USERPROFILE so os.homedir() returns fakeHome.
 	originalUserProfile = process.env.USERPROFILE;
 	originalHome = process.env.HOME;
 	process.env.USERPROFILE = fakeHome;
 	process.env.HOME = fakeHome;
-	globalConfigPath = path.join(fakeHome, ".soly", "config.json");
+	globalConfigPath = path.join(fakeHome, ".agents", "soly.json");
 });
 
 afterAll(() => {
@@ -112,18 +112,18 @@ describe("loadConfig — project overrides global", () => {
 			JSON.stringify({ version: SOLY_CONFIG_VERSION, iteration: { retentionDays: 7 } }),
 		);
 		fs.writeFileSync(
-			path.join(projectSolyDir, "config.json"),
+			path.join(projectSolyDir, "soly.json"),
 			JSON.stringify({ version: SOLY_CONFIG_VERSION, iteration: { retentionDays: 30 } }),
 		);
 		const r = loadConfig(tmpRoot, fakeHome);
 		expect(r.config.iteration.retentionDays).toBe(30);
 		expect(r.sources.global).toBe(globalConfigPath);
-		expect(r.sources.project).toBe(path.join(projectSolyDir, "config.json"));
+		expect(r.sources.project).toBe(path.join(projectSolyDir, "soly.json"));
 	});
 
 	test("project-only setting doesn't appear in global config", () => {
 		fs.writeFileSync(
-			path.join(projectSolyDir, "config.json"),
+			path.join(projectSolyDir, "soly.json"),
 			JSON.stringify({
 				version: SOLY_CONFIG_VERSION,
 				editor: { command: "cursor" },
@@ -187,7 +187,7 @@ describe("pruneOldIterations", () => {
 	});
 
 	test("missing iterations dir → no error", () => {
-		const freshSolyDir = path.join(tmpRoot, "no-iter", ".soly");
+		const freshSolyDir = path.join(tmpRoot, "no-iter", ".agents");
 		fs.mkdirSync(freshSolyDir, { recursive: true });
 		const r = pruneOldIterations(freshSolyDir, 7);
 		expect(r.pruned).toBe(0);

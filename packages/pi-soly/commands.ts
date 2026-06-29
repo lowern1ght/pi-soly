@@ -592,7 +592,7 @@ What must the LLM do?
 				// extension (rotor switcher removed in 1.4.0).
 				// Soly no longer owns a rotor switcher.
 				config: {
-					description: "show merged config (per-project + global + defaults); edit .soly/config.json or ~/.soly/config.json",
+					description: "show merged config (per-project + global + defaults); edit .agents/soly.json or ~/.agents/soly.json",
 					run: () => {
 						const cfg = getConfig();
 						const out: string[] = [];
@@ -603,12 +603,12 @@ What must the LLM do?
 						out.push("```");
 						out.push("");
 						out.push("Sources:");
-						out.push(`  global:  ~/.soly/config.json`);
-						out.push(`  project: <cwd>/.soly/config.json`);
+						out.push(`  global:  ~/.agents/soly.json`);
+						out.push(`  project: <cwd>/.agents/soly.json`);
 						out.push("");
 						out.push("To edit:");
-						out.push(`  - project: edit \`${state.solyDir}/config.json\` directly`);
-						out.push(`  - global:  edit \`~/.soly/config.json\``);
+						out.push(`  - project: edit \`${state.solyDir}/soly.json\` directly`);
+						out.push(`  - global:  edit \`~/.agents/soly.json\``);
 						out.push("After editing, run /soly reload to re-pick up changes.");
 						ui.notify(out.join("\n"), "info");
 					},
