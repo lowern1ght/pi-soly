@@ -89,7 +89,7 @@ soly status        # current position + progress (no LLM round-trip)
 ### State inspection (`/soly`)
 
 ```bash
-/soly              # interactive picker (📍📄📋💡🔬🗺️📊📁✅⭐🎯🔄⚙️)
+/soly              # interactive modal picker (live preview per item, ⏎ to open)
 /soly position     # where am I in the plan
 /soly state        # current STATE.md content
 /soly roadmap      # all phases

@@ -828,11 +828,13 @@ What must the LLM do?
 				},
 			};
 
+			// Single-width BMP glyphs only — astral/VS16 emoji are mis-measured by
+			// visibleWidth, overflow the panel, and ghost the modal on ↑↓.
 			const ICONS: Record<string, string> = {
-				position: "📍", state: "📄", plan: "📋", context: "💡",
-				research: "🔬", roadmap: "🗺️", progress: "📊",
-				phases: "📁", tasks: "✅", task: "🔎",
-				features: "⭐", milestone: "🎯", reload: "🔄", config: "⚙️",
+				position: "◎", state: "▤", plan: "▥", context: "◌",
+				research: "⊙", roadmap: "≣", progress: "▰",
+				phases: "▭", tasks: "✓", task: "◍",
+				features: "★", milestone: "◈", reload: "↻", config: "▣",
 			};
 
 			// Short live preview shown in the modal's preview pane per subcommand.
