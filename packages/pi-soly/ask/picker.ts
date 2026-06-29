@@ -498,7 +498,11 @@ export class AskProComponent extends Container {
 	 *  string in a multi answer). Returns "" if no custom string. */
 	private getCustomString(ans: AskAnswer | AskMultiAnswer | undefined): string {
 		if (ans === undefined) return "";
+		// Single-pick answers are numbers — not an array, so .find() would crash.
+		// Cover the string case (typed Other… in single-pick) and treat numeric
+		// answers as "no custom string yet".
 		if (typeof ans === "string") return ans;
+		if (typeof ans === "number") return "";
 		const found = (ans as AskMultiAnswer).find((a) => typeof a === "string");
 		return typeof found === "string" ? found : "";
 	}

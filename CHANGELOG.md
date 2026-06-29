@@ -4,6 +4,24 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.15.1] — 2026-06-29
+
+### Fixed
+- **ask_pro crash on numeric answer** — in `AskProComponent.getCustomString`
+  (pickers/ask/picker.ts), the type guard at the top of the function only
+  covered `undefined` and `string`. Single-pick answers are numbers, so the
+  function fell through to `(ans as AskMultiAnswer).find(...)`, which crashes
+  with `TypeError: ans.find is not a function` whenever the user picks a
+  numbered option and then navigates the cursor to the "Other…" row (or any
+  other path that re-renders with a numeric `currentAns`).
+  Regression test added at `tests/ask-picker.test.ts` > "regression:
+  getCustomString on numeric answer". Triggered in production right after
+  the 1.15.0 release: `pi exiting due to uncaughtException: TypeError:
+  ans.find is not a function`.
+  Fix: add `if (typeof ans === "number") return "";` as a peer guard.
+  Peer helpers `isIndexChecked` and `isCustomStringChecked` already had this
+  guard — `getCustomString` was the odd one out.
+
 ## [1.15.0] — 2026-06-29
 
 ### Added
