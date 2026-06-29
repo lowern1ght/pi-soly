@@ -17,7 +17,7 @@ import { promisify } from "node:util";
 import { Type } from "typebox";
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { readIfExists, splitFrontmatter, atomicWriteFileSync, type SolyState } from "./core.ts";
+import { readIfExists, splitFrontmatter, atomicWriteFileSync, solyDirFor, type SolyState } from "./core.ts";
 import { detectEnv, type EnvSummary } from "./env.ts";
 import type { SolyConfig } from "./config.ts";
 import { buildDocIndex, searchDocs, readSnippet, stripHtml } from "./docs.ts";
@@ -852,7 +852,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		}),
 		async execute(_id, params, _signal, _onUpdate, ctx) {
 			// Locate phase dir
-			const solyDir = path.join(ctx.cwd, ".soly");
+			const solyDir = solyDirFor(ctx.cwd);
 			if (!fs.existsSync(solyDir)) {
 				return {
 					content: [{ type: "text", text: "soly_finish_discuss: no .soly/ in cwd" }],
@@ -1021,7 +1021,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 			),
 		}),
 		async execute(_id, params, _signal, _onUpdate, ctx) {
-			const solyDir = path.join(ctx.cwd, ".soly");
+			const solyDir = solyDirFor(ctx.cwd);
 			const phasesRoot = path.join(solyDir, "phases");
 			if (!fs.existsSync(phasesRoot)) {
 				return {

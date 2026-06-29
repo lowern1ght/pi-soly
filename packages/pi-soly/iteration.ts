@@ -508,7 +508,7 @@ export function buildIterationContent(input: IterationInput): string {
 	sections.push(title);
 	sections.push("");
 	sections.push(`**Generated**: ${generatedAt}`);
-	sections.push(`**Soly dir**: \`${rel(projectRoot, input.solyDir) || ".soly"}\``);
+	sections.push(`**Soly dir**: \`${rel(projectRoot, input.solyDir) || ".agents"}\``);
 	if (input.taskId) {
 		sections.push(`**Task**: \`${input.taskId}\` in feature \`${input.feature ?? "?"}\``);
 	} else if (input.phaseNumber != null) {

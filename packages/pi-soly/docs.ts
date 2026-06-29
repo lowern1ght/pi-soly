@@ -10,7 +10,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { estimateTokens, findMarkdownFiles, readIfExists } from "./core.ts";
+import { estimateTokens, findMarkdownFiles, readIfExists, solyDirFor } from "./core.ts";
 import { extractTitleAndPreview, stripHtml } from "./html.ts";
 
 // Re-export the stripHtml helper so existing imports of `stripHtml from
@@ -72,7 +72,7 @@ export function buildDocIndex(cwd: string, limit = 5000): DocIndexEntry[] {
 	};
 
 	// 1. Intent docs (priority 0)
-	const docsRoot = path.join(cwd, ".soly", "docs");
+	const docsRoot = path.join(solyDirFor(cwd), "docs");
 	if (fs.existsSync(docsRoot)) {
 		const intentFiles = findIntentFiles(docsRoot);
 		for (const f of intentFiles) {
@@ -83,7 +83,7 @@ export function buildDocIndex(cwd: string, limit = 5000): DocIndexEntry[] {
 	}
 
 	// 2. Phase intent docs (priority 1) — only if phases dir exists
-	const phasesRoot = path.join(cwd, ".soly", "phases");
+	const phasesRoot = path.join(solyDirFor(cwd), "phases");
 	if (out.length < limit && fs.existsSync(phasesRoot)) {
 		try {
 			const phaseEntries = fs.readdirSync(phasesRoot, { withFileTypes: true });

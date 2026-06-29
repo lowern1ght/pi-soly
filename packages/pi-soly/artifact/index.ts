@@ -31,13 +31,13 @@ import {
 type ToolText = { content: { type: "text"; text: string }[]; details: Record<string, unknown> };
 type Asset = { path: string; content: string; encoding?: string };
 
-/** Load the artifact CSS theme: config override → .soly/artifact-theme.css →
+/** Load the artifact CSS theme: config override → .agents/artifact-theme.css →
  *  built-in DEFAULT_CSS. */
 function loadCss(themeCfg: string, cwd: string): string {
 	const candidates: string[] = [];
 	const t = themeCfg.trim();
 	if (t) candidates.push(path.isAbsolute(t) ? t : path.join(cwd, t));
-	candidates.push(path.join(cwd, ".soly", "artifact-theme.css"));
+	candidates.push(path.join(cwd, ".agents", "artifact-theme.css"));
 	for (const c of candidates) {
 		try {
 			return fs.readFileSync(c, "utf-8");
@@ -150,7 +150,7 @@ export default function piArtifactExtension(pi: ExtensionAPI, getConfig: () => S
 		name: "html_artifact",
 		label: "soly · html_artifact",
 		description:
-			"Render HTML to a self-contained file and serve it from a per-project gallery in the browser — soly's artifacts. `html` is a full document or a body fragment (wrapped in a styled light/dark skeleton; theme overridable via .soly/artifact-theme.css). Pass `id` to update an existing artifact in place (re-render). Pass `assets` to write sibling files (images/css/json) the HTML references via relative paths. Use when a visual rendered result beats terminal text. Self-contained otherwise — no external URLs. The gallery is shared across every pi window in this folder and survives restarts. Returns the localhost URL + gallery.",
+			"Render HTML to a self-contained file and serve it from a per-project gallery in the browser — soly's artifacts. `html` is a full document or a body fragment (wrapped in a styled light/dark skeleton; theme overridable via .agents/artifact-theme.css). Pass `id` to update an existing artifact in place (re-render). Pass `assets` to write sibling files (images/css/json) the HTML references via relative paths. Use when a visual rendered result beats terminal text. Self-contained otherwise — no external URLs. The gallery is shared across every pi window in this folder and survives restarts. Returns the localhost URL + gallery.",
 		parameters: Type.Object({
 			title: Type.String({ description: "Title (used for <title>, header, gallery, filename)." }),
 			html: Type.String({

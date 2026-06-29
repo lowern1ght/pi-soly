@@ -23,7 +23,7 @@ import * as path from "node:path";
 const IGNORE_DIRS = new Set([
 	"node_modules",
 	".git",
-	".soly",
+	".agents",
 	"dist",
 	"build",
 	"out",

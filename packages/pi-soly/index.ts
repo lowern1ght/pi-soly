@@ -42,6 +42,7 @@ import {
 	rulesApplicableToFiles,
 	STATUS_ID,
 	solyDirFor,
+	SOLY_DIRNAME,
 	isLegacySolyDir,
 	buildNextHint,
 	buildDriftReminder,
@@ -237,14 +238,14 @@ export default function solyExtension(pi: ExtensionAPI) {
 	/**
 	 * Persistent storage of rule mtimes from the previous session, so we can
 	 * show a "rules changed since last session" diff at startup.
-	 * Stored in <solyDir>/.soly-rule-mtimes.json (project) or
-	 * <homedir>/.soly/rule-mtimes.json (global fallback).
+	 * Stored in <solyDir>/rule-mtimes.json (project) or
+	 * <homedir>/.agents/rule-mtimes.json (global fallback).
 	 */
 	let lastSessionMtimes: Record<string, number> = {};
 	const mtimeStorePath = (): string => {
 		const base = state.solyDir && fs.existsSync(state.solyDir)
 			? state.solyDir
-			: path.join(os.homedir(), ".soly");
+			: path.join(os.homedir(), SOLY_DIRNAME);
 		try {
 			fs.mkdirSync(base, { recursive: true });
 		} catch {}

@@ -6,6 +6,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { solyDirFor } from "../core.js";
 import type { SolyState } from "../core.js";
 import type { SolyConfig } from "../config.js";
 
@@ -266,7 +267,7 @@ function pluralDays(n: number): string {
 /** Try to find a todo file in cwd. Returns the path or null. */
 function findTodosFile(cwd: string): string | null {
 	const candidates = [
-		path.join(cwd, ".soly", "todos.json"),
+		path.join(solyDirFor(cwd), "todos.json"),
 		path.join(cwd, ".pi-todos.json"),
 	];
 	for (const c of candidates) {

@@ -22,7 +22,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { formatTok, resolveImports } from "./core.ts";
+import { formatTok, resolveImports, solyDirFor } from "./core.ts";
 import { extractTitleAndPreview, stripHtml } from "./html.ts";
 
 const DOC_EXTS = new Set([".md", ".html", ".htm"]);
@@ -148,7 +148,7 @@ function walkIntentDir(
 
 export function loadIntentDocs(cwd: string, currentPhaseNumber?: number): IntentDoc[] {
 	const out: IntentDoc[] = [];
-	const docsRoot = path.join(cwd, ".soly", "docs");
+	const docsRoot = path.join(solyDirFor(cwd), "docs");
 	walkIntentDir(docsRoot, "", undefined, out);
 
 	// Optional: phase-specific docs (only if current phase is known)
@@ -156,7 +156,7 @@ export function loadIntentDocs(cwd: string, currentPhaseNumber?: number): Intent
 		// We don't know the slug here without re-walking phases; scan any
 		// directory in .soly/phases/ whose name starts with the phase number.
 		// Skip if no phases dir exists.
-		const phasesRoot = path.join(cwd, ".soly", "phases");
+		const phasesRoot = path.join(solyDirFor(cwd), "phases");
 		if (fs.existsSync(phasesRoot)) {
 			try {
 				const phaseEntries = fs.readdirSync(phasesRoot, { withFileTypes: true });

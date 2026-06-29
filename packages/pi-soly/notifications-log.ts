@@ -2,7 +2,7 @@
 // notifications-log.ts — Persistent record of soly notifications
 // =============================================================================
 //
-// Appends every nudge/deprecation to a JSONL file at .agents/.soly/notifications.log
+// Appends every nudge/deprecation to a JSONL file at .agents/notifications.log
 // (inside the project dir; safe to commit if the user wants a public audit
 // trail, or .gitignore if not). One line per notification, JSON-encoded.
 //
@@ -33,7 +33,7 @@ export interface NotificationEntry {
 /** Where the log file lives. Respects HOME for tests. */
 export function logFilePath(cwd: string, home?: string): string {
 	const h = home ?? process.env.HOME ?? process.env.USERPROFILE ?? os.homedir();
-	return path.join(cwd, SOLY_DIRNAME, ".soly", "notifications.log");
+	return path.join(cwd, SOLY_DIRNAME, "notifications.log");
 }
 
 /** Append a single entry to the log. Creates parent dirs as needed. */

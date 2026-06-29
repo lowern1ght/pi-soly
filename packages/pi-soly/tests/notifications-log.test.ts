@@ -75,7 +75,7 @@ describe("appendNotification", () => {
 		// No .agents/ yet
 		expect(fs.existsSync(path.join(proj, ".agents"))).toBe(false);
 		appendNotification(proj, { kind: "info", title: "t", body: [] });
-		expect(fs.existsSync(path.join(proj, ".agents", ".soly"))).toBe(true);
+		expect(fs.existsSync(path.join(proj, ".agents"))).toBe(true);
 		fs.rmSync(proj, { recursive: true, force: true });
 	});
 });
