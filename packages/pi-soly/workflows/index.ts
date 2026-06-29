@@ -23,6 +23,7 @@ import { buildResumeTransform } from "./resume.ts";
 import { showStatus, showLog, showDiff } from "./quick.ts";
 import { showDoctor, showIterations, showDiffIterations, showPhaseDelete, showTodos } from "./inspect.ts";
 import { buildPlanTransform, buildDiscussTransform } from "./planning.ts";
+import { buildNewTransform } from "./new.ts";
 import { createVerifyLoop, type VerifyState } from "./verify.ts";
 import type { ContextManager } from "../context-manager.ts";
 import type { SolyState } from "../core.js";
@@ -141,6 +142,15 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 			const hasAskPro = getActiveTools().includes("ask_pro");
 			const result = buildDiscussTransform(cmd, state, { hasAskPro });
 			if (!result.handled || !result.transformedText) return;
+			return { action: "transform", text: result.transformedText };
+		}
+
+		if (cmd.verb === "new") {
+			const result = buildNewTransform(cmd, state, ctx.ui, ctx.cwd);
+			if (!result.handled || !result.transformedText) return;
+			// Direct execution (the workflow already called ui.notify). The
+			// transformed text goes to the model so it can also tell the user
+			// in chat, but the action is "handled" (no LLM round-trip needed).
 			return { action: "transform", text: result.transformedText };
 		}
 
