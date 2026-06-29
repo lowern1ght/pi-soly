@@ -15,7 +15,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { execFileSync } from "node:child_process";
-import { buildNewTransform, parsePlanName } from "../workflows/new.ts";
+import { buildNewTransform } from "../workflows/new.ts";
+import { parsePlanName } from "../workflows/parser.ts";
 import type { SolyCommand, WorkflowVerb } from "../workflows/parser.ts";
 import type { SolyState } from "../core.js";
 

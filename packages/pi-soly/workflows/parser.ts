@@ -21,6 +21,38 @@ export type WorkflowVerb =
 	| "plan" | "discuss" | "help" | "doctor" | "iterations" | "phase" | "todos" | "verify"
 	| "new";
 
+/** Allowed Conventional Commits types for `soly new` / `soly plan <type>/<name>` / etc. */
+export const PLAN_TYPES = ["feat", "fix", "chore", "refactor", "docs", "test", "perf", "build", "ci"] as const;
+
+/**
+ * Validate `<type>/<name>` (e.g. `feat/auth-jwt`). Returns parsed parts or
+ * an error message. Pure — no I/O. Shared by `soly new` (workflows/new.ts)
+ * and the plan-mode dispatch in `describePlanTarget` / `describeExecuteTarget`.
+ */
+export function parsePlanName(raw: string): { type: string; name: string } | { error: string } {
+	const trimmed = raw.trim();
+	if (!trimmed) return { error: "missing plan name" };
+	const m = trimmed.match(/^([a-z]+)\/([a-z0-9][a-z0-9-]*[a-z0-9])$/);
+	if (!m) {
+		return {
+			error:
+				`bad plan name "${trimmed}".\n` +
+				`\nExpected: <type>/<name>\n` +
+				`  type  = one of ${PLAN_TYPES.join(", ")}\n` +
+				`  name  = kebab-case\n` +
+				`\nExample: soly plan feat/auth-jwt`,
+		};
+	}
+	const [, type, name] = m;
+	if (!(PLAN_TYPES as readonly string[]).includes(type as string)) {
+		return { error: `bad type "${type}". Must be one of: ${PLAN_TYPES.join(", ")}` };
+	}
+	if ((name as string).length > 64) {
+		return { error: `name "${name}" is too long (max 64 chars)` };
+	}
+	return { type: type as string, name: name as string };
+}
+
 export interface SolyCommand {
 	verb: WorkflowVerb;
 	args: string[];
@@ -159,6 +191,7 @@ function parseNewTaskFlag(
  */
 export type ExecuteTarget =
 	| { kind: "phase"; phase: number; plan: number | null; raw: string }
+	| { kind: "plan"; type: string; name: string; raw: string }
 	| { kind: "task"; taskId: string; raw: string }
 	| { kind: "all"; raw: string }
 	| { kind: "feature"; feature: string; raw: string };
@@ -193,6 +226,12 @@ export function describeExecuteTarget(args: string[]): ExecuteTarget | null {
 	const target = positional.trim();
 	if (!target) return null;
 
+	// <type>/<name> plan name — same identifier model as `soly new`.
+	const plan = parsePlanName(target);
+	if (!("error" in plan)) {
+		return { kind: "plan", type: plan.type, name: plan.name, raw };
+	}
+
 	const phase = parsePhaseShape(target);
 	if (phase) {
 		return { kind: "phase", phase: phase.phase, plan: phase.plan, raw };
@@ -214,12 +253,14 @@ export function describeExecuteTarget(args: string[]): ExecuteTarget | null {
  * What `soly plan ...` should target. Dual-mode with execute.
  *
  *   phase    — plan a phase
+ *   plan     — plan a `<type>/<name>` plan (`.agents/plans/<name>/PLAN.md`)
  *   task     — plan (write/flesh out PLAN.md for) an existing task
  *   new-task — create a brand-new task dir + PLAN.md (with frontmatter)
  *   feature  — plan all ready tasks in a feature
  */
 export type PlanTarget =
 	| { kind: "phase"; phase: number; raw: string }
+	| { kind: "plan"; type: string; name: string; raw: string }
 	| { kind: "task"; taskId: string; raw: string }
 	| { kind: "new-task"; slug: string; feature: string; raw: string }
 	| { kind: "feature"; feature: string; raw: string };
@@ -254,6 +295,13 @@ export function describePlanTarget(args: string[]): PlanTarget | null {
 
 	const target = positional.trim();
 	if (!target) return null;
+
+	// <type>/<name> plan name (e.g. feat/auth-jwt) — plans live at
+	// .agents/plans/<name>/PLAN.md, identity is the branch name.
+	const plan = parsePlanName(target);
+	if (!("error" in plan)) {
+		return { kind: "plan", type: plan.type, name: plan.name, raw };
+	}
 
 	// Plan target only matches plain N (no .MM — plan is per-phase, executed
 	// at the phase level by `soly execute <N.MM>`).

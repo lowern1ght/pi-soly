@@ -15,7 +15,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describePlanTarget, type SolyCommand } from "./parser.ts";
+import { describePlanTarget, parsePlanName, type SolyCommand } from "./parser.ts";
 import type { SolyState } from "../core.js";
 import {
 	extractPlanSummary,
@@ -89,6 +89,38 @@ export function buildPlanTransform(cmd: SolyCommand, state: SolyState): Planning
 				`Known phases: ${knownPhases}\n` +
 				`Known tasks:  ${knownTasks}`,
 		};
+	}
+
+	// === PLAN MODE (new dual-mode: `<type>/<name>` plans live under .agents/plans/<name>/) ===
+	if (target.kind === "plan") {
+		const planDirAbs = `${state.solyDir}/plans/${target.name}`;
+		const planFile = `${planDirAbs}/PLAN.md`;
+		let planBody: string;
+		try {
+			planBody = fs.readFileSync(planFile, "utf-8");
+		} catch {
+			planBody = "_No PLAN.md yet — the LLM should ask the user for goal / steps / acceptance and write it from scratch._";
+		}
+		const instruction = `soly plan ${target.raw} — fleshing out PLAN.md for plan.
+
+**Plan:** ${target.name}
+**Branch:** ${target.raw}
+**PLAN.md:** ${planFile}
+
+**Inline current PLAN.md body (so you have the existing TBD sections before reading the file):**
+\`\`\`markdown
+${planBody.slice(0, 4000)}${planBody.length > 4000 ? "\n…(truncated)" : ""}
+\`\`\`
+
+**0-POINT CHECK.** Re-read .agents/docs/ (intent) before fleshing out the plan.
+
+If ask_pro is available, use it ONCE to gather goal / steps / acceptance criteria (freeText questions, batched). Then write PLAN.md with the answers. If ask_pro is NOT available, write a sensible stub plan and tell the user to refine it via \`soly plan ${target.raw}\` again.
+
+Hard rules:
+  - Update ONLY ${planFile}. Don't touch other plans or the project root.
+  - Use Conventional Commits format: # Plan: ${target.raw} (h1), ## Goal, ## Steps, ## Acceptance.
+  - Don't commit — the user reviews and commits.`;
+		return { handled: true, transformedText: instruction };
 	}
 
 	// === PHASE MODE ===
@@ -463,13 +495,61 @@ export function buildDiscussTransform(
 	}
 
 	const projectRoot = path.dirname(state.solyDir);
+	const arg = (cmd.args[0] ?? "").trim();
+	if (!arg) {
+		const known = state.phases.map((p) => p.number).join(", ") || "(none)";
+		return {
+			handled: true,
+			transformedText:
+				`soly discuss: argument required.\n` +
+				`Usage:\n` +
+				`  soly discuss <N>             — discuss phase N (legacy)\n` +
+				`  soly discuss <type>/<name>  — discuss plan <type>/<name> (e.g. feat/auth-jwt)\n` +
+				`Known phases: ${known}`,
+		};
+	}
+
+	// Plan mode: `<type>/<name>`
+	const planParsed = parsePlanName(arg);
+	if (!("error" in planParsed)) {
+		const planDirAbs = `${state.solyDir}/plans/${planParsed.name}`;
+		const planFile = `${planDirAbs}/PLAN.md`;
+		let planBody: string;
+		try {
+			planBody = fs.readFileSync(planFile, "utf-8");
+		} catch {
+			planBody = "_No PLAN.md yet._";
+		}
+		const instruction = `soly discuss ${arg} — interactive discussion mode for plan.
+
+**Plan:** ${planParsed.name}
+**Branch:** ${arg}
+**PLAN.md:** ${planFile}
+
+**Inline current PLAN.md body:**
+\`\`\`markdown
+${planBody.slice(0, 4000)}${planBody.length > 4000 ? "\n…(truncated)" : ""}
+\`\`\`
+
+**0-POINT CHECK.** Re-read .agents/docs/ (intent) before discussing.
+
+Use \`soly_finish_discuss\` to capture the discussion outcome. The flow:
+1. Read the plan above.
+2. Identify ambiguities / open questions / scope clarifications.
+3.${hasAskPro ? " Use \`ask_pro\` (batched freeText questions) to resolve them with the user." : " Ask the user ONE clear question at a time via the chat."}
+4. Call \`soly_finish_discuss\` with the captured decision.
+5. Tell the user the next step: \`soly plan ${arg}\` to update PLAN.md with the discussion outcome.`;
+		return { handled: true, transformedText: instruction };
+	}
+
+	// Phase mode (legacy)
 	const target = getPhaseForDiscuss(state, cmd.args);
 	if (!target) {
 		const known = state.phases.map((p) => p.number).join(", ") || "(none)";
 		return {
 			handled: true,
 			transformedText:
-				`soly discuss: phase argument required and must exist.\n` +
+				`soly discuss: bad argument "${arg}".\n` +
 				`Usage: soly discuss <N>    (e.g. "soly discuss 11")\n` +
 				`Known phases: ${known}`,
 		};

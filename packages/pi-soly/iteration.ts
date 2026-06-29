@@ -39,6 +39,8 @@ export interface IterationInput {
 	planNumber?: number;
 	/** Task id (only for task-mode execution / planning). */
 	taskId?: string;
+	/** Plan name (only for plan-mode execution / planning — `.agents/plans/<name>/`). */
+	planName?: string;
 	/** Feature name (only for task-mode). Backfilled from disk if omitted. */
 	feature?: string;
 }

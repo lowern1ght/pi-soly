@@ -16,11 +16,8 @@
 
 import * as fs from "node:fs";
 import { execFileSync } from "node:child_process";
-import type { SolyCommand } from "./parser.ts";
+import { parsePlanName, type SolyCommand } from "./parser.ts";
 import type { SolyState } from "../core.js";
-
-/** Allowed Conventional Commits types (subset that makes sense for plans). */
-const PLAN_TYPES = ["feat", "fix", "chore", "refactor", "docs", "test", "perf", "build", "ci"];
 
 export interface NewResult {
 	handled: boolean;
@@ -33,34 +30,6 @@ export interface NewResult {
 export type Notifier = {
 	notify: (text: string, level?: "info" | "warning" | "error") => void;
 };
-
-/**
- * Validate `<type>/<name>` and return parsed parts, or an error message.
- * Pure (no I/O). Exported for direct unit testing.
- */
-export function parsePlanName(raw: string): { type: string; name: string } | { error: string } {
-	const trimmed = raw.trim();
-	if (!trimmed) return { error: "missing plan name" };
-	const m = trimmed.match(/^([a-z]+)\/([a-z0-9][a-z0-9-]*[a-z0-9])$/);
-	if (!m) {
-		return {
-			error:
-				`bad plan name "${trimmed}".\n` +
-				`\nExpected format: <type>/<name>\n` +
-				`  type  = one of ${PLAN_TYPES.join(", ")}\n` +
-				`  name  = kebab-case (lowercase letters, digits, dashes)\n` +
-				`\nExamples:\n  soly new feat/auth-jwt\n  soly new fix/login-redirect`,
-		};
-	}
-	const [, type, name] = m;
-	if (!PLAN_TYPES.includes(type as string)) {
-		return { error: `bad type "${type}". Must be one of: ${PLAN_TYPES.join(", ")}` };
-	}
-	if ((name as string).length > 64) {
-		return { error: `name "${name}" is too long (max 64 chars)` };
-	}
-	return { type: type as string, name: name as string };
-}
 
 /** Run `git <args>` and capture stdout. Throws with stderr context on error. */
 function git(args: string[], opts: { cwd: string }): string {
