@@ -114,8 +114,7 @@ soly status        # current position + progress (no LLM round-trip)
 ### Setup
 
 ```bash
-/soly-init                # scaffold .soly/ (templates: minimal|web-app|library|cli)
-/soly-migrate             # atomic .soly/ → .agents/ rename (vendor-neutral)
+/soly init                # scaffold .agents/ (templates: minimal|web-app|library|cli)
 /soly-status              # one-screen health report
 /soly-log                 # recent notifications
 ```
@@ -133,7 +132,7 @@ soly status        # current position + progress (no LLM round-trip)
 
 Two system-prompt injections, both **opt-in** and **fully observable**.
 
-### Rules — `.soly/rules/` or `~/.soly/rules/`
+### Rules — `.agents/rules/` or `~/.agents/rules/`
 
 Markdown files with frontmatter. Three modes:
 
@@ -167,7 +166,7 @@ modify. If a rule contradicts your instinct, the rule wins.**
 
 See context breakdown anytime: `/rules stats`.
 
-### Docs — `.soly/docs/` or `~/.soly/docs/`
+### Docs — `.agents/docs/` or `~/.agents/docs/`
 
 Zero-point intent docs (your vision, business context). Loaded as **preview only** (180 chars per doc) — cheap. Add `inline: true` to opt-in to full body injection.
 
@@ -229,7 +228,7 @@ Flip cards with ←/→ (or 1-N), choose with Enter, Esc to cancel. Native TUI �
 
 ## 🖼 HTML Artifacts
 
-`html_artifact` tool for the LLM — soly's local "artifacts". Renders HTML (a full document or just body content, themed light/dark) and serves it from a **per-session gallery SPA** — a sidebar of every artifact this session, an iframe viewer, a filter box, a light/dark toggle, and live SSE updates — on one stable localhost URL, opened in your browser. Pass `id` to update an artifact in place; pass `assets` to write sibling files (images/css/json) the HTML references; restyle everything via `.soly/artifact-theme.css`. (Falls back to opening the file directly if the server is disabled.)
+`html_artifact` tool for the LLM — soly's local "artifacts". Renders HTML (a full document or just body content, themed light/dark) and serves it from a **per-session gallery SPA** — a sidebar of every artifact this session, an iframe viewer, a filter box, a light/dark toggle, and live SSE updates — on one stable localhost URL, opened in your browser. Pass `id` to update an artifact in place; pass `assets` to write sibling files (images/css/json) the HTML references; restyle everything via `.agents/artifact-theme.css`. (Falls back to opening the file directly if the server is disabled.)
 
 ```ts
 html_artifact({
@@ -272,7 +271,7 @@ Use it when a visual, rendered result beats terminal text (example galleries, co
                          │
             ┌────────────┼────────────┐
             ▼            ▼            ▼
-       .soly/STATE  phases/<N>/   rules/
+       .agents/STATE  phases/<N>/   rules/
        (current     CONTEXT,      docs/
         position)   PLAN,         (system
                     RESEARCH)     prompt)
@@ -288,10 +287,10 @@ Use it when a visual, rendered result beats terminal text (example galleries, co
                 └──────────────────┘
 ```
 
-State lives in `.soly/` — portable, git-friendly, human-readable. Migrate to vendor-neutral `.agents/` with `/soly-migrate` (both supported, `.soly/` shows deprecation warning).
+State lives in `.agents/` — portable, git-friendly, human-readable. (Projects from before the rename used `.soly/`; soly no longer reads it — run `mv .soly .agents`.)
 
 ```
-.soly/
+.agents/
 ├── ROADMAP.md           # phase table
 ├── STATE.md             # current position + decisions log
 ├── docs/                # 0-point intent docs (preview-loaded)
@@ -306,7 +305,7 @@ State lives in `.soly/` — portable, git-friendly, human-readable. Migrate to v
                 └── SUMMARY.md
 ```
 
-> Legacy projects (standalone `NN-MM-PLAN.md` / a `features/` dir) still work; run `soly migrate` to convert them to this layout.
+> Legacy projects (standalone `NN-MM-PLAN.md` files / a `features/` dir) still load and run alongside the unified `phases/<N>/tasks/` layout.
 
 ---
 

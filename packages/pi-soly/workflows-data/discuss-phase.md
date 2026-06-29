@@ -10,7 +10,7 @@ canonical CONTEXT.md. For design/architecture forks you may reach for
 markdown is background context, not a strict protocol.</purpose>
 
 <path_discipline>
-**All soly-managed files live under `.soly/`.** CONTEXT.md, RESEARCH.md, and the discuss checkpoint all go in `.soly/phases/<NN>-<slug>/`. Never write these to the project root. Use absolute paths.
+**All soly-managed files live under `.agents/`.** CONTEXT.md, RESEARCH.md, and the discuss checkpoint all go in `.agents/phases/<NN>-<slug>/`. Never write these to the project root. Use absolute paths.
 
 The iteration context file (path given by the parent in the task prompt) is your single source of truth for intent, STATE, ROADMAP, and any existing phase artifacts. Read it FIRST.
 </path_discipline>
@@ -36,7 +36,7 @@ The iteration context file (path given by the parent in the task prompt) is your
 **Resume:** if a checkpoint file exists, the parent detects it and tells you to resume from where the prior session left off. Acknowledge locked decisions at the top of your output, then continue with the next un-answered gray area.
 </interactive_flow>
 
-<read_first>`.soly/docs/` (INTENT, 0-point) · `.soly/STATE.md` · `.soly/ROADMAP.md` · `${PHASE_DIR}/*-CONTEXT.md` if exists (refine, don't re-derive) · `${PHASE_DIR}/*-DISCUSS-CHECKPOINT.json` if exists (resume from `areas_completed`)</read_first>
+<read_first>`.agents/docs/` (INTENT, 0-point) · `.agents/STATE.md` · `.agents/ROADMAP.md` · `${PHASE_DIR}/*-CONTEXT.md` if exists (refine, don't re-derive) · `${PHASE_DIR}/*-DISCUSS-CHECKPOINT.json` if exists (resume from `areas_completed`)</read_first>
 
 <philosophy>
 **User = visionary. Worker = builder.** The user knows: how it should feel, what's essential vs nice-to-have, specific references. The user doesn't know (don't ask): codebase patterns, technical risks, implementation approach, success metrics.
@@ -90,7 +90,7 @@ PHASE=$1
 # Worker subagent inherits the parent's cwd (the project root), so
 # `pwd` IS the project root. The previous `cd .. && pwd` was a bug.
 PROJECT_ROOT="$(pwd)"
-SOLY_DIR="$PROJECT_ROOT/.soly"
+SOLY_DIR="$PROJECT_ROOT/.agents"
 PHASE_DIR=$(ls -d "$SOLY_DIR/phases/"*"-$PHASE-"* 2>/dev/null | head -1) || { echo "Phase $PHASE not found" >&2; exit 1; }
 PADDED_PHASE=$(printf "%02d" "$(echo "$PHASE" | grep -oE '^[0-9]+' | sed 's/^0*//')")
 PHASE_SLUG=$(basename "$PHASE_DIR")
@@ -137,7 +137,7 @@ If you cannot answer from `.continue-here.md`, return `## Clarifications Needed`
 [ -f "$SOLY_DIR/DECISIONS-INDEX.md" ] && echo "DECISIONS-INDEX.md (prefer over per-phase if present)"
 ```
 
-Most-recent 3 prior `*-CONTEXT.md` files (prefer DECISIONS-INDEX if present). Extract `<decisions>`, `<specifics>`, and patterns (e.g., "user prefers minimal UI"). If `.soly/spikes/MANIFEST.md` or `.soly/sketches/MANIFEST.md` exist with `WRAPPED: true` frontmatter, read as validated findings.
+Most-recent 3 prior `*-CONTEXT.md` files (prefer DECISIONS-INDEX if present). Extract `<decisions>`, `<specifics>`, and patterns (e.g., "user prefers minimal UI"). If `.agents/spikes/MANIFEST.md` or `.agents/sketches/MANIFEST.md` exist with `WRAPPED: true` frontmatter, read as validated findings.
 
 **6. Cross-reference todos.** (Worker doesn't have `soly_todos`; use `bash` + `grep` with phase-domain keywords.)
 
@@ -217,9 +217,9 @@ Requirements locked by SPEC.md. Do not re-litigate.
 </decisions>
 
 <canonical_refs> <!-- MANDATORY -->
-- `.soly/docs/<file>` — <why>
-- `.soly/features/<feat>/README.md` — <why>
-- `.soly/contracts/<file>` — <why>
+- `.agents/docs/<file>` — <why>
+- `.agents/features/<feat>/README.md` — <why>
+- `.agents/contracts/<file>` — <why>
 - (no external docs referenced) <!-- only if literally none -->
 </canonical_refs>
 
@@ -289,8 +289,8 @@ Update after every round. Delete after `write_context` succeeds.
 <hard_rules>
 - No production code. Discussion/planning only.
 - No PLAN.md from this workflow — that's `soly plan`.
-- Don't assume missing intent. If `.soly/docs/` is silent, ask.
+- Don't assume missing intent. If `.agents/docs/` is silent, ask.
 - No scope creep. Deferred ideas → `<deferred_ideas>`, not decisions.
-- No subagents (you ARE one). No `.soly/rules/` edits.
+- No subagents (you ARE one). No `.agents/rules/` edits.
 - Return: structured output per output_protocol + checkpoint updates. Parent relays to user.
 </hard_rules>

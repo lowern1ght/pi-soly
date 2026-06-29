@@ -3,12 +3,12 @@
 <purpose>Execute one PLAN.md, produce a matching SUMMARY.md, update STATE.md/ROADMAP.md. Single worker — no sub-subagents.</purpose>
 
 <path_discipline>
-**All soly-managed files live under `.soly/`.** Never write PLAN.md, CONTEXT.md, RESEARCH.md, SUMMARY.md, iteration files, or handoffs to the project root. All phase files go in `.soly/phases/<NN>-<slug>/`. Use absolute paths (or paths starting with `$SOLY_DIR`) — never bare relative names that could land in cwd.
+**All soly-managed files live under `.agents/`.** Never write PLAN.md, CONTEXT.md, RESEARCH.md, SUMMARY.md, iteration files, or handoffs to the project root. All phase files go in `.agents/phases/<NN>-<slug>/`. Use absolute paths (or paths starting with `$SOLY_DIR`) — never bare relative names that could land in cwd.
 
 The iteration context file (path given by the parent in the task prompt) is your single source of truth for intent, STATE, ROADMAP, phase CONTEXT/RESEARCH, prior SUMMARYs, and (section 6) the current PLAN. Read it FIRST.
 </path_discipline>
 
-<read_first>`.soly/STATE.md` · `.soly/ROADMAP.md` · `PLAN.md` (the contract) · `<phase>-CONTEXT.md` if exists (honor user decisions) · `<phase>-RESEARCH.md` if exists (use chosen libs/patterns). If `.soly/` missing → stop + error.</read_first>
+<read_first>`.agents/STATE.md` · `.agents/ROADMAP.md` · `PLAN.md` (the contract) · `<phase>-CONTEXT.md` if exists (honor user decisions) · `<phase>-RESEARCH.md` if exists (use chosen libs/patterns). If `.agents/` missing → stop + error.</read_first>
 
 <atomic_close_out>
 **Only legal close-out order:** `production-code commit(s) → SUMMARY commit → STATE/ROADMAP update`.
@@ -24,7 +24,7 @@ PHASE="$1"; PLAN="$2"  # PLAN optional — defaults to next unfinished
 # Worker subagent inherits the parent's cwd (the project root), so
 # `pwd` IS the project root. The previous `cd .. && pwd` was a bug.
 PROJECT_ROOT="$(pwd)"
-SOLY_DIR="$PROJECT_ROOT/.soly"
+SOLY_DIR="$PROJECT_ROOT/.agents"
 PHASE_DIR=$(ls -d "$SOLY_DIR/phases/"*"-$PHASE-"* 2>/dev/null | head -1) || { echo "Phase $PHASE not found" >&2; exit 1; }
 PADDED_PHASE=$(printf "%02d" "$(echo "$PHASE" | grep -oE '^[0-9]+' | sed 's/^0*//')")
 PHASE_SLUG=$(basename "$PHASE_DIR")
@@ -60,7 +60,7 @@ PARTIAL_PLAN=$([ "$COMMIT_COUNT" -gt 0 ] && [ "$SUMMARY_EXISTS" = false ] && ech
 **5. Execute tasks in order.** Per task:
 
 1. **Read first** — open every `<read_first>` file.
-2. **Implement** — minimal correct change, follow project patterns. No speculative scaffolding. No `.soly/rules/` edits.
+2. **Implement** — minimal correct change, follow project patterns. No speculative scaffolding. No `.agents/rules/` edits.
 3. **Verify acceptance criteria (HARD GATE):**
    - Run the grep/file-check/CLI for each criterion in `<acceptance_criteria>`.
    - Log PASS/FAIL with output. If ANY fails → fix immediately, re-run ALL.
@@ -123,7 +123,7 @@ Can't talk to user directly. Stop, return structured block, parent relays.
 
 **9. Pre-commit hook failure:**
 1. `git commit` fails with hook error. 2. Read error — names hook + what failed. 3. Fix (type/lint/secret). 4. `git add` fixed. 5. Retry. 6. Budget 1–2 cycles per commit. If still failing → `type: "human-action"` checkpoint with hook output.
-**Do NOT use `--no-verify`** unless project's `.soly/docs/` or ROADMAP.md explicitly opts out.
+**Do NOT use `--no-verify`** unless project's `.agents/docs/` or ROADMAP.md explicitly opts out.
 
 **10. Verification failure gate:** 1st retry (hooks flake) → 2nd retry (fix obvious cause) → 3rd retry (apply deviation rules) → 3+ fails → `type: "decision"` checkpoint, STOP.
 
@@ -212,7 +212,7 @@ git commit -m "chore(${PADDED_PHASE}-${PLAN_NUM}): complete plan <N>"
 - Bump `current_plan` in "Current Position".
 - Add `key-decisions` to "Decisions" table (skip if trivial).
 - Update `last_updated`.
-- Keep < 150 lines — archive long-form to `.soly/DECISIONS-INDEX.md` if it grows.
+- Keep < 150 lines — archive long-form to `.agents/DECISIONS-INDEX.md` if it grows.
 
 **Update ROADMAP.md** — phase's progress row: increment completed plan count; status → `In Progress` (more plans) or `Complete` (last) with date.
 
@@ -222,7 +222,7 @@ git commit -m "chore(${PADDED_PHASE}-${PLAN_NUM}): complete plan <N>"
 REQUIREMENTS=$(grep -A1 "^requirements:" "$PLAN_PATH" | tail -1 | sed -E 's/.*\[([^]]+)\].*/\1/' | tr ',' ' ')
 ```
 
-For each ID, find line in `.soly/REQUIREMENTS.md`, flip status to `Complete`.
+For each ID, find line in `.agents/REQUIREMENTS.md`, flip status to `Complete`.
 
 **15. Return:**
 
@@ -241,7 +241,7 @@ For each ID, find line in `.soly/REQUIREMENTS.md`, flip status to `Complete`.
 </process>
 
 <hard_rules>
-- No `.soly/rules/` edits. No `.soly/docs/` edits without explicit user decision in conversation.
+- No `.agents/rules/` edits. No `.agents/docs/` edits without explicit user decision in conversation.
 - No subagents (you ARE one). `maxSubagentDepth: 1` is enforced.
 - **Never skip `<acceptance_criteria>` HARD GATE.** Not optional.
 - **Never emit narrative between SUMMARY `write` and `git commit`** (truncation is a known failure mode).

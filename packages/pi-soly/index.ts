@@ -2,7 +2,7 @@
 // index.ts — Main soly extension entry point
 // =============================================================================
 //
-// Loads .soly/rules/ and .soly/ project state into the agent's system
+// Loads .agents/rules/ and .agents/ project state into the agent's system
 // prompt, and registers:
 //   - slash commands  /rules /soly /rulewizard /why
 //   - LLM tools       soly_read soly_log_decision soly_list_phases
@@ -95,7 +95,7 @@ const SOLY_TOOLS_POINTER = `
 ## soly — interactive & visual tools
 
 When terminal text isn't the best medium, reach for these (details + when-NOT in the soly-framework skill):
-- \`ask_pro\` — multi-question picker (single/multi-select, free-text, per-option previews).
+- \`ask_pro\` — multi-question picker (single/multi-select, free-text, per-option previews); every options question always offers a free-text "Other…" so the user can answer in their own words.
 - \`decision_deck\` — full-screen cards comparing design options by their concrete code shape.
 - \`html_artifact\` — render HTML to a self-contained, browseable per-project gallery.`;
 
@@ -179,7 +179,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 	let codeMap: CodeMap | null = null;
 	let lastCodeMapSection = "";
 
-	// Project intent (zero-point docs from .soly/docs/) — always loaded
+	// Project intent (zero-point docs from .agents/docs/) — always loaded
 	let intentDocs: IntentDoc[] = [];
 	let lastIntentSection = "";
 
@@ -294,7 +294,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 		// Soly doesn't render the agent badge itself.
 		const agentGroup = "";
 
-		// Cross-extension: show pi-todo progress if either .soly/todos.json
+		// Cross-extension: show pi-todo progress if either .agents/todos.json
 		// (soly-integration mode) OR .pi-todos.json (standalone mode) exists.
 		// Cheap (one stat + one small JSON read); cached only for the
 		// lifetime of one updateStatus call.
@@ -408,32 +408,30 @@ export default function solyExtension(pi: ExtensionAPI) {
 	// ============================================================================
 
 	pi.on("session_start", async (event, ctx) => {
-		// Deprecation warning: if the project still uses `.soly/`, nudge the
-		// user toward `.agents/`. One-time per session.
+		// Legacy detection: a project with only a `.soly/` dir (no `.agents/`)
+		// is now invisible to soly — warn the user to rename it. soly no longer
+		// reads `.soly/`. One-time per session.
 		if (isLegacySolyDir(ctx.cwd)) {
 			notifyDeprecation(
 				ctx.ui,
-				`.soly/ (legacy)`,
-				`.agents/ (vendor-neutral)`,
-				`Run \`mv .soly .agents\` to migrate. Both names work for now.`,
+				`.soly/ (legacy, no longer read)`,
+				`.agents/`,
+				`Run \`mv .soly .agents\` — soly now reads only \`.agents/\`.`,
 			);
 		}
 
 		// Rules sources (priority order, higher wins on relPath collision).
-		// Project rules always beat global rules. .soly/rules.local/ is
+		// Project rules always beat global rules. `.agents/rules.local/` is
 		// gitignored — for personal overrides on top of the project's rules.
-		// .agents/rules/ is the vendor-neutral project-level convention
-		// (same role as the old .claude/rules/).
+		// `.agents/rules/` is the vendor-neutral project-level convention.
 		ruleSources = [
-			{ dir: path.join(ctx.cwd, ".soly", "rules.local"), source: "project-soly", sourceLabel: "local", priority: 5 },
-			{ dir: path.join(ctx.cwd, ".soly", "rules"), source: "project-soly", sourceLabel: "soly", priority: 4 },
+			{ dir: path.join(ctx.cwd, ".agents", "rules.local"), source: "project-agents", sourceLabel: "local", priority: 5 },
 			{ dir: path.join(ctx.cwd, ".agents", "rules"), source: "project-agents", sourceLabel: "agents", priority: 3 },
-			{ dir: path.join(os.homedir(), ".soly", "rules"), source: "global-soly", sourceLabel: "soly", priority: 2 },
 			{ dir: path.join(os.homedir(), ".agents", "rules"), source: "global-agents", sourceLabel: "agents", priority: 1 },
 		];
 		refreshRules();
 
-		// Project state — soly owns .soly/ at the project root
+		// Project state — soly owns .agents/ at the project root
 		state.solyDir = solyDirFor(ctx.cwd);
 		refreshState();
 
@@ -500,7 +498,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 			lastCodeMapSection = "";
 		}
 
-		// Load project intent (zero-point docs from .soly/docs/) — always
+		// Load project intent (zero-point docs from .agents/docs/) — always
 		refreshIntent();
 
 		// Start hot-reload watcher on rules dirs
@@ -571,7 +569,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 				);
 			}
 		} else {
-			ctx.ui.notify("soly rules: none found in .soly/rules.local, .soly/rules, or ~/.soly/rules", "info");
+			ctx.ui.notify("soly rules: none found in .agents/rules.local, .agents/rules, or ~/.agents/rules", "info");
 		}
 
 		if (state.exists) {

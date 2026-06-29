@@ -168,7 +168,7 @@ export function notifyDeprecation(
 
 // ---------------------------------------------------------------------------
 // Plain-text fallback (no widget, just framed Unicode text via notify).
-// Used for the .soly/ migration banner and other places that don't have
+// Used for the legacy .soly/ detection banner and other places that don't have
 // access to a UI context yet (CLI startup, print mode, etc.)
 // ---------------------------------------------------------------------------
 

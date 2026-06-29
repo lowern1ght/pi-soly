@@ -58,11 +58,11 @@ describe("formatStatus", () => {
 		expect(out).toContain("01-bootstrap");
 	});
 
-	test("handles missing .agents/ (no .soly/)", () => {
+	test("handles missing .agents/ (no .agents/)", () => {
 		const empty = makeState({ exists: false, solyDir: "" });
 		const out = formatStatus(projDir, empty);
 		expect(out).toContain("no .agents/");
-		expect(out).toContain("/soly-init");
+		expect(out).toContain("/soly init");
 	});
 
 	test("includes recent decisions from STATE.md", () => {

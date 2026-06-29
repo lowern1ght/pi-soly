@@ -269,7 +269,7 @@ describe("welcome", () => {
 		expect(text.includes("v1.12.0")).toBe(true);
 		expect(text.includes("plan 2/5")).toBe(true);
 		expect(text.includes("→ /execute")).toBe(true);
-		expect(text.includes("/soly-init")).toBe(true);
+		expect(text.includes("/soly init")).toBe(true);
 		expect(text.includes("1.11.2  MCP footer")).toBe(true);
 	});
 
@@ -279,7 +279,7 @@ describe("welcome", () => {
 		expect(lines.join("\n").includes(SOLY_ART[0] ?? "")).toBe(false);
 	});
 
-	test("no-project state points to /soly-init", () => {
+	test("no-project state points to /soly init", () => {
 		const text = buildWelcomeLines(
 			{ ...input, hasProject: false },
 			{ ascii: true, styler: identityStyler, width: 120 },

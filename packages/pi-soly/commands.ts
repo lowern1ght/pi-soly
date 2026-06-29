@@ -43,7 +43,6 @@ import {
 	type IntentInlineDoc,
 } from "./intent.ts";
 import type { SolyConfig } from "./config.ts";
-import { migrateSolyDir } from "./migrate.js";
 import { initSolyProject } from "./init.js";
 import { ListPanel, type ListItem, type ListAction } from "./visual/list-panel.ts";
 import { getArtifactServer, ensureArtifactServer, artifactDir } from "./artifact/session.ts";
@@ -367,7 +366,7 @@ What must the LLM do?
 			return;
 		}
 
-		// /rules add <url> — download a remote rule into .soly/rules/
+		// /rules add <url> — download a remote rule into .agents/rules/
 		if (sub === "add") {
 			const url = (target ?? "").trim();
 			if (!url) {
@@ -461,7 +460,7 @@ What must the LLM do?
 			if (sub === "list") {
 				const docs = getIntentDocs();
 				if (docs.length === 0) {
-					ui.notify("no intent docs found in .soly/docs/ — drop your vision/domain docs there", "info");
+					ui.notify("no intent docs found in .agents/docs/ — drop your vision/domain docs there", "info");
 					return;
 				}
 				if (ctx.mode === "tui") {
@@ -500,56 +499,7 @@ What must the LLM do?
 		},
 	});
 
-	// ============================================================================
-	// /soly migrate — move .soly/ → .agents/ atomically
-	// ============================================================================
-	pi.registerCommand("soly-migrate", {
-		description:
-			"migrate project state from .soly/ to .agents/ (atomic rename, validates result, suggests git commit)",
-		handler: async (args, ctx) => {
-			const ui: CommandUI = {
-				notify: (t, k) => ctx.ui.notify(t, k ?? "info"),
-				select: async (label, options) => {
-					const result = await ctx.ui.select(label, options);
-					return result === undefined ? null : options.indexOf(result);
-				},
-				confirm: (title, message) => ctx.ui.confirm(title, message),
-			};
-			await migrateSolyDir(ctx.cwd, ui, { autoYes: args.includes("--yes") });
-		},
-	});
-
-	// /soly init — scaffold new project
-	// ============================================================================
-	pi.registerCommand("soly-init", {
-		description:
-			"scaffold a new soly project (interactive: pick template — minimal/web-app/library/cli)",
-		handler: async (args, ctx) => {
-			const ui: CommandUI = {
-				notify: (t, k) => ctx.ui.notify(t, k ?? "info"),
-				select: async (label, options) => {
-					const result = await ctx.ui.select(label, options);
-					return result === undefined ? null : options.indexOf(result);
-				},
-				confirm: (title, message) => ctx.ui.confirm(title, message),
-				input: (label, placeholder) => ctx.ui.input(label, placeholder),
-			};
-			// Parse args: --template=X, --yes, --name=X
-			const template = (args.match(/--template[= ](\S+)/)?.[1] as
-				| "minimal" | "web-app" | "library" | "cli" | undefined) ?? undefined;
-			const autoYes = args.includes("--yes");
-			const projectName = args.match(/--name[= ](\S+)/)?.[1];
-			const initUi = {
-				notify: (t: string, k?: "info" | "warning" | "error") => ctx.ui.notify(t, k ?? "info"),
-				select: async (label: string, options: string[]) => ctx.ui.select(label, options),
-				confirm: (title: string, message: string) => ctx.ui.confirm(title, message),
-				input: (label: string, placeholder?: string) => ctx.ui.input(label, placeholder),
-			};
-			await initSolyProject(ctx.cwd, initUi, { template, autoYes, projectName });
-		},
-	});
-
-	// /soly
+	// /soly  (also hosts `/soly init` — see the early dispatch in the handler)
 	// ============================================================================
 
 	pi.registerCommand("soly", {
@@ -564,9 +514,30 @@ What must the LLM do?
 				},
 				confirm: (title, message) => ctx.ui.confirm(title, message),
 			};
+			// `init` is special — it scaffolds a NEW project, so it must run even
+			// when there's no `.agents/` dir yet. Dispatch it before the project
+			// guard below. (Moved here from the old standalone `/soly-init`.)
+			{
+				const firstArg = args.trim().split(/\s+/).filter(Boolean)[0] ?? "";
+				if (firstArg === "init") {
+					const template = (args.match(/--template[= ](\S+)/)?.[1] as
+						| "minimal" | "web-app" | "library" | "cli" | undefined) ?? undefined;
+					const autoYes = args.includes("--yes");
+					const projectName = args.match(/--name[= ](\S+)/)?.[1];
+					const initUi = {
+						notify: (t: string, k?: "info" | "warning" | "error") => ctx.ui.notify(t, k ?? "info"),
+						select: async (label: string, options: string[]) => ctx.ui.select(label, options),
+						confirm: (title: string, message: string) => ctx.ui.confirm(title, message),
+						input: (label: string, placeholder?: string) => ctx.ui.input(label, placeholder),
+					};
+					await initSolyProject(ctx.cwd, initUi, { template, autoYes, projectName });
+					return;
+				}
+			}
+
 			const state = getState();
 			if (!state.exists) {
-				ui.notify("soly: no .soly/ directory in cwd", "error");
+				ui.notify("soly: no .agents/ project here — run `/soly init` to scaffold one", "info");
 				return;
 			}
 
@@ -720,7 +691,7 @@ What must the LLM do?
 					run: () => {
 						const s = getState();
 						if (s.tasks.length === 0) {
-							ui.notify("soly: no tasks found in .soly/features/*/tasks/", "info");
+							ui.notify("soly: no tasks found in .agents/features/*/tasks/", "info");
 							return;
 						}
 						const byFeature = new Map<string, typeof s.tasks>();
@@ -779,7 +750,7 @@ What must the LLM do?
 					run: () => {
 						const features = getState().features;
 						if (features.length === 0) {
-							ui.notify("soly: no features found in .soly/features/", "info");
+							ui.notify("soly: no features found in .agents/features/", "info");
 							return;
 						}
 						const lines = features.map((f) => {
@@ -790,7 +761,7 @@ What must the LLM do?
 					},
 				},
 				milestone: {
-					description: "show the active milestone document (.soly/milestones/<v>.md)",
+					description: "show the active milestone document (.agents/milestones/<v>.md)",
 					run: () => {
 						const s = getState();
 						if (!s.milestone || s.milestone === "—") {
@@ -996,7 +967,7 @@ What must the LLM do?
 					"",
 					"tell me what behavior or outcome you want to constrain. I'll help you",
 					"decide whether it should be:",
-					"  • a soly rule (.soly/rules/*.md) — for process, behavior, or project",
+					"  • a soly rule (.agents/rules/*.md) — for process, behavior, or project",
 					"    conventions the LLM must follow",
 					"  • an .editorconfig entry — for formatting (indent, line endings, EOL,",
 					"    charset, trailing whitespace, max line length)",

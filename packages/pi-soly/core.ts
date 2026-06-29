@@ -3,12 +3,12 @@
 // =============================================================================
 //
 // Owns:
-//   - Rule loading from .soly/rules/ (project + global)
-//   - Soly project state loading from .soly/ (STATE.md, ROADMAP.md, phases/)
+//   - Rule loading from .agents/rules/ (project + global)
+//   - Soly project state loading from .agents/ (STATE.md, ROADMAP.md, phases/)
 //   - Status line construction
 //   - Shared utility functions and constants
 //
-// Path convention: <cwd>/.soly/. Pi itself loads AGENTS.md / CLAUDE.md
+// Path convention: <cwd>/.agents/. Pi itself loads AGENTS.md / CLAUDE.md
 // from ancestor directories through its own resource loader, so soly
 // stays out of that path.
 // =============================================================================
@@ -142,8 +142,8 @@ export interface PhaseInfo {
 
 /**
  * A feature is a logical grouping of tasks (e.g. "auth", "orders").
- * Dual-mode with phases: features live under `.soly/features/`, phases
- * under `.soly/phases/`. soly supports both simultaneously.
+ * Dual-mode with phases: features live under `.agents/features/`, phases
+ * under `.agents/phases/`. soly supports both simultaneously.
  */
 export interface FeatureInfo {
   name: string;
@@ -548,7 +548,7 @@ export function buildRulesSection(
     headerHint = `Phase ${phase} rules are loaded for the currently active phase; all other rules are always-on. Inline @see references are resolved recursively.`;
   } else {
     blocks = applicable.map(render);
-    headerHint = `The following rules are loaded from \`.soly/rules/\` and \`~/.soly/rules/\` and are mandatory. Follow them strictly. Inline @see references are resolved recursively.`;
+    headerHint = `The following rules are loaded from \`.agents/rules/\` and \`~/.agents/rules/\` and are mandatory. Follow them strictly. Inline @see references are resolved recursively.`;
   }
 
   const skippedNote = skipped.length
@@ -981,7 +981,7 @@ export function formatRulesContextStats(stats: RulesContextStats): string {
 // @import resolver (markdown only)
 // ============================================================================
 //
-// Used by intent docs (`.soly/docs/*.md`) to inline other markdown files
+// Used by intent docs (`.agents/docs/*.md`) to inline other markdown files
 // via `@import path/to/file.md` lines. Cycles and > MAX_IMPORT_DEPTH
 // are skipped with a comment.
 //
@@ -1121,7 +1121,7 @@ export function resolveImports(
 }
 
 // ============================================================================
-// Project state (.soly/)
+// Project state (.agents/)
 // ============================================================================
 
 function extractCurrentPosition(body: string): SolyPosition | null {
@@ -1524,20 +1524,18 @@ export function buildStatusLine(
 /** Preferred soly dir name (vendor-neutral). */
 export const SOLY_DIRNAME = ".agents";
 
-/** Legacy soly dir name. Kept for backward compat with existing projects. */
+/** Legacy soly dir name. Detection-only — soly no longer reads or writes it.
+ *  Used to warn users with an old `.soly/` project to rename it to `.agents/`. */
 export const LEGACY_SOLY_DIRNAME = ".soly";
 
-/** Which project subdir name is currently in use. Returns the first
- *  one that exists, preferring `.agents/`. Falls back to `.soly/` if
- *  no `.agents/` exists. If neither exists, returns `.agents/` (so
- *  new writes go to the new location). */
+/** The soly project dir for a given cwd. Always `<cwd>/.agents/` — the legacy
+ *  `.soly/` location is no longer read (rename it; `isLegacySolyDir` warns). */
 export function solyDirFor(cwd: string): string {
-	if (fs.existsSync(path.join(cwd, SOLY_DIRNAME))) return path.join(cwd, SOLY_DIRNAME);
-	if (fs.existsSync(path.join(cwd, LEGACY_SOLY_DIRNAME))) return path.join(cwd, LEGACY_SOLY_DIRNAME);
-	return path.join(cwd, SOLY_DIRNAME); // default to new for new projects
+	return path.join(cwd, SOLY_DIRNAME);
 }
 
-/** True if the legacy `.soly/` dir is in active use (and `.agents/` isn't). */
+/** True if a legacy `.soly/` dir exists but `.agents/` doesn't — i.e. the
+ *  project predates the rename and is now invisible to soly. Warn the user. */
 export function isLegacySolyDir(cwd: string): boolean {
 	const newPath = path.join(cwd, SOLY_DIRNAME);
 	const oldPath = path.join(cwd, LEGACY_SOLY_DIRNAME);
@@ -1553,7 +1551,7 @@ export function isLegacySolyDir(cwd: string): boolean {
 // the next sensible soly action without needing to read STATE.md.
 //
 // Returns null when:
-//   - there is no .soly/ in cwd (nothing to suggest)
+//   - there is no .agents/ in cwd (nothing to suggest)
 //   - every phase is already complete
 //
 // Heuristic priority (first match wins):

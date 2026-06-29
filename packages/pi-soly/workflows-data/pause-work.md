@@ -1,36 +1,36 @@
 # Pause Work
 
-<purpose>Create `.soly/HANDOFF.json` (machine-readable) and a `.continue-here.md` (human-readable) to preserve work state across sessions. `soly resume` consumes both.</purpose>
+<purpose>Create `.agents/HANDOFF.json` (machine-readable) and a `.continue-here.md` (human-readable) to preserve work state across sessions. `soly resume` consumes both.</purpose>
 
-<read_first>.soly/STATE.md (current position) · the most recent `.soly/phases/*/SUMMARY.md` if any</read_first>
+<read_first>.agents/STATE.md (current position) · the most recent `.agents/phases/*/SUMMARY.md` if any</read_first>
 
 <process>
 
-**1. Detect context.** First match wins; nothing detectable → `.soly/.continue-here.md` (note ambiguity in `<current_state>`).
+**1. Detect context.** First match wins; nothing detectable → `.agents/.continue-here.md` (note ambiguity in `<current_state>`).
 
 ```bash
-phase=$(ls -t .soly/phases/*/PLAN.md 2>/dev/null | head -1)
+phase=$(ls -t .agents/phases/*/PLAN.md 2>/dev/null | head -1)
 phase_slug=$(echo "$phase" | grep -oP 'phases/\K[^/]+')
-spike=$(ls -td .soly/spikes/*/ 2>/dev/null | head -1)
-sketch=$(ls -td .soly/sketches/*/ 2>/dev/null | head -1)
-deliberation=$(ls .soly/deliberations/*.md 2>/dev/null | head -1)
+spike=$(ls -td .agents/spikes/*/ 2>/dev/null | head -1)
+sketch=$(ls -td .agents/sketches/*/ 2>/dev/null | head -1)
+deliberation=$(ls .agents/deliberations/*.md 2>/dev/null | head -1)
 ```
 
 | detected | handoff path |
 |---|---|
-| phase_slug | `.soly/phases/<phase_slug>/.continue-here.md` |
-| spike | `.soly/spikes/<spike_slug>/.continue-here.md` |
-| sketch | `.soly/sketches/<sketch_slug>/.continue-here.md` |
-| deliberation | `.soly/deliberations/.continue-here.md` |
-| (notes only) | `.soly/.continue-here.md` |
+| phase_slug | `.agents/phases/<phase_slug>/.continue-here.md` |
+| spike | `.agents/spikes/<spike_slug>/.continue-here.md` |
+| sketch | `.agents/sketches/<sketch_slug>/.continue-here.md` |
+| deliberation | `.agents/deliberations/.continue-here.md` |
+| (notes only) | `.agents/.continue-here.md` |
 
 **2. Gather state.** Walk the conversation + recent diffs. Collect: current position (phase/plan/task + paths), work done this session (artifacts, not aspirations), work remaining, decisions (only those future-you must not re-litigate), blockers, human actions pending (API keys, approvals, manual tests), background processes, uncommitted files (`git status --porcelain`), and blocking constraints (anti-patterns discovered through actual failure — each tagged `blocking` or `advisory`).
 
 If anything is ambiguous, return a `## Clarifications Needed` block — do not invent.
 
-**3. Check for false completions.** `grep -l "To be filled\|placeholder\|TBD" .soly/phases/*/*.md 2>/dev/null` — report matches as incomplete.
+**3. Check for false completions.** `grep -l "To be filled\|placeholder\|TBD" .agents/phases/*/*.md 2>/dev/null` — report matches as incomplete.
 
-**4. Write `.soly/HANDOFF.json`.** Timestamp via `date -u +"%Y-%m-%dT%H:%M:%SZ"` (no SDK).
+**4. Write `.agents/HANDOFF.json`.** Timestamp via `date -u +"%Y-%m-%dT%H:%M:%SZ"` (no SDK).
 
 ```json
 {
@@ -98,7 +98,7 @@ _If none, remove this section._
 
 ## Required Reading (in order)
 1. <doc> — <why>
-2. `.soly/METHODOLOGY.md` if it exists — project lenses
+2. `.agents/METHODOLOGY.md` if it exists — project lenses
 
 ## Infrastructure State
 - <service/env>: <state>
@@ -117,14 +117,14 @@ Specific enough that a fresh worker can resume without re-deriving from git hist
 
 **6. Commit:**
 ```bash
-git add .soly/HANDOFF.json <handoff-md-path>
+git add .agents/HANDOFF.json <handoff-md-path>
 git commit -m "chore(soly): pause work — create handoff"
 ```
 
 **7. Return:**
 ```
 Handoff created:
-  - .soly/HANDOFF.json
+  - .agents/HANDOFF.json
   - <handoff-md-path>
 State: <context>, <location>, task <x>/<m>, in_progress, <n> blockers (<m> human)
 Resume: `soly resume`
@@ -136,7 +136,7 @@ Resume: `soly resume`
 - No production code. Handoff only.
 - A summary with `TBD`/`placeholder`/`To be filled` is incomplete — report it.
 - `null` is JSON `null`, not the string `"null"`.
-- Do not modify `.soly/rules/`. Do not run subagents (you ARE one).
+- Do not modify `.agents/rules/`. Do not run subagents (you ARE one).
 - Commit message: `chore(soly): pause work — create handoff`.
 - Return: paths, state summary, blocker count, `soly resume` command.
 </hard_rules>

@@ -29,11 +29,11 @@ interface DoctorCheck {
 export function showDoctor(_cmd: unknown, state: SolyState, ui: InspectUI, config: SolyConfig, activeTools: string[] = []): void {
 	const checks: DoctorCheck[] = [];
 
-	// 1. .soly/ exists
+	// 1. .agents/ exists
 	checks.push({
-		name: ".soly/ directory",
+		name: ".agents/ directory",
 		status: state.exists ? "pass" : "fail",
-		detail: state.exists ? state.solyDir : "no .soly/ found in cwd",
+		detail: state.exists ? state.solyDir : "no .agents/ found in cwd",
 	});
 
 	// 2. STATE.md exists + has frontmatter
@@ -178,13 +178,13 @@ export function showDoctor(_cmd: unknown, state: SolyState, ui: InspectUI, confi
 		}
 	}
 
-	// 9. .soly/rules/ exists if state says rules are loaded
+	// 9. .agents/rules/ exists if state says rules are loaded
 	if (state.exists) {
 		const rulesDir = path.join(state.solyDir, "rules");
 		checks.push({
-			name: ".soly/rules/ directory",
+			name: ".agents/rules/ directory",
 			status: fs.existsSync(rulesDir) ? "pass" : "warn",
-			detail: fs.existsSync(rulesDir) ? "present" : "no rules directory — soly will fall back to ~/.soly/rules/",
+			detail: fs.existsSync(rulesDir) ? "present" : "no rules directory — soly will fall back to ~/.agents/rules/",
 		});
 	}
 
@@ -221,7 +221,7 @@ export function showDoctor(_cmd: unknown, state: SolyState, ui: InspectUI, confi
 			name: "project layout",
 			status: legacy ? "info" : "pass",
 			detail: legacy
-				? "legacy plans/features detected — run `soly migrate` to move to phases/<N>/tasks/"
+				? "legacy plans/features detected — still supported alongside the unified phases/<N>/tasks/ model"
 				: "unified model (phase = group of tasks)",
 		});
 	}
@@ -259,7 +259,7 @@ function pluralDays(n: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// soly todos — read .soly/todos.json or .pi-todos.json and show as a notify.
+// soly todos — read .agents/todos.json or .pi-todos.json and show as a notify.
 // Mirrors what pi-todo would render in the footer, so the user can see
 // todos even when pi-todo extension isn't loaded (e.g. just-installed).
 // ---------------------------------------------------------------------------
@@ -282,13 +282,13 @@ export function showTodos(
 	ui: InspectUI,
 ): void {
 	if (!state.exists) {
-		ui.notify("soly todos: no .soly/ directory in cwd", "error");
+		ui.notify("soly todos: no .agents/ directory in cwd", "error");
 		return;
 	}
 	const file = findTodosFile(state.solyDir);
 	if (!file) {
 		ui.notify(
-			"soly todos: no todo file found. Install the `pi-todo` extension or write `.soly/todos.json` manually.",
+			"soly todos: no todo file found. Install the `pi-todo` extension or write `.agents/todos.json` manually.",
 			"info",
 		);
 		return;
@@ -330,7 +330,7 @@ export function showIterations(
 	limitDefault: number = 10,
 ): void {
 	if (!state.exists) {
-		ui.notify("soly iterations: no .soly/ directory in cwd", "error");
+		ui.notify("soly iterations: no .agents/ directory in cwd", "error");
 		return;
 	}
 	const iterDir = path.join(state.solyDir, "iterations");
@@ -399,7 +399,7 @@ export function showDiffIterations(
 	ui: InspectUI,
 ): void {
 	if (!state.exists) {
-		ui.notify("soly diff iterations: no .soly/ directory in cwd", "error");
+		ui.notify("soly diff iterations: no .agents/ directory in cwd", "error");
 		return;
 	}
 	const iterDir = path.join(state.solyDir, "iterations");
@@ -457,7 +457,7 @@ export function showPhaseDelete(
 	ui: InspectUI,
 ): void {
 	if (!state.exists) {
-		ui.notify("soly phase delete: no .soly/ directory in cwd", "error");
+		ui.notify("soly phase delete: no .agents/ directory in cwd", "error");
 		return;
 	}
 	if (cmd.args.length < 1) {
@@ -493,7 +493,7 @@ export function showPhaseDelete(
 	out.push(`✓ Phase ${phaseNum} (${phase.name}) moved to .trash/`);
 	out.push(`  ${phase.dir}  →  ${dest}`);
 	out.push("");
-	out.push("To restore: `mv` it back to .soly/phases/");
+	out.push("To restore: `mv` it back to .agents/phases/");
 	out.push("To permanently delete: `rm -rf " + dest + "`");
 	ui.notify(out.join("\n"), "info");
 }

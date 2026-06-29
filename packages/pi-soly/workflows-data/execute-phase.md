@@ -3,12 +3,12 @@
 <purpose>Execute all plans in a phase, wave by wave. Per plan, follow `execute-plan.md` inline. Update STATE.md between plans. Generate a phase-level VERIFICATION.md at the end. You ARE the executor (`maxSubagentDepth: 1` is enforced — no sub-sub-agents). Checkpoint requests return a structured block; parent relays to user; next `soly execute <N>` resumes from `.execute-checkpoint.json`.</purpose>
 
 <path_discipline>
-**All soly-managed files live under `.soly/`.** Never write PLAN.md, CONTEXT.md, RESEARCH.md, SUMMARY.md, iteration files, or handoffs to the project root. All phase files go in `.soly/phases/<NN>-<slug>/`. Use absolute paths (or paths starting with `$SOLY_DIR`) — never bare relative names that could land in cwd.
+**All soly-managed files live under `.agents/`.** Never write PLAN.md, CONTEXT.md, RESEARCH.md, SUMMARY.md, iteration files, or handoffs to the project root. All phase files go in `.agents/phases/<NN>-<slug>/`. Use absolute paths (or paths starting with `$SOLY_DIR`) — never bare relative names that could land in cwd.
 
 The iteration context file (path given by the parent in the task prompt) is your single source of truth for intent, STATE, ROADMAP, and any existing phase artifacts. Read it FIRST, before any of your own `read` or `ls` calls.
 </path_discipline>
 
-<read_first>`.soly/STATE.md` (single source of truth for "where am I") · `.soly/ROADMAP.md` (phase goal + reqs) · `.soly/docs/` (INTENT, re-read before each plan) · the phase directory: list PLAN.md sorted, plus any SUMMARY.md / CONTEXT.md / RESEARCH.md / `.execute-checkpoint.json`. If `.soly/` missing → stop + error.</read_first>
+<read_first>`.agents/STATE.md` (single source of truth for "where am I") · `.agents/ROADMAP.md` (phase goal + reqs) · `.agents/docs/` (INTENT, re-read before each plan) · the phase directory: list PLAN.md sorted, plus any SUMMARY.md / CONTEXT.md / RESEARCH.md / `.execute-checkpoint.json`. If `.agents/` missing → stop + error.</read_first>
 
 <core_principle>
 **Orchestrate, don't re-specify.** Each PLAN.md is the contract; `execute-plan.md` is the per-plan protocol. This file adds: wave grouping, state transitions between plans, phase-level aggregation (VERIFICATION.md), safe resumption from partial state. The full per-plan steps live in `execute-plan.md` — read it once, then apply per plan.
@@ -28,7 +28,7 @@ PHASE="$1"
 # would fall back to the `write` tool with a relative path, polluting
 # the project root).
 PROJECT_ROOT="$(pwd)"
-SOLY_DIR="$PROJECT_ROOT/.soly"
+SOLY_DIR="$PROJECT_ROOT/.agents"
 PHASE_DIR=$(ls -d "$SOLY_DIR/phases/"*"-$PHASE-"* 2>/dev/null | head -1) || { echo "Phase $PHASE not found" >&2; exit 1; }
 PADDED_PHASE=$(printf "%02d" "$(echo "$PHASE" | grep -oE '^[0-9]+' | sed 's/^0*//')")
 PHASE_SLUG=$(basename "$PHASE_DIR")
@@ -190,7 +190,7 @@ phase: <N>  phase_slug: <slug>  status: pending  generated: <ISO>
 </process>
 
 <hard_rules>
-- No `.soly/rules/` edits. No subagents (`maxSubagentDepth: 1`).
+- No `.agents/rules/` edits. No subagents (`maxSubagentDepth: 1`).
 - No silent skip of partial-state plans — surface and stop.
 - No flipping VERIFICATION.md to `passed` yourself.
 - No silent architectural decisions — use `execute-plan.md`'s Rule 4 + checkpoint.

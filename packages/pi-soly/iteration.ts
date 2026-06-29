@@ -2,7 +2,7 @@
 // iteration.ts — Per-iteration context bundle (B2 of the soly design)
 // =============================================================================
 //
-// Writes a self-contained .md file under `.soly/iterations/` that bundles
+// Writes a self-contained .md file under `.agents/iterations/` that bundles
 // everything a worker needs for ONE iteration of a plan / task / phase:
 // intent docs, STATE.md, ROADMAP row, phase CONTEXT, phase RESEARCH, up
 // to 3 prior SUMMARYs, and the current PLAN.md (for exec).
@@ -18,8 +18,8 @@
 // the worker's task string itself, so the worker has the most critical
 // bits available even before opening the file.
 //
-// All worktree writes go to `.soly/iterations/` (under the project's
-// `.soly/`), never to the project root. See workflow markdown templates
+// All worktree writes go to `.agents/iterations/` (under the project's
+// `.agents/`), never to the project root. See workflow markdown templates
 // for the hard rule.
 // =============================================================================
 
@@ -160,7 +160,7 @@ export function findRecentSummaries(dir: string, n: number): string[] {
 
 /** Find a phase's `<NN>-CONTEXT.md` path (or null).
  *  Convention: filename starts with the padded phase number, not the full
- *  slug. e.g. `.soly/phases/05-auth/05-CONTEXT.md`, not `05-auth-CONTEXT.md`. */
+ *  slug. e.g. `.agents/phases/05-auth/05-CONTEXT.md`, not `05-auth-CONTEXT.md`. */
 export function findPhaseContextPath(phaseDir: string): string | null {
 	const slug = path.basename(phaseDir);
 	const numMatch = slug.match(/^(\d+)/);
@@ -192,7 +192,7 @@ export function findContinueHerePath(phaseDir: string): string | null {
 
 function loadIntentSummary(solyDir: string, maxTokens: number): string {
 	const docsRoot = path.join(solyDir, "docs");
-	if (!fs.existsSync(docsRoot)) return "_(no \`.soly/docs/\` directory — drop your 0-point docs there)_";
+	if (!fs.existsSync(docsRoot)) return "_(no \`.agents/docs/\` directory — drop your 0-point docs there)_";
 
 	const files: string[] = [];
 	for (const e of fs.readdirSync(docsRoot, { withFileTypes: true })) {
@@ -206,7 +206,7 @@ function loadIntentSummary(solyDir: string, maxTokens: number): string {
 			files.push(full);
 		}
 	}
-	if (files.length === 0) return "_(no \`.md\` files in \`.soly/docs/\`)_";
+	if (files.length === 0) return "_(no \`.md\` files in \`.agents/docs/\`)_";
 
 	files.sort();
 	const out: string[] = [];
@@ -223,7 +223,7 @@ function loadIntentSummary(solyDir: string, maxTokens: number): string {
 			.join(" ");
 		const chunk = `- \`${relPath}\`: ${preview.slice(0, 240)}\n`;
 		if (usedChars + chunk.length > maxChars) {
-			out.push(`\n_(truncated at ${maxTokens} tokens; full files in \`.soly/docs/\`)_\n`);
+			out.push(`\n_(truncated at ${maxTokens} tokens; full files in \`.agents/docs/\`)_\n`);
 			break;
 		}
 		out.push(chunk);
@@ -370,7 +370,7 @@ function loadAntiPatterns(phaseDir: string, maxTokens: number): string {
 
 function loadFeatureReadme(feature: string, solyDir: string, maxTokens: number): string {
 	const readme = path.join(solyDir, "features", feature, "README.md");
-	if (!fs.existsSync(readme)) return `_(no \`.soly/features/${feature}/README.md\`)_`;
+	if (!fs.existsSync(readme)) return `_(no \`.agents/features/${feature}/README.md\`)_`;
 	return truncate(readIfExists(readme) ?? "", maxTokens);
 }
 
@@ -524,10 +524,10 @@ export function buildIterationContent(input: IterationInput): string {
 	sections.push("");
 
 	// ---- Section 0: Intent ----
-	sections.push("## 0. Project Intent (from `.soly/docs/`)");
+	sections.push("## 0. Project Intent (from `.agents/docs/`)");
 	sections.push("");
 	sections.push(
-		`_Source: \`.soly/docs/\` (full files in \`.soly/docs/\`, see also \`soly_intent\` tool)_`,
+		`_Source: \`.agents/docs/\` (full files in \`.agents/docs/\`, see also \`soly_intent\` tool)_`,
 	);
 	sections.push("");
 	sections.push(loadIntentSummary(input.solyDir, SECTION_BUDGETS.intent));
@@ -548,7 +548,7 @@ export function buildIterationContent(input: IterationInput): string {
 
 	// ---- Section 1: State (only if there's a project state) ----
 	if (input.kind !== "pause") {
-		sections.push("## 1. Project State (`.soly/STATE.md` — Current Position + Decisions)");
+		sections.push("## 1. Project State (`.agents/STATE.md` — Current Position + Decisions)");
 		sections.push("");
 		sections.push(`_Source: \`${rel(projectRoot, path.join(input.solyDir, "STATE.md"))}\`_`);
 		sections.push("");

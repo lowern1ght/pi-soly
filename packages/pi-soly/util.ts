@@ -16,7 +16,7 @@ import type { ProgressInfo, RuleFrontmatter } from "./core.ts";
 // Frontmatter parsers
 // ============================================================================
 
-// Simple parser for .soly/rules/ frontmatter.
+// Simple parser for .agents/rules/ frontmatter.
 export function parseRuleFrontmatter(raw: string): {
   meta: RuleFrontmatter;
   body: string;
@@ -68,7 +68,7 @@ export function parseRuleFrontmatter(raw: string): {
   return { meta, body };
 }
 
-// YAML-ish parser for .soly/STATE.md. Handles 2-level nested objects (for `progress:`).
+// YAML-ish parser for .agents/STATE.md. Handles 2-level nested objects (for `progress:`).
 export function parseStateFrontmatter(yaml: string): {
   meta: Record<string, unknown>;
   progress: ProgressInfo;

@@ -27,9 +27,9 @@
 //   "cli"      — adds command/, flags/, shell-compat/ example rules
 //
 // Usage:
-//   /soly-init                  # interactive: pick template
-//   /soly-init minimal          # no prompts
-//   /soly-init web-app --yes
+//   /soly init                  # interactive: pick template
+//   /soly init minimal          # no prompts
+//   /soly init web-app --yes
 // =============================================================================
 
 import * as fs from "node:fs";
@@ -208,7 +208,7 @@ export async function initSolyProject(
 	// Preconditions
 	if (fs.existsSync(agentsDir) || fs.existsSync(path.join(cwd, ".soly"))) {
 		ui.notify(
-			`soly-init: project already initialized (found ${SOLY_DIRNAME}/ or .soly/). ` +
+			`soly init: project already initialized (found ${SOLY_DIRNAME}/ or .soly/). ` +
 				`Aborting to avoid overwriting.`,
 			"error",
 		);
@@ -223,7 +223,7 @@ export async function initSolyProject(
 			["minimal", "web-app", "library", "cli"],
 		);
 		if (!pick) {
-			ui.notify("soly-init: cancelled", "info");
+			ui.notify("soly init: cancelled", "info");
 			return { created: false, template: null, projectName };
 		}
 		template = pick as InitTemplate;
@@ -237,7 +237,7 @@ export async function initSolyProject(
 			`Create .agents/ structure in:\n  ${cwd}\n\nProject name: ${projectName}`,
 		);
 		if (!ok) {
-			ui.notify("soly-init: cancelled", "info");
+			ui.notify("soly init: cancelled", "info");
 			return { created: false, template: null, projectName };
 		}
 	}
@@ -289,7 +289,7 @@ export async function initSolyProject(
 		created.push(`.agents/${extra.file}`);
 	}
 	ui.notify(
-		`soly-init: done (${template}). Created:\n  - ${created.join("\n  - ")}\n\n` +
+		`soly init: done (${template}). Created:\n  - ${created.join("\n  - ")}\n\n` +
 			`Next:\n  1. Edit \`.agents/docs/vision.md\`\n  2. \`/plan 1\` to start the first phase`,
 		"info",
 	);

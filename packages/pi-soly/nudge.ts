@@ -82,9 +82,42 @@ export function classifyTaskHeuristics(prompt: string): TaskHeuristics {
 	return { nonTrivial, researchHeavy, mentions, suggestedAngles };
 }
 
+// ---------------------------------------------------------------------------
+// Confirm-before-coding gate
+// ---------------------------------------------------------------------------
+
+/** How hard soly pushes the LLM to clarify before writing code.
+ *   - "scope" — batch the substantive decisions (placement, pattern, scope,
+ *               interface) via ask_pro, then wait. Strongest.
+ *   - "ask"   — lighter: one "ready to implement, or discuss?" question.
+ *   - "off"   — no gate. */
+export type ConfirmLevel = "off" | "ask" | "scope";
+
+/** Normalize the config value (boolean back-compat) to a confirm level.
+ *  `true` → "scope" (strongest), `false` / absent → "off". */
+export function confirmLevelOf(v: boolean | ConfirmLevel | undefined): ConfirmLevel {
+	if (v === true) return "scope";
+	if (v === "ask" || v === "scope") return v;
+	return "off";
+}
+
+// "scope": pull the decisions only the user can make BEFORE coding, as one
+// batched ask_pro call — placement, pattern, scope, interface — instead of
+// guessing and editing files on assumptions.
+const SCOPE_DIRECTIVE = `**Scope it with me before you code.** For non-trivial work, do NOT start writing or editing files on assumptions about decisions only I can make. First surface them as a single \`ask_pro\` batch (2–5 questions in one call), covering the dimensions that actually matter for this task — typically:
+   - **Placement** — where should this live? (which file / module / layer; extend an existing unit or add a new one)
+   - **Architecture / pattern** — which approach? (follow an existing pattern in the codebase vs introduce a new one; reuse a dependency vs hand-roll)
+   - **Scope** — what's in vs out for this change? (defer adjacent work to its own task)
+   - **Interface** — the shape callers see (API / CLI / signature / return), when it's a genuine fork
+   - **Data / state** — schema, storage, or state-shape decisions, when relevant
+   Give each question 2–4 concrete options with a ⭐ recommended default + one-line rationale, and add \`allowOther\` so I can steer freely. Wait for my answers before touching files. Skip only for trivial fixes (typo / rename / one-liner) or when I've already decided ("just do it", "go", or a follow-up turn in an already-scoped task). Prefer 2–3 sharp questions over a long list — ask what changes the result, not ceremony.`;
+
+// "ask": lighter — a single "ready, or discuss first?" confirmation.
+const ASK_DIRECTIVE = `**Confirm before coding.** Don't jump straight into writing/editing code. First state your understanding and intended approach in 1–3 sentences and list anything still open, then ask via the \`ask_pro\` picker whether to proceed — one question with options like "Go — implement now", "Discuss / refine the approach", "Adjust scope first" (add an \`allowOther\` for a free-text steer). Wait for the choice before touching files. Skip only for trivial fixes, or when the user already said to proceed ("just do it", "go", "yes").`;
+
 export function buildNudgeSection(
 	heuristics: TaskHeuristics,
-	opts: { hasProject?: boolean; confirmBeforeCode?: boolean } = {},
+	opts: { hasProject?: boolean; confirmBeforeCode?: boolean | ConfirmLevel } = {},
 ): string {
 	// Always-on rules (cheap to add, high signal):
 	//   - Don't dive in on non-trivial tasks without a brief check
@@ -112,14 +145,16 @@ export function buildNudgeSection(
 	// model toward the workflow lifecycle instead of ad-hoc edits.
 	const workflowPoint =
 		opts.hasProject && heuristics.nonTrivial
-			? `\n\n4. **Route project work through the soly workflow.** For phase/task work in \`.soly/\`, prefer the lifecycle over ad-hoc edits: \`soly discuss <N>\` (scope) → \`soly plan <N>\` (write tasks) → \`soly execute <N>\` (do them) → \`soly verify\` (review). Run \`soly status\` to see where you are. Skip only for a genuine one-off.`
+			? `\n\n4. **Route project work through the soly workflow.** For phase/task work in \`.agents/\`, prefer the lifecycle over ad-hoc edits: \`soly discuss <N>\` (scope) → \`soly plan <N>\` (write tasks) → \`soly execute <N>\` (do them) → \`soly verify\` (review). Run \`soly status\` to see where you are. Skip only for a genuine one-off.`
 			: "";
 
-	// Confirm-before-coding gate: for non-trivial implementation, don't start
-	// editing files until the user has greenlit the approach.
+	// Confirm-before-coding gate: for non-trivial implementation, pull the
+	// open decisions out of the user before editing files. Strength is config-
+	// driven ("scope" = batch the substantive questions; "ask" = one go/discuss).
+	const confirmLevel = confirmLevelOf(opts.confirmBeforeCode);
 	const confirmBlock =
-		opts.confirmBeforeCode && heuristics.nonTrivial
-			? `\n\n   **Confirm before coding.** Don't jump straight into writing/editing code. First state your understanding and intended approach in 1–3 sentences and list anything still open, then ask via the \`ask_pro\` picker whether to proceed — one question with options like "Go — implement now", "Discuss / refine the approach", "Adjust scope first" (add an \`allowOther\` for a free-text steer). Wait for the choice before touching files. Skip only for trivial fixes, or when the user already said to proceed ("just do it", "go", "yes").`
+		confirmLevel !== "off" && heuristics.nonTrivial
+			? `\n\n   ${confirmLevel === "scope" ? SCOPE_DIRECTIVE : ASK_DIRECTIVE}`
 			: "";
 
 	return `

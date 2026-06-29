@@ -57,7 +57,7 @@ function fakeState(solyDir: string): SolyState {
 
 describe("buildDiscussTransform — pi-ask integration", () => {
 	const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "soly-int-"));
-	const solyDir = path.join(tmpRoot, ".soly");
+	const solyDir = path.join(tmpRoot, ".agents");
 	const state = fakeState(solyDir);
 
 	test("when hasAskPro=true, prompt mentions ask_pro (PREFERRED)", () => {

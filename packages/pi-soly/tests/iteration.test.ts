@@ -29,7 +29,7 @@ import {
 } from "../iteration.js";
 
 // ----------------------------------------------------------------------------
-// Temp dir setup — populated with a realistic .soly/ tree
+// Temp dir setup — populated with a realistic .agents/ tree
 // ----------------------------------------------------------------------------
 
 let tmpRoot: string;
@@ -39,7 +39,7 @@ let projectRoot: string;
 beforeAll(() => {
 	tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "soly-iter-test-"));
 	projectRoot = tmpRoot;
-	solyDir = path.join(tmpRoot, ".soly");
+	solyDir = path.join(tmpRoot, ".agents");
 	fs.mkdirSync(path.join(solyDir, "docs"), { recursive: true });
 	fs.mkdirSync(path.join(solyDir, "phases", "05-auth"), { recursive: true });
 	fs.mkdirSync(path.join(solyDir, "features", "auth", "tasks", "auth-be-login-a3f9"), {
@@ -418,8 +418,8 @@ describe("buildIterationContent (exec phase, plan 1)", () => {
 	test("sources are listed with relative paths", () => {
 		expect(content).toContain("_Source:");
 		// On Windows, path.relative uses backslashes — match either separator.
-		expect(content).toMatch(/\.soly[/\\]STATE\.md/);
-		expect(content).toMatch(/\.soly[/\\]ROADMAP\.md/);
+		expect(content).toMatch(/\.agents[/\\]STATE\.md/);
+		expect(content).toMatch(/\.agents[/\\]ROADMAP\.md/);
 	});
 });
 
@@ -524,7 +524,7 @@ describe("iterationFilePath / writeIterationContext", () => {
 			planNumber: 1,
 		});
 		expect(fs.existsSync(out.filePath)).toBe(true);
-		expect(out.filePath).toContain(path.join(".soly", "iterations"));
+		expect(out.filePath).toContain(path.join(".agents", "iterations"));
 		expect(out.tokens).toBeGreaterThan(100);
 		const written = fs.readFileSync(out.filePath, "utf-8");
 		expect(written).toContain("kind: exec");
@@ -538,6 +538,6 @@ describe("iterationFilePath / writeIterationContext", () => {
 			kind: "plan",
 			phaseNumber: 5,
 		});
-		expect(out.relPath).toMatch(/^\.soly[\\/]iterations[\\/]/);
+		expect(out.relPath).toMatch(/^\.agents[\\/]iterations[\\/]/);
 	});
 });

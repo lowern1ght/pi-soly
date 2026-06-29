@@ -36,7 +36,7 @@ export function showStatus(
 	config?: SolyConfig,
 ): void {
 	if (!state.exists) {
-		ui.notify("soly: no .soly/ directory in cwd", "error");
+		ui.notify("soly: no .agents/ directory in cwd", "error");
 		return;
 	}
 	const maxPhases = config?.display.maxPhasesInStatus ?? 20;
@@ -122,7 +122,7 @@ const DECISIONS_TABLE_ROW = /^\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*
 
 export function showLog(cmd: SolyCommand, state: SolyState, ui: QuickUI): void {
 	if (!state.exists) {
-		ui.notify("soly log: no .soly/ directory in cwd", "error");
+		ui.notify("soly log: no .agents/ directory in cwd", "error");
 		return;
 	}
 
@@ -214,7 +214,7 @@ export async function showDiff(
 	state: SolyState,
 	ui: QuickUI,
 ): Promise<void> {
-	// Graceful without .soly/: use cwd as project root, skip the .soly/ filter
+	// Graceful without .agents/: use cwd as project root, skip the .agents/ filter
 	const projectRoot = state.solyDir ? path.dirname(state.solyDir) : process.cwd();
 	const solyDir = state.solyDir; // may be empty when run outside a soly project
 
@@ -222,7 +222,7 @@ export async function showDiff(
 	const status = await safeExec("git", ["status", "--short", "--branch"], projectRoot);
 	// 2. git diff (tracked changes, no untracked)
 	const diff = await safeExec("git", ["diff", "--stat"], projectRoot);
-	// 3. uncommitted .soly/ file changes (since last commit)
+	// 3. uncommitted .agents/ file changes (since last commit)
 	const solyChanges = await safeExec(
 		"git",
 		["status", "--short", "--", solyDir],
@@ -230,7 +230,7 @@ export async function showDiff(
 	);
 
 	const out: string[] = [];
-	out.push(state.exists ? "=== soly diff ===" : "=== git diff (no .soly/ in cwd) ===");
+	out.push(state.exists ? "=== soly diff ===" : "=== git diff (no .agents/ in cwd) ===");
 	out.push("");
 
 	if (status.code !== 0) {
@@ -246,10 +246,10 @@ export async function showDiff(
 		}
 		if (solyDir) {
 			if (solyChanges.stdout.trim()) {
-				out.push("uncommitted .soly/ changes:");
+				out.push("uncommitted .agents/ changes:");
 				out.push(solyChanges.stdout.trim());
 			} else {
-				out.push("uncommitted .soly/ changes: (none)");
+				out.push("uncommitted .agents/ changes: (none)");
 			}
 		}
 	}

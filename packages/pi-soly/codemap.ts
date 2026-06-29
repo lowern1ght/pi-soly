@@ -8,7 +8,7 @@
 // live without having to `ls` its way around.
 //
 // Heuristics:
-//   - skip noise: node_modules, .git, dist, build, .soly, .next, out, target,
+//   - skip noise: node_modules, .git, dist, build, .agents, .next, out, target,
 //     coverage, .venv, __pycache__
 //   - depth: walk 2 levels deep by default (cwd → dirs → subdirs)
 //   - key files: package.json, tsconfig.json, README.md, Cargo.toml, go.mod,

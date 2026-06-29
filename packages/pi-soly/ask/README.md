@@ -18,7 +18,9 @@ showing a **tabbed, multi-question picker** in pi's TUI.
   typed-answer question; it's optional (blank is allowed)
 - **Option previews** — per-option `preview` shows a side panel while focused;
   fenced ```code blocks in it are syntax-highlighted
-- **"Other…"** — per-question `allowOther: true` adds a free-text custom choice
+- **"Other…"** — every options question automatically gets a free-text custom
+  choice (the `ask_pro` tool forces `allowOther: true`), so the user can always
+  answer in their own words; `freeText` questions are already free-form
 - **Notes & skip** — `n` attaches a free-text note to any answer; `s` skips a
   question (returned in `skipped`)
 - **Cancelled detection** — `Esc` resolves `{cancelled: true}`

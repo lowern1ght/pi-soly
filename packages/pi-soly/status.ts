@@ -56,8 +56,8 @@ export function formatStatus(
 	lines.push("  Project state");
 	lines.push("  ─────────────");
 	if (!state.exists) {
-		lines.push("  no .agents/ or .soly/ found in cwd");
-		lines.push("  → run /soly-init to scaffold");
+		lines.push("  no .agents/ found in cwd");
+		lines.push("  → run /soly init to scaffold");
 	} else {
 		lines.push(`  milestone:  ${state.milestone ?? "—"}`);
 		lines.push(`  current:    ${state.currentPosition ?? "ready"}`);

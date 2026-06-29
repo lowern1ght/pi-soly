@@ -10,7 +10,7 @@
 //   soly adds   plans · state · rules · workflows · ask_pro picker
 //   project     v1.12 · plan 2/5 — auth refactor · ≡ 4 rules · 2 docs
 //   next        → /execute
-//   start here  /soly-init · /plan · /soly · /why · /rules stats
+//   start here  /soly init · /plan · /soly · /why · /rules stats
 //   recent      1.11.2  …  ·  1.10.0  …
 //
 // pi is explicitly credited (engine) with soly as the framework on top. The
@@ -54,7 +54,7 @@ export const SOLY_ART: readonly string[] = [
 const TAGLINE = "the project framework · running on pi, the coding engine";
 const SOLY_ADDS = "plans · state · rules · workflows · ask_pro picker";
 const START_HERE: ReadonlyArray<[string, string]> = [
-	["/soly-init", "scaffold .agents/ in a new project"],
+	["/soly init", "scaffold .agents/ in a new project"],
 	["/plan", "plan the current phase"],
 	["/soly", "state picker  ·  /why  ·  /rules stats"],
 ];
@@ -144,7 +144,7 @@ function bannerLines(opts: WelcomeOpts): string[] {
 
 /** The "project" row value, depending on whether a soly project exists. */
 function projectValue(input: WelcomeInput, styler: ChromeStyler): string {
-	if (!input.hasProject) return styler.dim("no soly project here  →  /soly-init to scaffold");
+	if (!input.hasProject) return styler.dim("no soly project here  →  /soly init to scaffold");
 	const bits = [styler.fg("accent", `v${input.version}`)];
 	if (input.phaseLabel) bits.push(input.phaseLabel);
 	if (input.rulesActive > 0) bits.push(`≡ ${input.rulesActive}`);

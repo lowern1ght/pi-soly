@@ -24,7 +24,6 @@ import { showStatus, showLog, showDiff } from "./quick.ts";
 import { showDoctor, showIterations, showDiffIterations, showPhaseDelete, showTodos } from "./inspect.ts";
 import { buildPlanTransform, buildDiscussTransform } from "./planning.ts";
 import { createVerifyLoop, type VerifyState } from "./verify.ts";
-import { buildMigrateTransform } from "./migrate.ts";
 import type { ContextManager } from "../context-manager.ts";
 import type { SolyState } from "../core.js";
 import type { SolyConfig } from "../config.js";
@@ -145,12 +144,6 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 			return { action: "transform", text: result.transformedText };
 		}
 
-		if (cmd.verb === "migrate") {
-			const result = buildMigrateTransform(state);
-			if (!result.handled || !result.transformedText) return;
-			return { action: "transform", text: result.transformedText };
-		}
-
 		if (cmd.verb === "verify") {
 			const sub = (cmd.args[0] ?? "").toLowerCase();
 			if (sub === "stop" || sub === "off") {
@@ -179,14 +172,11 @@ Lifecycle:
 Quick info (no LLM round-trip):
   status              — position + progress + phases
   log [N]             — last N decisions from STATE.md
-  diff                — git status + uncommitted .soly/ changes
+  diff                — git status + uncommitted .agents/ changes
   doctor              — health check (missing files, broken refs, stale iterations)
   iterations [N]      — recent iteration bundles
   todos               — pi-todo live list
   phase delete <N>    — soft-delete a phase
-
-Maintenance:
-  migrate             — convert a legacy layout (NN-PLAN files / features/) to phases/<N>/tasks/
 
 State inspection lives on the slash form — \`/soly <sub>\`:
   position · state · plan · roadmap · progress · phases · tasks · task <id> ·
@@ -249,7 +239,7 @@ State inspection lives on the slash form — \`/soly <sub>\`:
 				return {
 					action: "transform",
 					text: `soly phase — usage:
-  soly phase delete <N>   — soft-delete phase N (move to .soly/phases/.trash/)
+  soly phase delete <N>   — soft-delete phase N (move to .agents/phases/.trash/)
   soly phase list        — list all phases (same as /soly phases)
   soly phase <N>         — alias for "soly plan <N>" (route through planner)`,
 				};
@@ -265,8 +255,8 @@ State inspection lives on the slash form — \`/soly <sub>\`:
 		pendingCompact = false;
 		ctx.compact({
 			customInstructions:
-				"Session was paused via `soly compact`. Handoff files are in .soly/HANDOFF.json " +
-				"and .soly/.continue-here.md. Preserve milestone/phase/plan position and key " +
+				"Session was paused via `soly compact`. Handoff files are in .agents/HANDOFF.json " +
+				"and .agents/.continue-here.md. Preserve milestone/phase/plan position and key " +
 				"decisions in the summary. Drop implementation-detail noise.",
 			onComplete: () => {
 				ctx.ui.notify("soly: session compacted. Use `soly resume` to pick up.", "info");

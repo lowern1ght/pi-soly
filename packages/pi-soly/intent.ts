@@ -2,21 +2,21 @@
 // intent.ts — Project intent loader (the "0 point" of every soly project)
 // =============================================================================
 //
-// `.soly/docs/` is the zero-point of the project: documents written BEFORE
+// `.agents/docs/` is the zero-point of the project: documents written BEFORE
 // any soly plans, research, or code. It holds the user's vision, business
 // context, and architectural intent. Other soly artifacts (STATE, PLANS,
 // RESEARCH) flow FROM this input.
 //
 // Supported files: `.md` (full text) and `.html` (parsed for title + preview).
-// Nested directories are supported (e.g. `.soly/docs/api/auth.md`).
+// Nested directories are supported (e.g. `.agents/docs/api/auth.md`).
 //
-// Convention: any document in `.soly/docs/` is loaded into the system
+// Convention: any document in `.agents/docs/` is loaded into the system
 // prompt as "project intent". This is separate from:
-//   - rules (`.soly/rules/`) — how to behave
-//   - state (`.soly/STATE.md`, ROADMAP.md) — where we are
+//   - rules (`.agents/rules/`) — how to behave
+//   - state (`.agents/STATE.md`, ROADMAP.md) — where we are
 //   - planning (PLAN.md, CONTEXT.md) — what to do next
 //
-// Optional: `.soly/phases/<N>/docs/` is also scanned if the directory exists
+// Optional: `.agents/phases/<N>/docs/` is also scanned if the directory exists
 // (for backward compat / phase-specific intent). Not required.
 // =============================================================================
 
@@ -154,7 +154,7 @@ export function loadIntentDocs(cwd: string, currentPhaseNumber?: number): Intent
 	// Optional: phase-specific docs (only if current phase is known)
 	if (currentPhaseNumber != null) {
 		// We don't know the slug here without re-walking phases; scan any
-		// directory in .soly/phases/ whose name starts with the phase number.
+		// directory in .agents/phases/ whose name starts with the phase number.
 		// Skip if no phases dir exists.
 		const phasesRoot = path.join(solyDirFor(cwd), "phases");
 		if (fs.existsSync(phasesRoot)) {
@@ -196,7 +196,7 @@ export function buildIntentSection(intent: IntentDoc[]): IntentSection {
 		return { hasContent: false, section: "" };
 	}
 
-	const lines: string[] = ["", "## project intent (from .soly/docs/)", ""];
+	const lines: string[] = ["", "## project intent (from .agents/docs/)", ""];
 	lines.push(
 		"These documents are the **0 point** of this project — the user's vision, business context, and design intent, written BEFORE any soly plans. Read them first when planning, discussing, or executing. If implementation diverges from intent, fix one or the other — don't let drift compound.",
 	);
@@ -403,7 +403,7 @@ export function formatIntentStats(stats: IntentStats): string {
     lines.push(``);
   }
   if (stats.totalDocs === 0) {
-    lines.push(`No intent docs found in .soly/docs/ or ~/.soly/docs/`);
+    lines.push(`No intent docs found in .agents/docs/ or ~/.agents/docs/`);
   }
   return lines.join("\n");
 }

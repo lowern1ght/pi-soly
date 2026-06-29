@@ -42,7 +42,7 @@ const DOC_GLOBS_IGNORE = [
 	"venv",
 ];
 
-// .soly/ IS indexed, but intent docs in .soly/docs/ and .soly/phases/<N>/docs/
+// .agents/ IS indexed, but intent docs in .agents/docs/ and .agents/phases/<N>/docs/
 // are tagged with higher priority in search results (see buildDocIndex).
 
 const INTENT_DOC_EXTS = [".md", ".html", ".htm"];

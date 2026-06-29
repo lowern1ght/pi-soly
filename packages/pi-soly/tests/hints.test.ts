@@ -22,7 +22,7 @@ function phase(overrides: Partial<PhaseInfo>): PhaseInfo {
 
 function state(over: Partial<SolyState>): SolyState {
 	return {
-		solyDir: "/tmp/.soly",
+		solyDir: "/tmp/.agents",
 		exists: true,
 		milestone: "v1.0",
 		milestoneName: "",
@@ -42,7 +42,7 @@ function state(over: Partial<SolyState>): SolyState {
 }
 
 describe("buildNextHint", () => {
-	test("no .soly/ → null", () => {
+	test("no .agents/ → null", () => {
 		expect(buildNextHint(state({ exists: false }))).toBeNull();
 	});
 

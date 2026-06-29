@@ -71,7 +71,7 @@ export default function piAskExtension(pi: ExtensionAPI) {
 		name: "ask_pro",
 		label: "soly · ask_pro",
 		description:
-			"Ask the user one or more questions at once via a tabbed picker (≤6 questions); returns all answers in one call. USE WHEN: (a) you have 2+ related questions to gather in one batch, OR (b) the choice is local — a sub-question inside an already-decided theme, or a simple label-vs-label «или/или» that doesn't justify a full-screen deck. Each option is a short label + 1-2 sentence description (no per-option code, no pros/cons). For a global architectural fork with real counterweight between options, use `decision_deck` instead. Per question: single-select (default), `multiSelect` (+ `minSelect`/`maxSelect`), `allowOther` (free-text 'Other…'), or `freeText` (typed answer, no options). Per option: `recommended` (⭐) and `preview` (side panel, fenced code highlighted). User can skip (`s`) or note (`n`). Prefer this over one-by-one questions.",
+			"Ask the user one or more questions at once via a tabbed picker (≤6 questions); returns all answers in one call. USE WHEN: (a) you have 2+ related questions to gather in one batch, OR (b) the choice is local — a sub-question inside an already-decided theme, or a simple label-vs-label «или/или» that doesn't justify a full-screen deck. Each option is a short label + 1-2 sentence description (no per-option code, no pros/cons). For a global architectural fork with real counterweight between options, use `decision_deck` instead. Per question: single-select (default), `multiSelect` (+ `minSelect`/`maxSelect`), or `freeText` (typed answer, no options). **Every options question automatically includes a free-text 'Other…' choice — the user can always answer in their own words, so never add a manual «other/custom» option yourself.** Per option: `recommended` (⭐) and `preview` (side panel, fenced code highlighted). User can skip (`s`) or note (`n`). Prefer this over one-by-one questions.",
 		parameters: Type.Object({
 			questions: Type.Array(
 				Type.Object({
@@ -99,7 +99,10 @@ export default function piAskExtension(pi: ExtensionAPI) {
 						Type.Boolean({ description: "Allow multiple picks (default single-select)." }),
 					),
 					allowOther: Type.Optional(
-						Type.Boolean({ description: "Add a free-text 'Other…' choice." }),
+						Type.Boolean({
+							description:
+								"Ignored — a free-text 'Other…' choice is always added to every options question automatically. Kept for backward compatibility.",
+						}),
 					),
 					minSelect: Type.Optional(
 						Type.Number({ description: "Multi-select: min picks (default 1)." }),
@@ -150,6 +153,17 @@ export default function piAskExtension(pi: ExtensionAPI) {
 					details: { error: "too_many_questions", count: params.questions.length },
 				};
 			}
+
+			// Always offer a free-text "Other…" on every options question, so the
+			// user can answer in their own words even when no option fits. This is
+			// enforced here (not left to the model) so the escape hatch is
+			// guaranteed on every question. `freeText` questions are already
+			// free-form, so leave them untouched. Done before validation so the
+			// synthetic "Other…" slot is counted in multi-select bounds.
+			for (const q of params.questions) {
+				if (q && !q.freeText) q.allowOther = true;
+			}
+
 			for (let i = 0; i < params.questions.length; i++) {
 				const q = params.questions[i];
 				if (!q) continue;

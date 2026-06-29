@@ -1,6 +1,6 @@
 ---
 name: soly-framework
-description: Use when the user invokes soly workflow commands (`/plan`, `/execute`, `/discuss`, `/inspect`, `/pause`, `/resume`, `/quick`, `/soly-init`, `/soly-migrate`, `/soly-status`, `/soly-log`) or asks how to use soly in pi-coding-agent — phases, plans, tasks, intent docs, ROADMAP/STATE state machine, rules, close-out order, and the available soly_* tools. Loaded as the complete reference for managing a soly project end-to-end (init → plan → execute → summary → state update).
+description: Use when the user invokes soly workflow commands (`/plan`, `/execute`, `/discuss`, `/inspect`, `/pause`, `/resume`, `/quick`, `/soly init`, `/soly-status`, `/soly-log`) or asks how to use soly in pi-coding-agent — phases, plans, tasks, intent docs, ROADMAP/STATE state machine, rules, close-out order, and the available soly_* tools. Loaded as the complete reference for managing a soly project end-to-end (init → plan → execute → summary → state update).
 priority: high
 ---
 
@@ -12,9 +12,9 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 
 **Mental model — three layers, always in system prompt, in this order:**
 
-1. **Project intent** (`.soly/docs/`) — the 0-point. What the user wants the app to be. Written BEFORE plans, by humans.
-2. **Project state** (`.soly/STATE.md`, `ROADMAP.md`) — where we are, current phase, recent decisions.
-3. **Project rules** (`.soly/rules/`, `~/.soly/rules/`) — how to behave in this project.
+1. **Project intent** (`.agents/docs/`) — the 0-point. What the user wants the app to be. Written BEFORE plans, by humans.
+2. **Project state** (`.agents/STATE.md`, `ROADMAP.md`) — where we are, current phase, recent decisions.
+3. **Project rules** (`.agents/rules/`, `~/.agents/rules/`) — how to behave in this project.
 
 **Workflow model — phases and tasks (unified):**
 
@@ -22,7 +22,7 @@ The **soly** extension adds project-management workflow to [pi-coding-agent](htt
 - A **task** is the unit of execution: its own dir with `PLAN.md` (frontmatter: `id`, `kind`, `status`, `depends-on`, optional `feature`) and, when done, `SUMMARY.md`. Tasks run in dependency order.
 - `soly plan <N>` writes a phase's tasks · `soly execute <N>` runs its ready tasks (deps met) in order · `soly verify` reviews.
 - **Close-out** (per task): production commits → task `SUMMARY.md` → flip `status: done` → `STATE.md` / ROADMAP check.
-- Legacy projects (standalone `NN-MM-PLAN.md` files, or a `features/` dir) still load and run; `soly migrate` converts them to this layout.
+- Legacy projects (standalone `NN-MM-PLAN.md` files, or a `features/` dir) still load and run alongside the unified `phases/<N>/tasks/` layout.
 
 ## Commands
 
@@ -43,8 +43,7 @@ Workflow verbs are **plain text** — type `soly <verb>` (NOT a slash command):
 | Command | What it does |
 |---|---|
 | `/rules` · `/docs` | Open the rules / intent-docs **modal** (fuzzy list + preview; `e/d/r` enable·disable·reload on rules). A subcommand (`/rules stats`, `/docs stats`, …) prints to chat instead of opening the modal. |
-| `/soly [<sub>]` | Project-state inspection (position, state, plan, roadmap, phases, tasks, …); bare `/soly` opens the picker |
-| `/soly-init` · `/soly-migrate` | Scaffold a project · migrate `.soly/` → `.agents/` |
+| `/soly [<sub>]` | Project-state inspection (position, state, plan, roadmap, phases, tasks, …); bare `/soly` opens the picker. `/soly init` scaffolds a new project (template: minimal/web-app/library/cli) |
 | `/why` | What rules + state grounded the last turn |
 | `/rulewizard` | Rule vs .editorconfig vs linter guide |
 
@@ -66,44 +65,37 @@ were removed in 1.4.0.
 <project-root>/
 ├── AGENTS.md                      # vendor-neutral agent context (loaded by pi)
 ├── agents.md                      # same as AGENTS.md, lowercase accepted
-├── .soly/                         # soly state (phases, plans, summaries)
+├── .agents/                       # the one home: soly state + vendor-neutral agent config
+│   ├── soly.json                  # soly config (per-project; ~/.agents/soly.json = global)
 │   ├── ROADMAP.md                 # phase table
 │   ├── STATE.md                   # current position + decisions log
 │   ├── docs/                      # 0-point intent docs (human-written, locked)
 │   │   ├── vision.md
 │   │   └── architecture.md
-│   ├── rules/                     # soly project rules (version-controlled)
+│   ├── rules/                     # project rules (version-controlled)
 │   │   ├── code-style.md
 │   │   └── testing.md
 │   ├── phases/
 │   │   ├── 01-foundation/
-│   │   │   ├── 01-CONTEXT.md     # domain + decisions for phase 1
-│   │   │   ├── 01-RESEARCH.md    # what we looked up
-│   │   │   └── tasks/            # unified model: one dir per task
+│   │   │   ├── 01-CONTEXT.md       # domain + decisions for phase 1
+│   │   │   ├── 01-RESEARCH.md      # what we looked up
+│   │   │   └── tasks/              # unified model: one dir per task
 │   │   │       ├── auth-login-a3f9/
-│   │   │       │   ├── PLAN.md   # frontmatter: id, kind, status, depends-on
+│   │   │       │   ├── PLAN.md     # frontmatter: id, kind, status, depends-on
 │   │   │       │   └── SUMMARY.md
 │   │   │       └── auth-token-b1c2/
 │   │   │           └── PLAN.md
 │   │   └── 02-feature-x/
 │   │       └── ...
+│   ├── skills/                    # project-scoped skills (pi auto-discovers)
+│   │   └── my-skill/SKILL.md
+│   ├── agents/                    # project-specific agent definitions
 │   ├── iterations/                # per-execution context bundles (auto)
 │   ├── HANDOFF.json               # pause snapshot
 │   └── .continue-here.md          # pause resume marker
-├── .agents/                       # vendor-neutral agent config (per project)
-│   ├── rules/                     # agent rules (loaded with priority 3, after .soly/rules/)
-│   ├── skills/                    # project-scoped skills (pi auto-discovers)
-│   │   └── my-skill/
-│   │       └── SKILL.md
-│   ├── docs/                      # agent-specific docs (intent-style)
-│   └── agents/                    # project-specific agent definitions
 ```
 
-**Two parallel conventions:** `.soly/` is soly-specific state. `.agents/` is vendor-neutral agent config. The two coexist:
-
-- **Use `.soly/`** for soly workflow artifacts (PLAN.md, SUMMARY.md, etc.)
-- **Use `.agents/`** for things other AI tools should also see (rules, skills, agents)
-- **Use `AGENTS.md`** for top-level project-wide agent conventions
+**One home:** everything lives under `.agents/` — soly's workflow artifacts (PLAN.md, SUMMARY.md, phases, STATE), project rules/docs, and the vendor-neutral config (skills, agents) other AI tools also read. Global rules/config live under `~/.agents/`. `AGENTS.md` at the project root carries top-level agent conventions. (Projects from before the rename used `.soly/`; soly no longer reads it — run `mv .soly .agents`.)
 
 ## Frontmatter conventions
 
@@ -122,9 +114,9 @@ parallelizable: true         # can run alongside siblings
 # Add OAuth flow
 
 ## read_first
-- .soly/STATE.md
-- .soly/ROADMAP.md
-- .soly/rules/code-style.md
+- .agents/STATE.md
+- .agents/ROADMAP.md
+- .agents/rules/code-style.md
 
 ## tasks
 - [ ] **type: implement**, description: Add token refresh logic
@@ -143,7 +135,7 @@ parallelizable: true         # can run alongside siblings
 - bun run lint
 
 ## risks
-- Token storage depends on the encryption scheme (see .soly/docs/architecture.md)
+- Token storage depends on the encryption scheme (see .agents/docs/architecture.md)
 ```
 
 ### SUMMARY.md frontmatter
@@ -191,15 +183,15 @@ priority: 50                   # higher wins on conflict (default: 0)
 
 ## Path discipline (NON-NEGOTIABLE)
 
-**All soly-managed files live under `.soly/`.** Source code lives in the project's normal source tree.
+**All soly-managed files live under `.agents/`.** Source code lives in the project's normal source tree.
 
 | File kind | Goes to |
 |---|---|
-| `PLAN.md`, `SUMMARY.md`, `CONTEXT.md`, `RESEARCH.md` | `.soly/phases/<NN>-<slug>/` |
-| Intent docs (0-point) | `.soly/docs/` |
-| Rules | `.soly/rules/` (project) or `~/.soly/rules/` (user) |
-| Handoff | `.soly/HANDOFF.json`, `.soly/.continue-here.md` |
-| Iteration context | `.soly/iterations/` (auto-generated) |
+| `PLAN.md`, `SUMMARY.md`, `CONTEXT.md`, `RESEARCH.md` | `.agents/phases/<NN>-<slug>/` |
+| Intent docs (0-point) | `.agents/docs/` |
+| Rules | `.agents/rules/` (project) or `~/.agents/rules/` (user) |
+| Handoff | `.agents/HANDOFF.json`, `.agents/.continue-here.md` |
+| Iteration context | `.agents/iterations/` (auto-generated) |
 | Production code, tests | project's normal `src/`, `tests/`, `app/`, etc. |
 
 Use absolute paths (or paths starting with `$SOLY_DIR`) when calling tools. Never bare relative names that could land in cwd.
@@ -243,14 +235,14 @@ The main system prompt only points at these; the detail is here.
 
 **`decision_deck`** — full-screen cards (one per option) with a highlighted code snippet + pros/cons. Reach for it when the choice hinges on the concrete code/structure of each option, not a label, and there are 2–6 alternatives worth comparing side-by-side. Prefer `ask_pro` for short-label choices; don't use it for trivial/yes-no.
 
-**`html_artifact`** — render HTML served from a per-session browser gallery SPA (sidebar + iframe + filter + live SSE updates, one stable localhost URL). Use when a visual rendered result beats terminal text: example galleries, before/after or side-by-side comparisons, tables, diagrams, a small HTML/CSS/SVG demo. Pass `title` + `html` (a body fragment is fine — it's wrapped in a themed skeleton; put code in `<pre><code>`). Pass `id` to re-render/update an artifact in place (instead of piling up copies); pass `assets: [{path, content, encoding?}]` to write sibling files the HTML references by relative path (e.g. an image or `data.json`). The theme is overridable per project via `.soly/artifact-theme.css`. Keep it self-contained unless you use `assets` — no external/CDN requests. Don't use it for a single snippet (markdown code block) or prose. Mention the returned URL to the user.
+**`html_artifact`** — render HTML served from a per-session browser gallery SPA (sidebar + iframe + filter + live SSE updates, one stable localhost URL). Use when a visual rendered result beats terminal text: example galleries, before/after or side-by-side comparisons, tables, diagrams, a small HTML/CSS/SVG demo. Pass `title` + `html` (a body fragment is fine — it's wrapped in a themed skeleton; put code in `<pre><code>`). Pass `id` to re-render/update an artifact in place (instead of piling up copies); pass `assets: [{path, content, encoding?}]` to write sibling files the HTML references by relative path (e.g. an image or `data.json`). The theme is overridable per project via `.agents/artifact-theme.css`. Keep it self-contained unless you use `assets` — no external/CDN requests. Don't use it for a single snippet (markdown code block) or prose. Mention the returned URL to the user.
 
 ## Common workflows
 
 ### Start a new project
 
-1. `soly init` (or manually create `.soly/`, `docs/`, `rules/`)
-2. Write 1-3 intent docs in `.soly/docs/`
+1. `soly init` (or manually create `.agents/`, `docs/`, `rules/`)
+2. Write 1-3 intent docs in `.agents/docs/`
 3. Optionally write `AGENTS.md` (or `agents.md`) at project root with project conventions
 4. Create `ROADMAP.md` with phase table
 5. `/plan 1` to start the first phase
@@ -291,7 +283,7 @@ You are a data scientist. ...
 
 If `/execute` complains about illegal partial state:
 
-1. `cat .soly/iterations/<latest>.md` — see what the last run did
+1. `cat .agents/iterations/<latest>.md` — see what the last run did
 2. Check if `SUMMARY.md` exists for the last plan
 3. If yes, finish close-out: update `STATE.md` + `ROADMAP.md`
 4. If no, either commit the SUMMARY or revert the production commits
@@ -302,8 +294,8 @@ Call `soly_read(artifact: "state")` and `soly_read(artifact: "roadmap")` first. 
 
 ## Don'ts
 
-- ❌ Edit `.soly/rules/` files you didn't write — those are project invariants
+- ❌ Edit `.agents/rules/` files you didn't write — those are project invariants
 - ❌ Skip the SUMMARY — illegal partial state
 - ❌ Spawn `soly-manager` / `soly-worker` / etc. — there are no soly subagents (removed in 1.3.0). Use pi's built-in subagents via the parent LLM's `subagent(...)` call.
-- ❌ Edit `.soly/phases/*/PLAN.md` after `status: in_progress` — create a new plan
-- ❌ Put intent docs anywhere other than `.soly/docs/`
+- ❌ Edit `.agents/phases/*/PLAN.md` after `status: in_progress` — create a new plan
+- ❌ Put intent docs anywhere other than `.agents/docs/`

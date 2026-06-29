@@ -7,8 +7,8 @@
 //
 // Like execute, we transform the input into a detailed LLM instruction that
 // walks the LLM through the soly pause-work workflow. The LLM produces both:
-//   - .soly/HANDOFF.json  (machine-readable state for resume)
-//   - .soly/.continue-here.md  (human-readable context)
+//   - .agents/HANDOFF.json  (machine-readable state for resume)
+//   - .agents/.continue-here.md  (human-readable context)
 //
 // For `compact`, we additionally call ctx.compact() AFTER the handoff files
 // are written — but we still let the LLM drive the handoff generation, since
@@ -94,7 +94,7 @@ export function buildPauseTransform(
 		return {
 			handled: true,
 			transformedText:
-				`soly: no .soly/ directory found in cwd (${state.solyDir || "<cwd>"}) — nothing to pause.\n` +
+				`soly: no .agents/ directory found in cwd (${state.solyDir || "<cwd>"}) — nothing to pause.\n` +
 				`If you wanted to start a soly project, see the soly quickstart.`,
 			triggerCompact: false,
 		};
@@ -122,7 +122,7 @@ export function buildPauseTransform(
 
 ${actionLine}
 
-Current position (from .soly/STATE.md):
+Current position (from .agents/STATE.md):
 ${state.position
 	? `  phase: ${state.position.phase}\n  plan:  ${state.position.plan}\n  status: ${state.position.status}`
 	: "  (no position set — likely pre-planning or paused at a milestone boundary)"}
@@ -139,7 +139,7 @@ Follow the workflow below VERBATIM — these are the user-approved soly instruct
 ${workflow}
 === END WORKFLOW ===
 
-After you write both .soly/HANDOFF.json and .soly/.continue-here.md, tell the user:
+After you write both .agents/HANDOFF.json and .agents/.continue-here.md, tell the user:
   - where the files were written (absolute paths)
   - the resume command: soly resume
   - ${isCompact ? "session will be compacted at end of this turn" : "session state preserved as-is"}

@@ -20,7 +20,6 @@ desktop.ini
 # bun
 .bun/
 
-# soly local (per project)
-.soly/
-.soly-rule-mtimes.json
+# soly local cache (per project) — generated, not committed
+.agents/rule-mtimes.json
 rule-mtimes.json

@@ -58,7 +58,6 @@
     "notifications-log.ts",
     "status.ts",
     "init.ts",
-    "migrate.ts",
     "codemap.ts",
     "state.ts",
     "hotreload.ts"

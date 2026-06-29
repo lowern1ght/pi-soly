@@ -35,7 +35,7 @@ function makeProject(): string {
 }
 
 describe("appendNotification", () => {
-	test("creates log file in .agents/.soly/notifications.log", () => {
+	test("creates log file in .agents/notifications.log", () => {
 		const proj = makeProject();
 		appendNotification(proj, { kind: "nudge", title: "soly · non-trivial", body: ["line 1"] });
 		const logPath = logFilePath(proj);

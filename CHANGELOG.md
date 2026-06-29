@@ -4,6 +4,47 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.14.0] — 2026-06-29
+
+### Changed
+- **BREAKING: soly state now lives only in `.agents/`.** The legacy `.soly/`
+  directory is no longer read or written — `solyDirFor()` resolves to `.agents/`
+  unconditionally. Projects created before the rename must be moved by hand:
+  `mv .soly .agents`. A one-time `session_start` banner warns when a `.soly/`
+  dir is found without an `.agents/`. Config moved to `.agents/soly.json`
+  (per-project) and `~/.agents/soly.json` (global) — was `.soly/config.json`.
+  Rule sources are now `.agents/rules.local/`, `.agents/rules/`, and
+  `~/.agents/rules/` (the `.soly/rules*` sources were dropped). All prompts,
+  templates, doc-search roots, intent/docs loaders, iteration bundles, the
+  notifications log, and the `soly-framework` skill now reference `.agents/`.
+- **`soly init` is now a `/soly` subcommand.** Run `/soly init [template]`
+  (template: minimal/web-app/library/cli) instead of the removed standalone
+  `/soly-init` command. A bare `/soly` in a project-less dir now points to it.
+- **Stronger "ask before coding".** `agent.confirmBeforeCode` is now a level —
+  `"scope"` (new default), `"ask"`, or `"off"` (booleans still work: `true` →
+  `"scope"`, `false` → `"off"`). At `"scope"`, the behavioral nudge tells the
+  LLM to stop coding on assumptions and first batch the decisions only the user
+  can make — **placement** (where it lives), **architecture/pattern**,
+  **scope**, **interface**, **data** — into a single `ask_pro` call (concrete
+  options + a ⭐ recommended default) and wait for answers before touching
+  files. Triggers on non-trivial tasks only; skips trivial fixes and
+  already-scoped follow-ups. `"ask"` keeps the old lighter go/discuss prompt.
+- **`ask_pro` always offers "Other…".** Every options question now
+  automatically includes a free-text "Other…" choice (the tool forces
+  `allowOther: true`; the LLM no longer has to remember it, and can't omit it),
+  so the user can always answer in their own words. `freeText` questions are
+  unchanged (already free-form). The `allowOther` parameter is now a no-op kept
+  for compatibility.
+
+### Removed
+- **`migrate` removed entirely.** Both the `/soly-migrate` dir-migration command
+  (`.soly/` → `.agents/`) and the `soly migrate` layout-conversion verb
+  (`NN-PLAN` files / `features/` → `phases/<N>/tasks/`) are gone, along with
+  their source (`migrate.ts`, `workflows/migrate.ts`) and tests. Legacy layouts
+  still load and run alongside the unified model; rename a legacy `.soly/` dir
+  manually.
+- **`/soly-init` standalone command removed** — folded into `/soly init`.
+
 ## [1.13.5] — 2026-06-28
 
 ### Fixed

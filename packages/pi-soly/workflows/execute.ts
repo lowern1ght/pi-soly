@@ -73,7 +73,7 @@ export function buildExecuteTransform(
 		return {
 			handled: true,
 			transformedText:
-				`soly: no .soly/ directory found in cwd (${state.solyDir || "<cwd>"}) — cannot execute phase.\n` +
+				`soly: no .agents/ directory found in cwd (${state.solyDir || "<cwd>"}) — cannot execute phase.\n` +
 				`Initialize a soly project first (see soly quickstart) before running "soly execute".`,
 		};
 	}
@@ -101,7 +101,7 @@ export function buildExecuteTransform(
 			return {
 				handled: true,
 				transformedText:
-					`soly execute: task ${target.taskId} not found in .soly/features/*/tasks/.\n` +
+					`soly execute: task ${target.taskId} not found in .agents/features/*/tasks/.\n` +
 					`Known tasks: ${state.tasks.map((t) => t.id).join(", ") || "(none)"}\n` +
 					`Tip: use the \`soly_list_tasks\` tool to see all available tasks.`,
 			};
@@ -155,7 +155,7 @@ export function buildExecuteTransform(
 		const featureDir = path.dirname(path.dirname(task.dir));
 
 		// Write per-iteration context bundle (B2 of the soly design).
-		// Worker reads this file first; no need to chase 6+ .soly/ files.
+		// Worker reads this file first; no need to chase 6+ .agents/ files.
 		const iter = writeIterationContext({
 			solyDir: state.solyDir,
 			projectRoot,
@@ -179,7 +179,7 @@ export function buildExecuteTransform(
 **Iteration context file written:** \`${iter.relPath}\` (${iter.tokens} tokens, ${iter.bytes} bytes)
 The worker reads this file first — it contains intent, STATE, ROADMAP (n/a for tasks), the feature README, prior task SUMMARYs, and the current task PLAN.
 
-**0-POINT CHECK.** Worker must re-read .soly/docs/ (intent) and .soly/features/${task.feature}/README.md before implementing.
+**0-POINT CHECK.** Worker must re-read .agents/docs/ (intent) and .agents/features/${task.feature}/README.md before implementing.
 
 Launch a single subagent for this work. Do NOT do the work inline.
 
@@ -206,12 +206,12 @@ Soly dir:    ${state.solyDir}
 Feature dir: ${featureDir}
 Task dir:    ${task.dir}
 
-**0-POINT CHECK — read .soly/docs/ first.**
+**0-POINT CHECK — read .agents/docs/ first.**
 These are the project's INTENT (business context, design vision). Re-read them before implementing. If you find a conflict between intent and PLAN.md, flag it instead of silently choosing one.
 
-**Follow the worker self-audit gate (see .soly/rules/process/worker-audit.md):**
+**Follow the worker self-audit gate (see .agents/rules/process/worker-audit.md):**
 1. Run \`dotnet build\` (or relevant build) — 0 warnings
-2. Cross-check diff against .soly/rules/coding/*
+2. Cross-check diff against .agents/rules/coding/*
 3. Invoke \`analyzer-coach\` skill for any rule gaps
 4. Loop until clean (max 3 iterations)
 5. Commit (production-code commit(s))
@@ -224,10 +224,10 @@ ${workflow}
 
 Hard rules:
   - Do not skip the close-out order: production commits -> SUMMARY commit -> status: done.
-  - Do not modify any .soly/rules/ files.
+  - Do not modify any .agents/rules/ files.
   - Do not run subagents yourself.
   - Do not start a task whose \`depends-on:\` lists tasks that are not \`done\`.
-  - PATH DISCIPLINE: all files YOU create must live under \`.soly/\` (iteration, handoff, etc.) or under the project's source dirs. Never write to the project root.
+  - PATH DISCIPLINE: all files YOU create must live under \`.agents/\` (iteration, handoff, etc.) or under the project's source dirs. Never write to the project root.
   - Return: changed files, commands run with exit codes, validation evidence, surprises, decisions needing parent approval.
   - Interactive-only rules are NOT in scope for you: ${interactiveRules.length > 0 ? interactiveRules.join(", ") : "(none)"}.
 \`
@@ -248,7 +248,7 @@ When the subagent completes, synthesize the result. Do not re-execute its work. 
 				handled: true,
 				transformedText:
 					target.kind === "all"
-						? `soly execute --all: no tasks found in .soly/features/*/tasks/.`
+						? `soly execute --all: no tasks found in .agents/features/*/tasks/.`
 						: `soly execute --feature ${target.feature}: no tasks found for that feature.`,
 			};
 		}
@@ -280,7 +280,7 @@ When the subagent completes, synthesize the result. Do not re-execute its work. 
 		return {
 			handled: true,
 			transformedText:
-				`soly execute: phase ${target.phase} not found in .soly/phases/.\n` +
+				`soly execute: phase ${target.phase} not found in .agents/phases/.\n` +
 				`Known phases: ${state.phases.map((p) => p.number).join(", ") || "(none)"}`,
 		};
 	}
@@ -358,8 +358,8 @@ The iteration context file lists all plans (their frontmatter) in section 6, gro
 **Iteration context file written:** \`${iter.relPath}\` (${iter.tokens} tokens, ${iter.bytes} bytes)
 The worker reads this file first — it contains intent, STATE, ROADMAP row for this phase, phase CONTEXT, phase RESEARCH, prior SUMMARYs, ${isPlanLevel ? "and the current PLAN" : "and all PLAN frontmatter summaries"}, and (for exec) the Critical Anti-Patterns from .continue-here.md.
 
-**0-POINT CHECK — worker must read .soly/docs/ first.**
-These are the project's INTENT docs. The worker is about to implement tasks; if the implementation diverges from intent, it will be wrong even if the tests pass. Have the worker re-read .soly/docs/ (and any intent docs linked from PLAN.md) before each plan.
+**0-POINT CHECK — worker must read .agents/docs/ first.**
+These are the project's INTENT docs. The worker is about to implement tasks; if the implementation diverges from intent, it will be wrong even if the tests pass. Have the worker re-read .agents/docs/ (and any intent docs linked from PLAN.md) before each plan.
 
 ${scopeBlock}
 
@@ -389,7 +389,7 @@ Project root: ${projectRoot}
 Soly dir:    ${state.solyDir}
 Phase dir:   ${phase.dir}
 
-**0-POINT CHECK — read .soly/docs/ first.**
+**0-POINT CHECK — read .agents/docs/ first.**
 These are the project's INTENT (business context, design vision). Re-read them before implementing each plan. If you find a conflict between intent and PLAN.md, flag it instead of silently choosing one.
 
 Follow the workflow below VERBATIM — these are the user-approved soly instructions, not suggestions.
@@ -400,9 +400,9 @@ ${workflow}
 
 Hard rules:
   - Do not skip the close-out order: production commits -> SUMMARY commit -> STATE/ROADMAP update.
-  - Do not modify any .soly/rules/ files.
+  - Do not modify any .agents/rules/ files.
   - Do not run subagents yourself.
-  - PATH DISCIPLINE: all files YOU create must live under \`.soly/\` (e.g. .soly/iterations/, .soly/phases/<slug>/, .soly/HANDOFF.json) or under the project's source dirs. Never write PLAN/SUMMARY/CONTEXT/RESEARCH/iteration files to the project root.
+  - PATH DISCIPLINE: all files YOU create must live under \`.agents/\` (e.g. .agents/iterations/, .agents/phases/<slug>/, .agents/HANDOFF.json) or under the project's source dirs. Never write PLAN/SUMMARY/CONTEXT/RESEARCH/iteration files to the project root.
   - Return: changed files, commands run with exit codes, validation evidence, surprises, and any decisions needing parent approval.
   - Interactive-only rules are NOT in scope for you: ${interactiveRules.length > 0 ? interactiveRules.join(", ") : "(none)"}. They describe how the user-facing conversation should go, not how to execute work.
 \`

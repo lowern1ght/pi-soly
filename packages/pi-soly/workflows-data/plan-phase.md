@@ -3,12 +3,12 @@
 <purpose>Produce one or more PLAN.md files for a phase — each a self-contained contract (requirements, must_haves, tasks with runnable acceptance criteria) the executor can run standalone. Pre-compute wave numbers encoding the dependency graph. Update STATE.md.</purpose>
 
 <path_discipline>
-**All soly-managed files live under `.soly/`.** Never write PLAN.md, CONTEXT.md, RESEARCH.md, SUMMARY.md, iteration files, or handoffs to the project root. All phase files go in `.soly/phases/<NN>-<slug>/`. Use absolute paths (or paths starting with `$SOLY_DIR`) — never bare relative names that could land in cwd.
+**All soly-managed files live under `.agents/`.** Never write PLAN.md, CONTEXT.md, RESEARCH.md, SUMMARY.md, iteration files, or handoffs to the project root. All phase files go in `.agents/phases/<NN>-<slug>/`. Use absolute paths (or paths starting with `$SOLY_DIR`) — never bare relative names that could land in cwd.
 
 The iteration context file (path given by the parent in the task prompt) is your single source of truth for intent, STATE, ROADMAP, and any existing phase artifacts. Read it FIRST, before any of your own `read` or `ls` calls.
 </path_discipline>
 
-<read_first>`.soly/docs/` (INTENT, 0-point) · `.soly/STATE.md` (current position) · `.soly/ROADMAP.md` (this phase's row) · `.soly/REQUIREMENTS.md` if exists · `<phase>-CONTEXT.md` if exists (user decisions from `soly discuss`) · `<phase>-RESEARCH.md` if exists (chosen libs/patterns) · up to 3 most recent prior `*-SUMMARY.md` (avoid re-implementing). If `.soly/` missing → stop + error.</read_first>
+<read_first>`.agents/docs/` (INTENT, 0-point) · `.agents/STATE.md` (current position) · `.agents/ROADMAP.md` (this phase's row) · `.agents/REQUIREMENTS.md` if exists · `<phase>-CONTEXT.md` if exists (user decisions from `soly discuss`) · `<phase>-RESEARCH.md` if exists (chosen libs/patterns) · up to 3 most recent prior `*-SUMMARY.md` (avoid re-implementing). If `.agents/` missing → stop + error.</read_first>
 
 <git_branch_invariant>
 **Do not create, rename, or switch git branches.** The branch was established at `soly discuss` and is owned by the user's git workflow. Verify the current branch matches expectations, but do NOT change it.
@@ -81,7 +81,7 @@ PHASE="$1"
 # would fall back to the `write` tool with a relative path, polluting
 # the project root).
 PROJECT_ROOT="$(pwd)"
-SOLY_DIR="$PROJECT_ROOT/.soly"
+SOLY_DIR="$PROJECT_ROOT/.agents"
 PHASE_DIR=$(ls -d "$SOLY_DIR/phases/"*"-$PHASE-"* 2>/dev/null | head -1) || { echo "Phase $PHASE not found" >&2; exit 1; }
 PADDED_PHASE=$(printf "%02d" "$(echo "$PHASE" | grep -oE '^[0-9]+' | sed 's/^0*//')")
 PHASE_SLUG=$(basename "$PHASE_DIR")
@@ -103,8 +103,8 @@ HAS_SUMMARIES=$(ls "$PHASE_DIR"/${PADDED_PHASE}-*-SUMMARY.md 2>/dev/null | wc -l
 **3. Read phase context** (also in the iteration file) in priority order:
 1. `<phase>-CONTEXT.md` if exists — user decisions, honor them. Missing decision in an area you need to plan → surface in report.
 2. `<phase>-RESEARCH.md` if exists — chosen libs/patterns. Pitfalls → Must Haves or task body.
-3. `.soly/ROADMAP.md` — this phase's row: goal, requirements, deps on other phases.
-4. `.soly/REQUIREMENTS.md` if exists — full text + acceptance criteria for each `phase_req_ids`. Every requirement → some plan's `requirements:` array.
+3. `.agents/ROADMAP.md` — this phase's row: goal, requirements, deps on other phases.
+4. `.agents/REQUIREMENTS.md` if exists — full text + acceptance criteria for each `phase_req_ids`. Every requirement → some plan's `requirements:` array.
 5. Up to 3 most recent prior `*-SUMMARY.md` — what was already built.
 
 **4. Decompose into plans.**
@@ -156,7 +156,7 @@ git commit -m "chore(${PADDED_PHASE}): plan phase <N> — <M> plan(s)"
 - Phase status → `Planned`, `current_plan` → 1.
 - `last_updated` → `date -u +"%Y-%m-%dT%H:%M:%SZ"`.
 - If STATE.md has `progress:`, increment `total_plans` by new plan count.
-- Keep < 150 lines — archive to `.soly/DECISIONS-INDEX.md` if it grows.
+- Keep < 150 lines — archive to `.agents/DECISIONS-INDEX.md` if it grows.
 
 **9. Report:**
 
@@ -188,7 +188,7 @@ Parent summarizes + asks confirmation. On confirm: `soly execute-plan <N>` (or `
 
 <hard_rules>
 - No production code. Planning only.
-- No subagents (you ARE one). No `.soly/rules/` edits. No `.soly/docs/` edits without surfacing to parent.
+- No subagents (you ARE one). No `.agents/rules/` edits. No `.agents/docs/` edits without surfacing to parent.
 - No git branch create/rename/switch.
 - `must_haves` (truths/artifacts/key_links) is NOT optional — executor relies on it for self-verification.
 - Every acceptance criterion is RUNNABLE — command/check/test, not "works correctly" or "feels right".

@@ -7,11 +7,11 @@
 // session context from the last handoff.
 //
 // Reads:
-//   - .soly/HANDOFF.json       (machine-readable state, written by pause/compact)
-//   - .soly/.continue-here.md  (human-readable context, written by pause/compact)
+//   - .agents/HANDOFF.json       (machine-readable state, written by pause/compact)
+//   - .agents/.continue-here.md  (human-readable context, written by pause/compact)
 //
 // If neither file exists, falls back to a "no prior handoff" message that
-// tells the LLM to load context from .soly/STATE.md + ROADMAP.md normally.
+// tells the LLM to load context from .agents/STATE.md + ROADMAP.md normally.
 // =============================================================================
 
 import * as fs from "node:fs";
@@ -73,7 +73,7 @@ function formatListSection(label: string, items: string[] | undefined): string {
 function formatHandoffSummary(h: HandoffJson): string {
 	const lines: string[] = [];
 
-	lines.push("=== From .soly/HANDOFF.json ===");
+	lines.push("=== From .agents/HANDOFF.json ===");
 	if (h.generated_at) lines.push(`  generated_at: ${h.generated_at}`);
 	if (h.milestone) lines.push(`  milestone: ${h.milestone}${h.milestone_name ? ` — ${h.milestone_name}` : ""}`);
 	if (h.status) lines.push(`  status: ${h.status}`);
@@ -112,7 +112,7 @@ export function buildResumeTransform(cmd: SolyCommand, state: SolyState): Resume
 		return {
 			handled: true,
 			transformedText:
-				`soly resume: no .soly/ directory in cwd (${state.solyDir || "<cwd>"}) — nothing to resume.\n` +
+				`soly resume: no .agents/ directory in cwd (${state.solyDir || "<cwd>"}) — nothing to resume.\n` +
 				`Initialize a soly project first, or run \`soly pause\` later to create handoff files.`,
 		};
 	}
@@ -149,24 +149,24 @@ export function buildResumeTransform(cmd: SolyCommand, state: SolyState): Resume
 	}
 
 	if (!handoff && !continueMd) {
-		// No prior handoff — fall back to loading from .soly/STATE.md directly.
+		// No prior handoff — fall back to loading from .agents/STATE.md directly.
 		const fallbackScope = phaseFilter != null
 			? `Focus: phase ${phaseFilter}.`
 			: "Scope: full project.";
 		return {
 			handled: true,
 			transformedText:
-				`soly resume: no handoff files found (looked for .soly/HANDOFF.json and .soly/.continue-here.md).\n` +
-				`No prior \`soly pause\` was run — loading context from .soly/STATE.md and .soly/ROADMAP.md directly.\n\n` +
+				`soly resume: no handoff files found (looked for .agents/HANDOFF.json and .agents/.continue-here.md).\n` +
+				`No prior \`soly pause\` was run — loading context from .agents/STATE.md and .agents/ROADMAP.md directly.\n\n` +
 				`${fallbackScope}\n\n` +
-				`Read .soly/STATE.md (Current Position, Decisions, Blockers sections) and .soly/ROADMAP.md.\n` +
+				`Read .agents/STATE.md (Current Position, Decisions, Blockers sections) and .agents/ROADMAP.md.\n` +
 				`Summarize: where the project is, what's next, what's blocking. Then ask the user what to focus on first.`,
 		};
 	}
 
 	const handoffBlock = handoff ? formatHandoffSummary(handoff) : "(no HANDOFF.json found)";
 	const continueBlock = continueMd
-		? `\n=== From .soly/.continue-here.md ===\n${continueMd.trim()}\n`
+		? `\n=== From .agents/.continue-here.md ===\n${continueMd.trim()}\n`
 		: "";
 
 	const focusLine = phaseFilter != null
@@ -182,10 +182,10 @@ ${continueBlock}
 
 === Resume protocol ===
 
-1. **Read .soly/docs/ first** — the project's 0-point intent. Pickup is meaningless without knowing what the user is building toward.
-2. Read .soly/STATE.md to confirm current position (the handoff may be stale).
-3. Read .soly/ROADMAP.md and any CONTEXT.md / RESEARCH.md for the active phase.
-4. Compare handoff's "work remaining" with the actual repo state (git status, recent commits, .soly/ files).
+1. **Read .agents/docs/ first** — the project's 0-point intent. Pickup is meaningless without knowing what the user is building toward.
+2. Read .agents/STATE.md to confirm current position (the handoff may be stale).
+3. Read .agents/ROADMAP.md and any CONTEXT.md / RESEARCH.md for the active phase.
+4. Compare handoff's "work remaining" with the actual repo state (git status, recent commits, .agents/ files).
 5. Produce a one-screen "Where we are" summary:
    - current phase + plan
    - what's actually been done (verified via filesystem / git)

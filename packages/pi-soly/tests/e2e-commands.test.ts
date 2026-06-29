@@ -24,8 +24,8 @@ let projectDir: string;
 beforeAll(() => {
 	tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "soly-e2e-"));
 	projectDir = fs.mkdtempSync(path.join(tmpRoot, "proj-"));
-	// Fake .soly/ structure
-	const solyDir = path.join(projectDir, ".soly");
+	// Fake .agents/ structure
+	const solyDir = path.join(projectDir, ".agents");
 	fs.mkdirSync(solyDir, { recursive: true });
 	fs.writeFileSync(path.join(solyDir, "STATE.md"), "---\nmilestone: v0.1\n---\n# State\n\n## Decisions\n\n| Date | Decision | Why |\n|------|----------|-----|\n| 2026-01-01 | test | reason |\n");
 	fs.writeFileSync(path.join(solyDir, "ROADMAP.md"), "# Roadmap\n\n| # | Phase | Status |\n|---|-------|--------|\n| 01 | bootstrap | pending |\n");
@@ -81,7 +81,7 @@ function makeMockCtx(cwd: string, opts: { selectResult?: string; confirmResult?:
 }
 
 function makeMockDeps(cwd: string) {
-	const solyDir = path.join(cwd, ".soly");
+	const solyDir = path.join(cwd, ".agents");
 	return {
 		getRules: () => [],
 		getOverridden: () => [],
@@ -273,33 +273,22 @@ describe("E2E: /why command", () => {
 	});
 });
 
-describe("E2E: /soly-migrate command", () => {
+describe("E2E: migrate / init command surface", () => {
 	const mockPi = makeMockPi();
 
 	beforeAll(() => {
 		registerCommands(mockPi, makeMockDeps(projectDir) as never);
 	});
 
-	test("command is registered", () => {
-		expect(mockPi._commands.has("soly-migrate")).toBe(true);
+	test("standalone soly-migrate command is gone (migrate removed)", () => {
+		expect(mockPi._commands.has("soly-migrate")).toBe(false);
 	});
 
-	test("dry-run does not throw", async () => {
-		const ctx = makeMockCtx(projectDir);
-		const handler = mockPi._commands.get("soly-migrate")!.handler;
-		// --dry-run flag should work without actually moving
-		await expect(handler("--dry-run", ctx as never)).resolves.toBeUndefined();
-	});
-});
-
-describe("E2E: /soly-init command", () => {
-	const mockPi = makeMockPi();
-
-	beforeAll(() => {
-		registerCommands(mockPi, makeMockDeps(projectDir) as never);
+	test("standalone soly-init command is gone (init moved under /soly)", () => {
+		expect(mockPi._commands.has("soly-init")).toBe(false);
 	});
 
-	test("command is registered", () => {
-		expect(mockPi._commands.has("soly-init")).toBe(true);
+	test("/soly command hosts init as a subcommand", () => {
+		expect(mockPi._commands.has("soly")).toBe(true);
 	});
 });

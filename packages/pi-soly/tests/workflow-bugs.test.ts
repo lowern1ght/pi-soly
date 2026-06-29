@@ -3,7 +3,7 @@
 // =============================================================================
 //
 // B1: soly resume <N> validates the phase number
-// B2: soly diff works without .soly/
+// B2: soly diff works without .agents/
 // B3: soly log <non-numeric> warns instead of silently falling back
 // B4: plain "soly" (no verb) → help picker
 // B5: soly plan --new-task auto-mkdirs the feature dir
@@ -77,7 +77,7 @@ const mockUi = {
 
 beforeAll(() => {
 	tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "soly-bugs-"));
-	solyDir = path.join(tmpRoot, ".soly");
+	solyDir = path.join(tmpRoot, ".agents");
 	fs.mkdirSync(solyDir, { recursive: true });
 });
 
@@ -147,10 +147,10 @@ describe("B1: buildResumeTransform validates phase number", () => {
 });
 
 // ---------------------------------------------------------------------------
-// B2: soly diff works without .soly/
+// B2: soly diff works without .agents/
 // ---------------------------------------------------------------------------
 
-describe("B2: showDiff without .soly/", () => {
+describe("B2: showDiff without .agents/", () => {
 	test("doesn't crash when solyDir is empty", async () => {
 		capturedNotify = [];
 		const stateNoSoly: SolyState = { ...fakeState(), exists: false, solyDir: "" };

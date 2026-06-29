@@ -44,7 +44,7 @@ function fakeState(overrides: Partial<SolyState> = {}): SolyState {
 
 beforeAll(() => {
 	tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "soly-inspect-"));
-	solyDir = path.join(tmpRoot, ".soly");
+	solyDir = path.join(tmpRoot, ".agents");
 	fs.mkdirSync(solyDir, { recursive: true });
 });
 
@@ -53,15 +53,15 @@ afterAll(() => {
 });
 
 describe("showDoctor", () => {
-	test("no .soly/ → fail check", () => {
+	test("no .agents/ → fail check", () => {
 		captured = [];
 		showDoctor(null, fakeState({ exists: false, solyDir: "" }), ui, DEFAULT_CONFIG);
-		const fail = captured.find((c) => c.text.includes(".soly/ directory") && c.kind === "error");
+		const fail = captured.find((c) => c.text.includes(".agents/ directory") && c.kind === "error");
 		// May pass/fail depending; at minimum we should have a notification
 		expect(captured.length).toBeGreaterThan(0);
 	});
 
-	test("happy path with .soly/ + STATE + ROADMAP + phases", () => {
+	test("happy path with .agents/ + STATE + ROADMAP + phases", () => {
 		captured = [];
 		fs.writeFileSync(path.join(solyDir, "STATE.md"), "---\nmilestone: v1.0\n---\n\n# X\n\n## Current Position\nPhase: 1\n");
 		fs.writeFileSync(path.join(solyDir, "ROADMAP.md"), "# Roadmap\n\n## Phase 1\n");
@@ -159,7 +159,7 @@ describe("pluralDays grammar (regression for '1 day' vs 'N days')", () => {
 });
 
 describe("showIterations", () => {
-	test("no .soly/ → error notify", () => {
+	test("no .agents/ → error notify", () => {
 		captured = [];
 		showIterations({ verb: "iterations", args: [], raw: "soly iterations" }, fakeState({ exists: false, solyDir: "" }), ui);
 		expect(captured.some((c) => c.kind === "error")).toBe(true);
@@ -203,7 +203,7 @@ describe("showIterations", () => {
 });
 
 describe("showDiffIterations", () => {
-	test("no .soly/ → error", () => {
+	test("no .agents/ → error", () => {
 		captured = [];
 		showDiffIterations(
 			{ verb: "diff", args: ["iterations", "a.md", "b.md"], raw: "soly diff iterations a.md b.md" },
@@ -251,7 +251,7 @@ describe("showDiffIterations", () => {
 });
 
 describe("showPhaseDelete", () => {
-	test("no .soly/ → error", () => {
+	test("no .agents/ → error", () => {
 		captured = [];
 		showPhaseDelete(
 			{ verb: "phase", args: ["5"], raw: "soly phase delete 5" },

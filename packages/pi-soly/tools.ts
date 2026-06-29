@@ -3,11 +3,11 @@
 // =============================================================================
 //
 // Registers three tools the LLM can call:
-//   - soly_read         — read any .soly/ artifact (state/plan/roadmap/...)
+//   - soly_read         — read any .agents/ artifact (state/plan/roadmap/...)
 //   - soly_log_decision — append a row to STATE.md Decisions table
 //   - soly_list_phases  — list all phases with markers
 //
-// All paths are relative to <cwd>/.soly/ (the soly layout — NOT .planning/).
+// All paths are relative to <cwd>/.agents/ (the soly layout — NOT .planning/).
 // =============================================================================
 
 import * as fs from "node:fs";
@@ -66,7 +66,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_read",
 		label: "soly read",
 		description:
-			"Read a .soly/ artifact (state, plan, context, research, roadmap, requirements, project, milestone, task). `phase` targets a specific phase (default: current); `taskId` for the task artifact. Returns the file text.",
+			"Read a .agents/ artifact (state, plan, context, research, roadmap, requirements, project, milestone, task). `phase` targets a specific phase (default: current); `taskId` for the task artifact. Returns the file text.",
 		parameters: Type.Object({
 			artifact: StringEnum([
 				"state",
@@ -129,7 +129,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 				if (!task) {
 					return {
 						content: [
-							{ type: "text", text: `soly: task ${taskId} not found in .soly/features/*/tasks/` },
+							{ type: "text", text: `soly: task ${taskId} not found in .agents/features/*/tasks/` },
 						],
 						details: { error: "task_not_found", taskId },
 					};
@@ -189,7 +189,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_log_decision",
 		label: "soly log decision",
 		description:
-			"Append a one-line decision + rationale to the Decisions table in .soly/STATE.md (creates it if missing). For meaningful choices: scope cuts, library picks, trade-offs. `phase` defaults to current.",
+			"Append a one-line decision + rationale to the Decisions table in .agents/STATE.md (creates it if missing). For meaningful choices: scope cuts, library picks, trade-offs. `phase` defaults to current.",
 		parameters: Type.Object({
 			decision: Type.String({ description: "The decision made (one line)." }),
 			rationale: Type.String({ description: "Why this decision was made (one line)." }),
@@ -329,7 +329,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 		name: "soly_todos",
 		label: "soly todos",
 		description:
-			"Scan the tree for TODO/FIXME/HACK/XXX/NOTE comments, grouped by file (common source extensions; excludes node_modules/.git/dist/build/.soly). Needs ripgrep on PATH. `paths` overrides root, `limit` caps (default 200).",
+			"Scan the tree for TODO/FIXME/HACK/XXX/NOTE comments, grouped by file (common source extensions; excludes node_modules/.git/dist/build/.agents). Needs ripgrep on PATH. `paths` overrides root, `limit` caps (default 200).",
 		parameters: Type.Object({
 			paths: Type.Optional(
 				Type.Array(Type.String(), {
@@ -356,7 +356,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 				"--glob=!node_modules/**",
 				"--glob=!dist/**",
 				"--glob=!build/**",
-				"--glob=!.soly/**",
+				"--glob=!.agents/**",
 				"--glob=!coverage/**",
 				"-tts",
 				"-tjs",
@@ -838,7 +838,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 			canonical_refs: Type.Optional(
 				Type.Array(Type.String(), {
 					description:
-						"MANDATORY. Files the planner needs (intent docs, REQUIREMENTS, contracts), full paths from `.soly/`.",
+						"MANDATORY. Files the planner needs (intent docs, REQUIREMENTS, contracts), full paths from `.agents/`.",
 				}),
 			),
 			deferred_ideas: Type.Optional(
@@ -855,7 +855,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 			const solyDir = solyDirFor(ctx.cwd);
 			if (!fs.existsSync(solyDir)) {
 				return {
-					content: [{ type: "text", text: "soly_finish_discuss: no .soly/ in cwd" }],
+					content: [{ type: "text", text: "soly_finish_discuss: no .agents/ in cwd" }],
 					details: { error: "no_soly" },
 				};
 			}
@@ -877,7 +877,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 					content: [
 						{
 							type: "text",
-							text: `soly_finish_discuss: phase ${phaseNum} not found in .soly/phases/`,
+							text: `soly_finish_discuss: phase ${phaseNum} not found in .agents/phases/`,
 						},
 					],
 					details: { error: "no_phase", phase: phaseNum },
@@ -1025,7 +1025,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 			const phasesRoot = path.join(solyDir, "phases");
 			if (!fs.existsSync(phasesRoot)) {
 				return {
-					content: [{ type: "text", text: "soly_save_discuss_checkpoint: no .soly/phases/ in cwd" }],
+					content: [{ type: "text", text: "soly_save_discuss_checkpoint: no .agents/phases/ in cwd" }],
 					details: { error: "no_phases" },
 				};
 			}

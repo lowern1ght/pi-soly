@@ -10,7 +10,7 @@
 // =============================================================================
 
 import { describe, test, expect } from "bun:test";
-import { classifyTaskHeuristics, buildNudgeSection } from "../nudge.js";
+import { classifyTaskHeuristics, buildNudgeSection, confirmLevelOf } from "../nudge.js";
 
 describe("classifyTaskHeuristics", () => {
 	test("trivial single-word prompt is not non-trivial", () => {
@@ -206,22 +206,51 @@ describe("buildNudgeSection — workflow routing (point 4)", () => {
 	});
 });
 
+describe("confirmLevelOf (boolean back-compat → level)", () => {
+	test("true → scope (strongest), false/undefined → off", () => {
+		expect(confirmLevelOf(true)).toBe("scope");
+		expect(confirmLevelOf(false)).toBe("off");
+		expect(confirmLevelOf(undefined)).toBe("off");
+	});
+	test("explicit levels pass through", () => {
+		expect(confirmLevelOf("off")).toBe("off");
+		expect(confirmLevelOf("ask")).toBe("ask");
+		expect(confirmLevelOf("scope")).toBe("scope");
+	});
+});
+
 describe("buildNudgeSection — confirm before coding", () => {
 	const nonTrivial = classifyTaskHeuristics("implement the auth refactor across src/auth/login.ts and src/auth/token.ts");
 	const trivial = classifyTaskHeuristics("fix typo");
 
-	test("added for non-trivial tasks when enabled (asks via ask_pro)", () => {
-		const s = buildNudgeSection(nonTrivial, { confirmBeforeCode: true });
+	test("scope batch for non-trivial tasks (true / 'scope') — asks the substantive questions", () => {
+		for (const v of [true, "scope"] as const) {
+			const s = buildNudgeSection(nonTrivial, { confirmBeforeCode: v });
+			expect(s.includes("Scope it with me before you code")).toBe(true);
+			expect(s.includes("ask_pro")).toBe(true);
+			expect(s.toLowerCase().includes("before touching files")).toBe(true);
+			// Names the placement + architecture dimensions explicitly.
+			expect(s.includes("Placement")).toBe(true);
+			expect(s.includes("Architecture / pattern")).toBe(true);
+		}
+	});
+
+	test("'ask' level uses the lighter go/discuss confirmation, not the scope batch", () => {
+		const s = buildNudgeSection(nonTrivial, { confirmBeforeCode: "ask" });
 		expect(s.includes("Confirm before coding")).toBe(true);
-		expect(s.toLowerCase().includes("before touching files")).toBe(true);
+		expect(s.includes("Scope it with me")).toBe(false);
 		expect(s.includes("ask_pro")).toBe(true);
 	});
 
-	test("off by default (flag omitted)", () => {
-		expect(buildNudgeSection(nonTrivial).includes("Confirm before coding")).toBe(false);
+	test("off when flag omitted, false, or 'off'", () => {
+		expect(buildNudgeSection(nonTrivial).includes("Scope it with me")).toBe(false);
+		expect(buildNudgeSection(nonTrivial, { confirmBeforeCode: false }).includes("Scope it with me")).toBe(false);
+		const off = buildNudgeSection(nonTrivial, { confirmBeforeCode: "off" });
+		expect(off.includes("Scope it with me")).toBe(false);
+		expect(off.includes("Confirm before coding")).toBe(false);
 	});
 
 	test("not added for trivial tasks even when enabled", () => {
-		expect(buildNudgeSection(trivial, { confirmBeforeCode: true }).includes("Confirm before coding")).toBe(false);
+		expect(buildNudgeSection(trivial, { confirmBeforeCode: "scope" }).includes("Scope it with me")).toBe(false);
 	});
 });

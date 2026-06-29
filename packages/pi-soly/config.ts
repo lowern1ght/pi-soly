@@ -41,10 +41,14 @@ export interface SolyConfig {
 		/** Inject per-turn affordance hints (examples → html_artifact, options →
 		 *  decision_deck, …) when the prompt mentions those. Default on. */
 		toolHints: boolean;
-		/** For non-trivial tasks, tell the LLM to confirm the approach with the
-		 *  user (ask "ready to implement, or discuss first?") before writing code.
-		 *  Default on. */
-		confirmBeforeCode: boolean;
+		/** Before non-trivial coding, make the LLM ask the user the decisions
+		 *  only they can make, instead of coding on assumptions. Levels:
+		 *    "scope" — batch the substantive questions (placement, pattern,
+		 *              scope, interface) via ask_pro, then wait. (default)
+		 *    "ask"   — lighter: one "ready to implement, or discuss?" question.
+		 *    "off"   — no gate.
+		 *  Booleans accepted for back-compat: true = "scope", false = "off". */
+		confirmBeforeCode: boolean | "off" | "ask" | "scope";
 		/** Inject a compact list of rules applicable to the file being
 		 *  edited/written, appended to the tool's result. Forces the LLM to
 		 *  confirm in the next message which rules were applied — closes the
@@ -111,7 +115,7 @@ export interface SolyConfig {
 		 *  (one stable localhost URL). When false, just open the .html file. */
 		server: boolean;
 		/** Path to a CSS file overriding the artifact theme. Empty → built-in.
-		 *  Resolved like `dir`; also auto-detected at `.soly/artifact-theme.css`. */
+		 *  Resolved like `dir`; also auto-detected at `.agents/artifact-theme.css`. */
 		theme: string;
 		/** Prune session artifact dirs older than N days on session start.
 		 *  0 = keep forever. */
@@ -131,7 +135,7 @@ export const DEFAULT_CONFIG: SolyConfig = {
 		autoCheckpointOnPause: true,
 		nudgeNotify: false,
 		toolHints: true,
-		confirmBeforeCode: true,
+		confirmBeforeCode: "scope",
 		preActionRuleReminder: true,
 	},
 	display: {
@@ -222,7 +226,12 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 			merged.agent.nudgeNotify = over.agent.nudgeNotify;
 		if (typeof over.agent.toolHints === "boolean")
 			merged.agent.toolHints = over.agent.toolHints;
-		if (typeof over.agent.confirmBeforeCode === "boolean")
+		if (
+			typeof over.agent.confirmBeforeCode === "boolean" ||
+			over.agent.confirmBeforeCode === "off" ||
+			over.agent.confirmBeforeCode === "ask" ||
+			over.agent.confirmBeforeCode === "scope"
+		)
 			merged.agent.confirmBeforeCode = over.agent.confirmBeforeCode;
 		if (typeof over.agent.preActionRuleReminder === "boolean")
 			merged.agent.preActionRuleReminder = over.agent.preActionRuleReminder;

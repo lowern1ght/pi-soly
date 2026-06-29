@@ -1,14 +1,14 @@
 # Execute Task
 
-<purpose>Execute ONE task (atomic unit — a feature slice, one endpoint, one page, one contract wire). Produce SUMMARY.md. Tasks live under `.soly/features/<feature>/tasks/<task-id>/` with PLAN.md as the contract.</purpose>
+<purpose>Execute ONE task (atomic unit — a feature slice, one endpoint, one page, one contract wire). Produce SUMMARY.md. Tasks live under `.agents/features/<feature>/tasks/<task-id>/` with PLAN.md as the contract.</purpose>
 
 <path_discipline>
-**All soly-managed files live under `.soly/`.** Never write PLAN.md, SUMMARY.md, iteration files, or handoffs to the project root. Task files go in `.soly/features/<feature>/tasks/<task-id>/`. Use absolute paths — never bare relative names that could land in cwd.
+**All soly-managed files live under `.agents/`.** Never write PLAN.md, SUMMARY.md, iteration files, or handoffs to the project root. Task files go in `.agents/features/<feature>/tasks/<task-id>/`. Use absolute paths — never bare relative names that could land in cwd.
 
 The iteration context file (path given by the parent in the task prompt) is your single source of truth for intent, STATE, the feature README, prior task SUMMARYs, and the current task PLAN. Read it FIRST.
 </path_discipline>
 
-<read_first>`.soly/STATE.md` · `.soly/docs/` (INTENT, 0-point) · `.soly/features/<feature>/README.md` · `PLAN.md` (the contract) · `.soly/contracts/*` if PLAN.md references it. If `.soly/features/` or task dir missing → error + stop, do not invent paths.</read_first>
+<read_first>`.agents/STATE.md` · `.agents/docs/` (INTENT, 0-point) · `.agents/features/<feature>/README.md` · `PLAN.md` (the contract) · `.agents/contracts/*` if PLAN.md references it. If `.agents/features/` or task dir missing → error + stop, do not invent paths.</read_first>
 
 <task_frontmatter>
 PLAN.md frontmatter (executor must respect all fields; **flag** incomplete ones in your report, don't silently fill):
@@ -46,13 +46,13 @@ STATUS=$(awk '/^---$/{c++; next} c==1{print}' "$TASK_DIR/PLAN.md" | grep -E '^st
 
 If not → return `## Blocker` to parent, stop. Do NOT start a blocked task.
 
-**2. Read intent + feature context.** **0-POINT CHECK** — the iteration context file (path given in the task prompt) already contains the intent docs as a summary, the feature README, prior task SUMMARYs, and the current task PLAN. Use that. If intent and PLAN.md conflict, flag it. Read `.soly/contracts/*` (if it exists) only if the task touches API surfaces.
+**2. Read intent + feature context.** **0-POINT CHECK** — the iteration context file (path given in the task prompt) already contains the intent docs as a summary, the feature README, prior task SUMMARYs, and the current task PLAN. Use that. If intent and PLAN.md conflict, flag it. Read `.agents/contracts/*` (if it exists) only if the task touches API surfaces.
 
 **3. Execute** with standard worker self-audit:
 
 1. Write code.
 2. Run build / typecheck / lint — **0 warnings**.
-3. Cross-check diff against `.soly/rules/coding/*` (or `.editorconfig`).
+3. Cross-check diff against `.agents/rules/coding/*` (or `.editorconfig`).
 4. **Rule gap?** Invoke the project's rule-authoring skill (`analyzer-coach` or equivalent) — it proposes an `.editorconfig` entry, a coding-rule doc addition, or a custom-analyzer rule. Loop until clean, max 3 iterations.
 5. Commit production-code changes (one or more commits).
 
@@ -101,7 +101,7 @@ You may combine into one commit, but the SUMMARY must be on disk before the fron
 </process>
 
 <hard_rules>
-- No `.soly/rules/` edits. No subagents (you ARE one).
+- No `.agents/rules/` edits. No subagents (you ARE one).
 - No starting tasks with un-`done` `depends-on:`.
 - If rule gap → add via the rule-authoring skill. **No silent workarounds** (`#pragma`, `severity = none`).
 - Return: changed files, commands + exit codes, validation evidence, surprises, decisions needing parent approval.
@@ -112,5 +112,5 @@ You may combine into one commit, but the SUMMARY must be on disk before the fron
 </interactive_rules_out_of_scope>
 
 <dual_mode_note>
-Project may also have `.soly/phases/` (phase-based layout, distinct from task-based). You are only responsible for this task. Don't touch phases. Don't modify ROADMAP.md or STATE.md beyond what your close-out requires (typically nothing for tasks — the parent updates those).
+Project may also have `.agents/phases/` (phase-based layout, distinct from task-based). You are only responsible for this task. Don't touch phases. Don't modify ROADMAP.md or STATE.md beyond what your close-out requires (typically nothing for tasks — the parent updates those).
 </dual_mode_note>

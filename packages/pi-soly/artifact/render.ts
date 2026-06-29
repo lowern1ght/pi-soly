@@ -6,7 +6,7 @@
 // session gallery shell — soly's local "artifacts". Pure: every function takes
 // strings and returns strings; the stylesheet is passed in (loaded from a file
 // or the built-in DEFAULT_CSS by the caller) so a project can restyle every
-// artifact by dropping a `.soly/artifact-theme.css`.
+// artifact by dropping a `.agents/artifact-theme.css`.
 //
 // A body *fragment* is wrapped in the skeleton; a *full document* keeps its own
 // markup but gets the theme injected as a base layer (its own styles win).
@@ -155,7 +155,7 @@ export function buildGalleryShell(token: string): string {
 }
 
 // Self-contained artifact stylesheet — no external fonts, scripts, or CDN
-// requests. Overridable per project via .soly/artifact-theme.css.
+// requests. Overridable per project via .agents/artifact-theme.css.
 export const DEFAULT_CSS = `
 :root{color-scheme:light dark}
 *{box-sizing:border-box}

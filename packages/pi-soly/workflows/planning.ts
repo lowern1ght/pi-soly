@@ -67,7 +67,7 @@ export function buildPlanTransform(cmd: SolyCommand, state: SolyState): Planning
 		return {
 			handled: true,
 			transformedText:
-				`soly plan: no .soly/ directory in cwd (${state.solyDir || "<cwd>"}) — cannot plan.\n` +
+				`soly plan: no .agents/ directory in cwd (${state.solyDir || "<cwd>"}) — cannot plan.\n` +
 				`Initialize a soly project first.`,
 		};
 	}
@@ -123,8 +123,8 @@ export function buildPlanTransform(cmd: SolyCommand, state: SolyState): Planning
 **Iteration context file written:** \`${iter.relPath}\` (${iter.tokens} tokens, ${iter.bytes} bytes)
 The planner reads this file first — it contains intent, STATE, ROADMAP row for this phase, phase CONTEXT, phase RESEARCH, and prior SUMMARYs.
 
-**0-POINT CHECK — read .soly/docs/ first.**
-These documents hold the project's INTENT — business context, design vision, what the user wants this app to be. Plans that ignore intent produce code that "works" but doesn't fit. If the plan would diverge from anything in .soly/docs/, surface that as a discussion point before committing to it.
+**0-POINT CHECK — read .agents/docs/ first.**
+These documents hold the project's INTENT — business context, design vision, what the user wants this app to be. Plans that ignore intent produce code that "works" but doesn't fit. If the plan would diverge from anything in .agents/docs/, surface that as a discussion point before committing to it.
 
 Phase directory: ${phase.dir}
 Current state:   planCount=${phase.planCount}, context=${phase.contextExists}, research=${phase.researchExists}
@@ -155,11 +155,11 @@ ${workflow}
 
 Hard rules:
   - Do not write production code. Planning only.
-  - One task = one PLAN.md under .soly/phases/<NN>-<slug>/tasks/<task-id>/ (task id = <short-slug>-<4hex>).
+  - One task = one PLAN.md under .agents/phases/<NN>-<slug>/tasks/<task-id>/ (task id = <short-slug>-<4hex>).
   - Each task PLAN.md starts with frontmatter: id, kind, status: ready, depends-on: [task ids], optional feature. The cross-task dependency graph must be acyclic.
   - Each task PLAN needs requirements, must_haves.truths, must_haves.artifacts, must_haves.key_links.
-  - PATH DISCIPLINE: all task PLAN.md / phase CONTEXT.md / RESEARCH.md go under \`.soly/phases/<NN>-<slug>/\`. Never write to the project root.
-  - Update .soly/STATE.md Current Position at the end.
+  - PATH DISCIPLINE: all task PLAN.md / phase CONTEXT.md / RESEARCH.md go under \`.agents/phases/<NN>-<slug>/\`. Never write to the project root.
+  - Update .agents/STATE.md Current Position at the end.
   - Return: created task ids, the dependency order (which tasks are ready first), open questions.
 \`
 })
@@ -231,7 +231,7 @@ The planner reads this file first — it contains intent, STATE, the feature REA
 **Inline plan summary (so you have the must-haves even before reading the file):**
 ${inlineSummary}
 
-**0-POINT CHECK.** Re-read .soly/docs/ (intent) and .soly/features/${task.feature}/README.md (feature context) before refining the plan.
+**0-POINT CHECK.** Re-read .agents/docs/ (intent) and .agents/features/${task.feature}/README.md (feature context) before refining the plan.
 
 This task already has PLAN.md. Your job is to flesh it out / improve it based on intent and feature context — not to start from scratch.
 
@@ -265,7 +265,7 @@ Hard rules:
   - Preserve the existing frontmatter (id, kind, feature, status, etc.) — only update if you find a bug.
   - If you change the plan body materially, commit it as \`chore(tasks): refine plan <task-id>\`.
   - If you only add small clarifications, no commit needed (or include in same commit).
-  - PATH DISCIPLINE: PLAN.md lives at \`.soly/features/<feature>/tasks/<id>/PLAN.md\`. Never write to the project root.
+  - PATH DISCIPLINE: PLAN.md lives at \`.agents/features/<feature>/tasks/<id>/PLAN.md\`. Never write to the project root.
   - Return: what changed, open questions, dependencies discovered.
 \`
 })
@@ -289,8 +289,8 @@ When the subagent returns, summarize what was refined. Do not execute — planni
 				return {
 					handled: true,
 					transformedText:
-						`soly plan: could not create .soly/features/${target.feature}/tasks/ (${(e as Error).message}). ` +
-						`Create it manually: \`mkdir -p .soly/features/${target.feature}/tasks/\``,
+						`soly plan: could not create .agents/features/${target.feature}/tasks/ (${(e as Error).message}). ` +
+						`Create it manually: \`mkdir -p .agents/features/${target.feature}/tasks/\``,
 				};
 			}
 			try {
@@ -305,8 +305,8 @@ When the subagent returns, summarize what was refined. Do not execute — planni
 				return {
 					handled: true,
 					transformedText:
-						`soly plan: created .soly/features/${target.feature}/tasks/ but failed to write README.md (${(e as Error).message}). ` +
-						`Continue manually: \`touch .soly/features/${target.feature}/README.md\``,
+						`soly plan: created .agents/features/${target.feature}/tasks/ but failed to write README.md (${(e as Error).message}). ` +
+						`Continue manually: \`touch .agents/features/${target.feature}/README.md\``,
 				};
 			}
 			// Re-read state so the planner sees the new feature
@@ -331,13 +331,13 @@ When the subagent returns, summarize what was refined. Do not execute — planni
 **Slug:** ${target.slug}
 **Feature README:** ${featureDir}/README.md
 
-**0-POINT CHECK.** Re-read .soly/docs/ (intent) and .soly/features/${target.feature}/README.md (feature context) before planning.
+**0-POINT CHECK.** Re-read .agents/docs/ (intent) and .agents/features/${target.feature}/README.md (feature context) before planning.
 
 **Step 1 — generate task ID.** The task ID is \`<slug>-<4hex>\` (e.g. \`${target.slug}-a3f9\`). Generate 4 lowercase hex chars (use \`crypto.randomBytes(2).toString('hex')\` in node, or any 4-char [0-9a-f]{4} string if you don't have a shell handy).
 
 **Step 2 — create the dir:**
 \`\`\`
-mkdir -p .soly/features/${target.feature}/tasks/<id>
+mkdir -p .agents/features/${target.feature}/tasks/<id>
 \`\`\`
 
 **Step 3 — write PLAN.md** with the frontmatter below + the plan body.
@@ -379,7 +379,7 @@ ${workflow}
 Hard rules:
   - Do not write production code. Planning only.
   - Generate the task id as \`<slug>-<4hex>\` (e.g. \`${target.slug}-a3f9\`) — use 4 lowercase hex chars.
-  - Create the dir \`.soly/features/${target.feature}/tasks/<id>/\` first.
+  - Create the dir \`.agents/features/${target.feature}/tasks/<id>/\` first.
   - Write PLAN.md with the frontmatter (id, kind, feature, status: ready, priority, parallelizable, depends-on).
   - Pick a \`kind:\` value matching the work (be|fe|infra|docs|integration).
   - Pick a reasonable \`priority:\` (default: medium).
@@ -457,7 +457,7 @@ export function buildDiscussTransform(
 		return {
 			handled: true,
 			transformedText:
-				`soly discuss: no .soly/ directory in cwd (${state.solyDir || "<cwd>"}) — cannot discuss.\n` +
+				`soly discuss: no .agents/ directory in cwd (${state.solyDir || "<cwd>"}) — cannot discuss.\n` +
 				`Initialize a soly project first.`,
 		};
 	}
@@ -594,7 +594,7 @@ soly_ask_user({
        { category: "<cat>", choice: "<what was chosen>", rationale: "<why>" },
        ...
      ],
-     canonical_refs: [".soly/docs/<file>", ".soly/ROADMAP.md", ...],
+     canonical_refs: [".agents/docs/<file>", ".agents/ROADMAP.md", ...],
      deferred_ideas: ["<scope creep for future phase>", ...],
      codebase_context: ["src/components/Card.tsx — has rounded/shadow variants, reuse", ...],
    })
@@ -608,7 +608,7 @@ soly_ask_user({
 - ${hasAskPro ? "`ask_pro` — multi-question tabbed picker (PREFERRED)" : "`soly_ask_user` — single-question picker (fallback)"}
 - \`soly_save_discuss_checkpoint\` — save partial progress (use after each answer)
 - \`soly_finish_discuss\` — finalize: writes CONTEXT.md, deletes checkpoint
-- \`soly_read\`, \`soly_snippet\`, \`soly_doc_search\` — read .soly/ artifacts as needed (intent docs are already in your system prompt)
+- \`soly_read\`, \`soly_snippet\`, \`soly_doc_search\` — read .agents/ artifacts as needed (intent docs are already in your system prompt)
 - \`soly_log_decision\` — log to STATE.md Decisions table (use sparingly)
 - Standard pi tools: \`read\`, \`bash\`, \`grep\`, \`find\` for codebase context
 

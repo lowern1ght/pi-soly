@@ -1,10 +1,10 @@
 # Plan Task Workflow
 
-# Всегда соблюдай правила проекта из .soly/rules/
+# Всегда соблюдай правила проекта из .agents/rules/
 # Не используй shortcuts ради скорости
 
 <path_discipline>
-**All soly-managed files live under `.soly/`.** PLAN.md lives at `.soly/features/<feature>/tasks/<task-id>/PLAN.md`. Never write plan files to the project root. Use absolute paths.
+**All soly-managed files live under `.agents/`.** PLAN.md lives at `.agents/features/<feature>/tasks/<task-id>/PLAN.md`. Never write plan files to the project root. Use absolute paths.
 
 The iteration context file (path given by the parent in the task prompt) is your single source of truth for intent, STATE, the feature README, prior task SUMMARYs, and the current task PLAN (for refinement). Read it FIRST.
 </path_discipline>
@@ -18,14 +18,14 @@ executor can pick it up standalone.
 
 <required_reading>
 Before any planning, read:
-1. .soly/docs/ — INTENT (0-point)
-2. .soly/STATE.md — current state
-3. .soly/ROADMAP.md — high-level requirements
-4. .soly/features/<feature>/README.md — feature context
-5. .soly/contracts/* — shared API schemas (if any)
+1. .agents/docs/ — INTENT (0-point)
+2. .agents/STATE.md — current state
+3. .agents/ROADMAP.md — high-level requirements
+4. .agents/features/<feature>/README.md — feature context
+5. .agents/contracts/* — shared API schemas (if any)
 6. The task's existing PLAN.md (if refining) or relevant sibling tasks (if creating)
 
-If `.soly/features/` is empty for the target feature, error and stop.
+If `.agents/features/` is empty for the target feature, error and stop.
 Do not invent feature paths.
 </required_reading>
 
@@ -36,7 +36,7 @@ PLAN.md starts with a YAML frontmatter block. The executor depends on it.
 ---
 id: auth-be-login-a3f9   # slug-4hex, must match the directory name
 kind: be                  # be | fe | infra | docs | integration
-feature: auth             # parent feature name (must match .soly/features/<feature>/)
+feature: auth             # parent feature name (must match .agents/features/<feature>/)
 status: ready             # ready | in-progress | blocked | done
 priority: high            # high | medium | low
 parallelizable: true      # whether this task can run alongside other parallel tasks
@@ -68,7 +68,7 @@ If unclear, error and ask the parent.
 </step>
 
 <step name="read_intent" priority="first">
-**0-POINT CHECK.** Re-read `.soly/docs/` (intent docs) before any planning.
+**0-POINT CHECK.** Re-read `.agents/docs/` (intent docs) before any planning.
 The task PLAN.md is the contract; intent docs are the WHY. If you find
 a conflict, flag it instead of silently choosing.
 
@@ -79,13 +79,13 @@ read it directly from its path.
 </step>
 
 <step name="read_feature">
-Read `.soly/features/<feature>/README.md` for feature-level context.
+Read `.agents/features/<feature>/README.md` for feature-level context.
 If missing, note it but proceed (the parent may not have written one yet).
 </step>
 
 <step name="check_contracts">
 If the task touches API surfaces (BE endpoints, FE request shapes, shared
-types), read `.soly/contracts/<feature>.openapi.yaml` or similar. Contracts
+types), read `.agents/contracts/<feature>.openapi.yaml` or similar. Contracts
 are the synchronizing artifact between parallel BE and FE tasks.
 </step>
 
@@ -137,13 +137,13 @@ For new-task, commit the new PLAN.md:
 ```
 # Use absolute path with `cd "$PROJECT_ROOT"` so git doesn't interpret
 # a bare relative path as cwd-relative.
-cd "$PROJECT_ROOT" && git add .soly/features/<feature>/tasks/<id>/PLAN.md
+cd "$PROJECT_ROOT" && git add .agents/features/<feature>/tasks/<id>/PLAN.md
 git commit -m "chore(tasks): plan <id>"
 ```
 
 For existing-task refinement, commit only if material change:
 ```
-cd "$PROJECT_ROOT" && git add .soly/features/<feature>/tasks/<id>/PLAN.md
+cd "$PROJECT_ROOT" && git add .agents/features/<feature>/tasks/<id>/PLAN.md
 git commit -m "chore(tasks): refine plan <id>"
 ```
 
@@ -152,7 +152,7 @@ If nothing material changed, do not commit.
 **Worker bash setup (when you do need it):**
 ```bash
 PROJECT_ROOT="$(pwd)"  # worker inherits parent cwd = project root
-SOLY_DIR="$PROJECT_ROOT/.soly"
+SOLY_DIR="$PROJECT_ROOT/.agents"
 ```
 </step>
 
@@ -172,14 +172,14 @@ Return to parent:
 - Preserve existing frontmatter on refinement. Only update if you find a bug.
 - For new-task, generate the id as `<slug>-<4hex>` (lowercase).
 - Commit messages follow Conventional Commits 1.0.0 — `chore(tasks): ...`.
-- Do not modify `.soly/rules/`.
+- Do not modify `.agents/rules/`.
 - Do not run subagents yourself.
-- **PATH DISCIPLINE:** PLAN.md goes to `.soly/features/<feature>/tasks/<id>/PLAN.md`. Never to the project root.
+- **PATH DISCIPLINE:** PLAN.md goes to `.agents/features/<feature>/tasks/<id>/PLAN.md`. Never to the project root.
 - Return: created/refined path, task id, plan summary, open questions.
 </hard_rules>
 
 <dual_mode_note>
 Tasks are part of soly's dual-mode system. The project may also have
-`.soly/phases/` (phase-based layout, distinct from task-based). You are only planning a specific task.
+`.agents/phases/` (phase-based layout, distinct from task-based). You are only planning a specific task.
 Do not touch phases. Do not modify ROADMAP.md or STATE.md.
 </dual_mode_note>
