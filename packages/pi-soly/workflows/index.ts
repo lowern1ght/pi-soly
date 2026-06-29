@@ -25,6 +25,7 @@ import { showDoctor, showIterations, showDiffIterations, showPhaseDelete, showTo
 import { buildPlanTransform, buildDiscussTransform } from "./planning.ts";
 import { buildNewTransform } from "./new.ts";
 import { buildDoneTransform } from "./done.ts";
+import { buildMigrateTransform } from "./migrate.ts";
 import { createVerifyLoop, type VerifyState } from "./verify.ts";
 import type { ContextManager } from "../context-manager.ts";
 import type { SolyState } from "../core.js";
@@ -160,6 +161,12 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 			if (!result.handled || !result.transformedText) return;
 			// Direct execution — workflow already called ui.notify. The
 			// transformed text tells the LLM (and the user in chat) what happened.
+			return { action: "transform", text: result.transformedText };
+		}
+
+		if (cmd.verb === "migrate") {
+			const result = buildMigrateTransform(state, ctx.ui, ctx.cwd);
+			if (!result.handled || !result.transformedText) return;
 			return { action: "transform", text: result.transformedText };
 		}
 

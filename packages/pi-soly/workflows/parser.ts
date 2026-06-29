@@ -19,7 +19,7 @@
 export type WorkflowVerb =
 	| "execute" | "pause" | "compact" | "resume" | "status" | "log" | "diff"
 	| "plan" | "discuss" | "help" | "doctor" | "iterations" | "phase" | "todos" | "verify"
-	| "new" | "done";
+	| "new" | "done" | "migrate";
 
 /** Allowed Conventional Commits types for `soly new` / `soly plan <type>/<name>` / etc. */
 export const PLAN_TYPES = ["feat", "fix", "chore", "refactor", "docs", "test", "perf", "build", "ci"] as const;
@@ -102,7 +102,8 @@ export function parseSolyCommand(text: string): SolyCommand | null {
 		verb !== "todos" &&
 		verb !== "verify" &&
 		verb !== "new" &&
-		verb !== "done"
+		verb !== "done" &&
+		verb !== "migrate"
 	) {
 		return null;
 	}

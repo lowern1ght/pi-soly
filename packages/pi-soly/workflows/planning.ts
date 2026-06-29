@@ -123,8 +123,13 @@ Hard rules:
 		return { handled: true, transformedText: instruction };
 	}
 
-	// === PHASE MODE ===
+	// === PHASE MODE (legacy — see W6 in the plans-instead-of-phases plan) ===
 	if (target.kind === "phase") {
+		const deprecationNotice =
+			"⚠️  PHASE MODE IS LEGACY. Phases have been replaced by plans (each plan = a git branch `<type>/<name>` with `.agents/plans/<name>/PLAN.md`).\n" +
+			"To migrate an existing phase to a plan, run \`soly migrate phases-to-plans\` once.\n" +
+			"For new work, use \`soly new <type>/<name>\` (e.g. \`soly new feat/auth-jwt\`).\n" +
+			"This phase handler still works for backward compat but won't get new features.\n\n";
 		const phase = state.phases.find((p) => p.number === target.phase);
 		if (!phase) {
 			return {
@@ -150,7 +155,7 @@ Hard rules:
 			kind: "plan",
 			phaseNumber: target.phase,
 		});
-		const instruction = `soly plan ${target.raw} — planning phase ${target.phase} (${phase.name}).
+		const instruction = deprecationNotice + `soly plan ${target.raw} — planning phase ${target.phase} (${phase.name}).
 
 **Iteration context file written:** \`${iter.relPath}\` (${iter.tokens} tokens, ${iter.bytes} bytes)
 The planner reads this file first — it contains intent, STATE, ROADMAP row for this phase, phase CONTEXT, phase RESEARCH, and prior SUMMARYs.

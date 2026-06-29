@@ -4,6 +4,37 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.15.0] — 2026-06-29
+
+### Added
+- **Plan-based workflow** — `soly new <type>/<name>`, `soly plan <type>/<name>`,
+  `soly execute <type>/<name>`, `soly discuss <type>/<name>`, `soly done <type>/<name>`.
+  Each plan = a git branch (`feat/auth-jwt`, `fix/login-redirect`, etc.) with
+  `.agents/plans/<name>/PLAN.md` on that branch. Two developers can work on
+  different plans without colliding on `PLAN.md` or `STATE.md`. Implementation
+  plan at `.agents/plans/feat-plans-instead-of-phases/PLAN.md`.
+- **`soly migrate phases-to-plans`** (W5) — one-shot migration of every
+  `.agents/phases/<NN>-slug/plans/PLAN.md` into a `migrate/legacy-<NN>-slug`
+  branch with `.agents/plans/legacy-<NN>-slug/PLAN.md`. Re-runnable, idempotent
+  per phase (skips phases whose branch already exists).
+- **`.gitignore`** — `.agents/rule-mtimes.json` (per-session runtime
+  cache) and `.claude/` (pi agent runtime) are now ignored.
+
+### Changed
+- **Phase mode is legacy** (W6) — `soly plan 3` / `soly execute 5` (numeric
+  phase form) still works for backward compat, but the LLM instruction
+  is prefixed with a deprecation notice that points the user at
+  `soly migrate phases-to-plans` (one-time) and `soly new <type>/<name>`
+  (going forward). Phases no longer get new features.
+- **Active plans tracked via git branches** (W4) — the plan registry IS
+  the branch list. No separate JSON file to maintain, no merge
+  conflicts when multiple plans ship in parallel. `git branch -l "feat/*"`
+  etc. shows what's in flight.
+
+### Removed
+- **JSON plan-registry idea** (early W4 draft) — replaced with branch
+  derivation. Cleaner, no concurrency hazards.
+
 ## [1.14.0] — 2026-06-29
 
 ### Changed
