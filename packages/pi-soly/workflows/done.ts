@@ -194,6 +194,9 @@ export function buildDoneTransform(
 		`  Commit:   ${commitHash.slice(0, 7)}\n` +
 		`  Pushed:   ${pushed ? "yes" : "no (no origin remote)"}\n` +
 		`  ${prLine}`;
+
+	// (No registry file to update — the plan's git branch IS the source of
+	// truth for "active plans". See PLAN.md / "Out of scope" for the trade-off.)
 	ui.notify(notice, "info");
 	return {
 		handled: true,
