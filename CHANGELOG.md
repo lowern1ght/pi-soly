@@ -4,6 +4,31 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.13.5] — 2026-06-28
+
+### Fixed
+- **MCP no longer crashes pi when ext-apps can't load.**
+  `@modelcontextprotocol/ext-apps@1.7.4` statically `require`s
+  `@modelcontextprotocol/sdk/types.js` — a subpath `sdk@1.29.0` (ext-apps' own
+  peer) dropped from its CJS exports — so importing it threw at module-eval and
+  the **unguarded** dynamic `import("./mcp/index.ts")` rejected, taking down the
+  whole pi agent (`uncaughtException`). Now:
+  - `index.ts` wraps the MCP dynamic import in `try/catch` + `.catch` so a load
+    failure is logged, never fatal.
+  - new `mcp/ext-apps-bridge.ts` loads `ext-apps/app-bridge` **lazily, once,
+    behind a guard**, exposing `getToolUiResourceUri` / `buildAllowAttribute` /
+    `resourceMimeType` with safe fallbacks; `preloadAppBridge()` is awaited in
+    MCP `session_start` before metadata is built. The four static ext-apps
+    imports now point at the bridge.
+  Core MCP is unaffected; only the app-bridge UI degrades when ext-apps/sdk are
+  version-incompatible. (Note: the earlier "missing peer dep / run `npm install`"
+  diagnosis was wrong — this is a version/export break `npm install` can't fix.)
+- **`/soly` modal ghosted/duplicated rows on ↑↓ navigation.** The subcommand
+  icons were astral / VS16 emoji (📍 🗺️ ⚙️ …) that `visibleWidth` mis-measures,
+  overflowing the ListPanel width. Replaced with single-width BMP glyphs
+  (◎ ▤ ⊙ ★ ↻ …) — the same family as the footer / `/artifacts` markers fixed
+  earlier.
+
 ## [1.13.4] — 2026-06-24
 
 ### Changed
