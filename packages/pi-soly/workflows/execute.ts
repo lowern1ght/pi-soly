@@ -274,7 +274,96 @@ When the subagent completes, synthesize the result. Do not re-execute its work. 
 		};
 	}
 
+	// === PLAN MODE (new dual-mode: `<type>/<name>` plans live under .agents/plans/<name>/) ===
+	if (target.kind === "plan") {
+		const planDirAbs = `${state.solyDir}/plans/${target.name}`;
+		const planFile = `${planDirAbs}/PLAN.md`;
+		let planBody: string;
+		try {
+			planBody = fs.readFileSync(planFile, "utf-8");
+		} catch {
+			return {
+				handled: true,
+				transformedText:
+					`soly execute: plan ${target.raw} has no PLAN.md at ${planFile}.\n` +
+					`Run \`soly plan ${target.raw}\` first to flesh it out.`,
+			};
+		}
+		const workflow = loadWorkflowMarkdown("execute-plan.md");
+		if (!workflow) {
+			return {
+				handled: true,
+				transformedText:
+					`soly execute: workflow markdown not found: workflows-data/execute-plan.md\n` +
+					`This is an extension installation issue — reinstall soly.`,
+			};
+		}
+		// Write per-iteration context bundle so the worker has intent + STATE
+		// + the plan body in one file.
+		const iter = writeIterationContext({
+			solyDir: state.solyDir,
+			projectRoot,
+			kind: "exec",
+			planName: target.name,
+		});
+		const instruction = `soly execute ${target.raw} — executing plan.
+
+**Plan:** ${target.name}
+**Branch:** ${target.raw}
+**PLAN.md:** ${planFile}
+
+**Iteration context file written:** \`${iter.relPath}\` (${iter.tokens} tokens)
+The worker reads this file first — it contains intent, STATE, ROADMAP, the
+plan body inline, and any prior SUMMARYs for this plan (none on first run).
+
+**Inline plan body (so you have must-haves before reading the file):**
+\`\`\`markdown
+${planBody.slice(0, 4000)}${planBody.length > 4000 ? "\n…(truncated)" : ""}
+\`\`\`
+
+**0-POINT CHECK.** Worker must re-read .agents/docs/ (intent) before implementing.
+
+Launch a single subagent to execute the plan. Do NOT do the work inline.
+
+subagent({
+  agent: ${JSON.stringify(opts.agent ?? "worker")},
+  context: "fresh",
+  async: true,
+  maxSubagentDepth: 1,
+  task: \`You are soly-executor. Execute the plan at \`${planFile}\` end-to-end.
+
+**FIRST ACTION — read the iteration context file:**
+\`\`\`
+${iter.relPath}
+\`\`\`
+It contains intent, STATE, ROADMAP, and the full plan body. Do NOT skip it.
+
+Project root: ${projectRoot}
+Soly dir:    ${state.solyDir}
+Plan dir:    ${planDirAbs}
+
+**0-POINT CHECK — read .agents/docs/ first.**
+
+Follow the workflow below VERBATIM.
+
+=== WORKFLOW: execute-plan.md ===
+${workflow}
+=== END WORKFLOW ===
+
+Hard rules:
+  - All work happens on branch \`${target.raw}\`. Do not switch branches.
+  - When the plan is fully executed and verified, write a SUMMARY.md next to
+    PLAN.md summarizing what was done, what was deferred, and any deviations.
+  - Do not commit unless the workflow tells you to; the user reviews and merges.
+\`)
+}`;
+		return { handled: true, transformedText: instruction };
+	}
+
 	// === PHASE MODE ===
+	if (target.kind !== "phase") {
+		return { handled: false };
+	}
 	const phase = state.phases.find((p) => p.number === target.phase);
 	if (!phase) {
 		return {

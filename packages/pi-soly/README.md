@@ -78,13 +78,28 @@ Tracked upstream — fix is expected on the pi side, not here.
 ### Workflow — plain-text verbs (type `soly <verb>`, not slash)
 
 ```bash
-soly discuss 3     # talk through decisions before planning phase 3
-soly plan 3        # generate PLAN.md for phase 3
-soly execute 3     # execute phase 3 (or `soly execute 3.02` for one plan)
-soly verify        # self-review loop until "No issues found." (`soly verify stop` to exit)
-soly pause         # save a handoff; `soly resume` to pick it back up
-soly status        # current position + progress (no LLM round-trip)
+# === Plan mode (recommended for new work — each plan is a git branch) ===
+soly new feat/auth-jwt       # create branch + .agents/plans/<name>/ + stub PLAN.md
+soly discuss feat/auth-jwt   # interactive discussion of the plan
+soly plan feat/auth-jwt      # flesh out PLAN.md via ask_pro
+soly execute feat/auth-jwt   # execute the plan in a subagent
+soly done feat/auth-jwt      # commit, push, open draft PR via gh
+soly verify                  # self-review loop until "No issues found." (soly verify stop to exit)
+soly pause                   # save a handoff; soly resume to pick it back up
+soly status                  # current position + progress (no LLM round-trip)
+
+# === Phase mode (legacy — still works for existing projects) ===
+soly plan 3                  # generate PLAN.md for phase 3 (numeric form)
+soly execute 3               # execute phase 3 (or `soly execute 3.02` for one plan)
+soly migrate phases-to-plans # one-shot: import each .agents/phases/<NN>-slug/plans/PLAN.md
+                             #   as a `migrate/legacy-<NN>-slug` branch with .agents/plans/legacy-<NN>-slug/PLAN.md
 ```
+
+> **Why plans instead of phases?** A global phase counter (1, 2, 3, ...) means two
+> developers each starting a "phase 11" write to the same path. With plans, each
+> is a git branch (`feat/auth-jwt`, `fix/login-redirect`, …) with its own
+> `.agents/plans/<name>/PLAN.md` — no collisions, clean isolation, and the branch
+> list itself is the registry of what's in flight.
 
 ### State inspection (`/soly`)
 

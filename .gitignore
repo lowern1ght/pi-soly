@@ -16,3 +16,9 @@ coverage/
 .vscode/
 *.swp
 *~
+
+# soly runtime state (regenerated each session — never commit)
+.agents/rule-mtimes.json
+
+# agent tooling (pi agent runtime, not part of project)
+.claude/
