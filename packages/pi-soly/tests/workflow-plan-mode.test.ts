@@ -55,12 +55,12 @@ function initTmpRepoWithSoly(): string {
 describe("describePlanTarget — plan kind (W2)", () => {
 	test("auth-jwt → plan", () => {
 		const t = describePlanTarget(["auth-jwt"]);
-		expect(t).toEqual({ kind: "plan", name: "auth-jwt", raw: "auth-jwt" });
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: null, raw: "auth-jwt" });
 	});
 
 	test("feature/auth-jwt → plan (prefixed form)", () => {
 		const t = describePlanTarget(["feature/auth-jwt"]);
-		expect(t).toEqual({ kind: "plan", name: "auth-jwt", raw: "feature/auth-jwt" });
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: "feature", raw: "feature/auth-jwt" });
 	});
 
 	test("login-redirect → plan", () => {
@@ -70,7 +70,7 @@ describe("describePlanTarget — plan kind (W2)", () => {
 
 	test("upgrade-deps → plan", () => {
 		const t = describePlanTarget(["upgrade-deps"]);
-		expect(t).toMatchObject({ kind: "plan", name: "upgrade-deps" });
+		expect(t).toMatchObject({ kind: "plan", name: "upgrade-deps", prefix: null });
 	});
 
 	test("plain 11 → still phase (backward compat)", () => {
@@ -80,7 +80,7 @@ describe("describePlanTarget — plan kind (W2)", () => {
 
 	test("legacy <type>/<name> form is now accepted as <prefix>/<slug> (1.16.x)", () => {
 		const t = describePlanTarget(["feat/auth-jwt"]);
-		expect(t).toEqual({ kind: "plan", name: "auth-jwt", raw: "feat/auth-jwt" });
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: "feat", raw: "feat/auth-jwt" });
 	});
 
 	test("Foo/Bar (uppercase) → null", () => {
@@ -102,12 +102,12 @@ describe("describePlanTarget — plan kind (W2)", () => {
 describe("describeExecuteTarget — plan kind (W2)", () => {
 	test("auth-jwt → plan", () => {
 		const t = describeExecuteTarget(["auth-jwt"]);
-		expect(t).toEqual({ kind: "plan", name: "auth-jwt", raw: "auth-jwt" });
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: null, raw: "auth-jwt" });
 	});
 
 	test("feature/auth-jwt → plan (prefixed form)", () => {
 		const t = describeExecuteTarget(["feature/auth-jwt"]);
-		expect(t).toEqual({ kind: "plan", name: "auth-jwt", raw: "feature/auth-jwt" });
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: "feature", raw: "feature/auth-jwt" });
 	});
 
 	test("plain 5 → still phase (backward compat)", () => {
@@ -142,6 +142,27 @@ describe("buildPlanTransform — plan mode", () => {
 		expect(result.handled).toBe(true);
 		expect(result.transformedText).toContain(".agents/plans/auth-jwt/PLAN.md");
 		expect(result.transformedText).toContain("auth-jwt");
+	});
+
+	test("<prefix>/<slug> input reads from the flattened dir (1.16.1 regression)", () => {
+		// Plan dir is `.agents/plans/feature-auth-jwt/`, NOT `.agents/plans/auth-jwt/`.
+		// Pre-1.16.1 this read from `.agents/plans/auth-jwt/` and silently missed
+		// the file on prefix-styled plans.
+		const planFile = path.join(repo, ".agents", "plans", "feature-auth-jwt", "PLAN.md");
+		fs.mkdirSync(path.dirname(planFile), { recursive: true });
+		fs.writeFileSync(planFile, "# Plan: feature/auth-jwt\n\n## Goal\nTBD\n");
+
+		const state = fakeState(path.join(repo, ".agents"));
+		const result = buildPlanTransform(
+			{ verb: "plan", args: ["feature/auth-jwt"], raw: "soly plan feature/auth-jwt" } as never,
+			state,
+		);
+
+		expect(result.handled).toBe(true);
+		expect(result.transformedText).toContain(".agents/plans/feature-auth-jwt/PLAN.md");
+		// TBD placeholder because we wrote empty TBD content — but the
+		// important thing is the path the LLM is told to use.
+		expect(result.transformedText).not.toContain("has no PLAN.md");
 	});
 
 	test("error if PLAN.md does not exist (uses TBD placeholder in body)", () => {

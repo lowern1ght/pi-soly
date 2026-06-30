@@ -272,9 +272,13 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 		merged.editor.command = over.editor.command;
 	}
 	if (over.plan && typeof over.plan.defaultBranchPrefix === "string") {
-		// Sanitize: allow only kebab-case words (no slashes, dots, etc.).
-		// Empty string is allowed and means "no prefix".
-		const sanitized = over.plan.defaultBranchPrefix.replace(/[^a-z0-9-]/gi, "");
+		// Sanitize: lowercase, then allow only kebab-case chars (no
+		// slashes/dots/spaces). Empty string is allowed and means
+		// "no prefix". We do NOT warn on slash/uppercase — the user
+		// probably meant a different prefix shape; silently normalizing
+		// keeps configs from being rejected for cosmetic reasons.
+		const lowercased = over.plan.defaultBranchPrefix.toLowerCase();
+		const sanitized = lowercased.replace(/[^a-z0-9-]/g, "");
 		const collapsed = sanitized.replace(/-+/g, "-").replace(/^-|-$/g, "");
 		merged.plan.defaultBranchPrefix = collapsed;
 	}

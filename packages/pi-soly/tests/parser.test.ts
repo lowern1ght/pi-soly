@@ -107,7 +107,7 @@ describe("describeExecuteTarget", () => {
 
 	test("plain letters are now a valid plan slug (1.15.x)", () => {
 		// `abc` matches the kebab-case slug regex, so it's a valid plan name.
-		expect(describeExecuteTarget(["abc"])).toEqual({ kind: "plan", name: "abc", raw: "abc" });
+		expect(describeExecuteTarget(["abc"])).toEqual({ kind: "plan", name: "abc", prefix: null, raw: "abc" });
 	});
 
 	test("parses task id (slug-4hex)", () => {
@@ -126,6 +126,7 @@ describe("describeExecuteTarget", () => {
 		expect(describeExecuteTarget(["auth-be-login-zzzz"])).toEqual({
 			kind: "plan",
 			name: "auth-be-login-zzzz",
+			prefix: null,
 			raw: "auth-be-login-zzzz",
 		});
 	});
@@ -217,6 +218,7 @@ describe("describePlanTarget", () => {
 		expect(describePlanTarget(["--new-task", "add-logout"])).toEqual({
 			kind: "plan",
 			name: "add-logout",
+			prefix: null,
 			raw: "--new-task add-logout",
 		});
 	});
@@ -253,6 +255,7 @@ describe("describePlanTarget", () => {
 		expect(describePlanTarget(["whatever"])).toEqual({
 			kind: "plan",
 			name: "whatever",
+			prefix: null,
 			raw: "whatever",
 		});
 	});

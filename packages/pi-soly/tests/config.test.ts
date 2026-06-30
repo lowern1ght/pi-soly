@@ -3,7 +3,7 @@
 // =============================================================================
 
 /// <reference types="bun-types" />
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { describe, test, expect, beforeAll, beforeEach, afterAll } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -192,5 +192,74 @@ describe("pruneOldIterations", () => {
 		const r = pruneOldIterations(freshSolyDir, 7);
 		expect(r.pruned).toBe(0);
 		expect(r.kept).toBe(0);
+	});
+});
+
+// =============================================================================
+// plan.defaultBranchPrefix — sanitize (1.16.1)
+// =============================================================================
+
+describe("loadConfig — plan.defaultBranchPrefix sanitization", () => {
+	let homeDir: string;
+	let projectDir: string;
+	let projectSoly: string;
+
+	beforeAll(() => {
+		homeDir = path.join(tmpRoot, "home-isolated");
+		projectDir = path.join(tmpRoot, "home-isolated", "project");
+		fs.mkdirSync(path.join(homeDir, ".agents"), { recursive: true });
+		fs.mkdirSync(path.join(projectDir, ".agents"), { recursive: true });
+		projectSoly = path.join(projectDir, ".agents");
+	});
+
+	// Reset .agents/soly.json before each test so we don't leak between runs.
+	beforeEach(() => {
+		const cfg = path.join(projectSoly, "soly.json");
+		if (fs.existsSync(cfg)) fs.unlinkSync(cfg);
+	});
+
+	test("uppercase letters are lowercased (1.16.1 regression)", () => {
+		fs.writeFileSync(
+			path.join(projectSoly, "soly.json"),
+			JSON.stringify({ plan: { defaultBranchPrefix: "Feature" } }),
+		);
+		const r = loadConfig(projectDir, homeDir);
+		expect(r.config.plan.defaultBranchPrefix).toBe("feature");
+	});
+
+	test("slashes / dots / spaces are stripped", () => {
+		fs.writeFileSync(
+			path.join(projectSoly, "soly.json"),
+			JSON.stringify({ plan: { defaultBranchPrefix: "fea/ture.foo bar" } }),
+		);
+		const r = loadConfig(projectDir, homeDir);
+		expect(r.config.plan.defaultBranchPrefix).toBe("featurefoobar");
+	});
+
+	test("consecutive hyphens are collapsed", () => {
+		fs.writeFileSync(
+			path.join(projectSoly, "soly.json"),
+			JSON.stringify({ plan: { defaultBranchPrefix: "fea---ture" } }),
+		);
+		const r = loadConfig(projectDir, homeDir);
+		expect(r.config.plan.defaultBranchPrefix).toBe("fea-ture");
+	});
+
+	test("leading/trailing hyphens are stripped", () => {
+		fs.writeFileSync(
+			path.join(projectSoly, "soly.json"),
+			JSON.stringify({ plan: { defaultBranchPrefix: "-feature-" } }),
+		);
+		const r = loadConfig(projectDir, homeDir);
+		expect(r.config.plan.defaultBranchPrefix).toBe("feature");
+	});
+
+	test("empty string is preserved (means 'no prefix')", () => {
+		fs.writeFileSync(
+			path.join(projectSoly, "soly.json"),
+			JSON.stringify({ plan: { defaultBranchPrefix: "" } }),
+		);
+		const r = loadConfig(projectDir, homeDir);
+		expect(r.config.plan.defaultBranchPrefix).toBe("");
 	});
 });

@@ -241,7 +241,7 @@ function parseNewTaskFlag(
  */
 export type ExecuteTarget =
 	| { kind: "phase"; phase: number; plan: number | null; raw: string }
-	| { kind: "plan"; name: string; raw: string }
+	| { kind: "plan"; name: string; prefix: string | null; raw: string }
 	| { kind: "task"; taskId: string; raw: string }
 	| { kind: "all"; raw: string }
 	| { kind: "feature"; feature: string; raw: string };
@@ -287,7 +287,7 @@ export function describeExecuteTarget(args: string[]): ExecuteTarget | null {
 
 	const plan = parsePlanName(target);
 	if (!("error" in plan)) {
-		return { kind: "plan", name: plan.name, raw };
+		return { kind: "plan", name: plan.name, prefix: plan.prefix, raw };
 	}
 
 	const phase = parsePhaseShape(target);
@@ -313,7 +313,7 @@ export function describeExecuteTarget(args: string[]): ExecuteTarget | null {
  */
 export type PlanTarget =
 	| { kind: "phase"; phase: number; raw: string }
-	| { kind: "plan"; name: string; raw: string }
+	| { kind: "plan"; name: string; prefix: string | null; raw: string }
 	| { kind: "task"; taskId: string; raw: string }
 	| { kind: "new-task"; slug: string; feature: string; raw: string }
 	| { kind: "feature"; feature: string; raw: string };
@@ -361,7 +361,7 @@ export function describePlanTarget(args: string[]): PlanTarget | null {
 
 	const plan = parsePlanName(target);
 	if (!("error" in plan)) {
-		return { kind: "plan", name: plan.name, raw };
+		return { kind: "plan", name: plan.name, prefix: plan.prefix, raw };
 	}
 
 	// Plan target only matches plain N (no .MM — plan is per-phase, executed

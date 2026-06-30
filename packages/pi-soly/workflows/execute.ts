@@ -274,9 +274,12 @@ When the subagent completes, synthesize the result. Do not re-execute its work. 
 		};
 	}
 
-	// === PLAN MODE (new dual-mode: `<type>/<name>` plans live under .agents/plans/<name>/) ===
+	// === PLAN MODE (new dual-mode: `<type>/<name>` plans live under .agents/plans/<prefix>-<name>/) ===
 	if (target.kind === "plan") {
-		const planDirAbs = `${state.solyDir}/plans/${target.name}`;
+		// Plan dir is always flattened: `<prefix>-<name>` if a prefix is
+		// present, else just `<name>`.
+		const dirSlug = target.prefix ? `${target.prefix}-${target.name}` : target.name;
+		const planDirAbs = `${state.solyDir}/plans/${dirSlug}`;
 		const planFile = `${planDirAbs}/PLAN.md`;
 		let planBody: string;
 		try {

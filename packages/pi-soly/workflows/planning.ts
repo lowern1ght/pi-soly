@@ -91,9 +91,13 @@ export function buildPlanTransform(cmd: SolyCommand, state: SolyState): Planning
 		};
 	}
 
-	// === PLAN MODE (new dual-mode: `<type>/<name>` plans live under .agents/plans/<name>/) ===
+	// === PLAN MODE (new dual-mode: `<type>/<name>` plans live under .agents/plans/<prefix>-<name>/) ===
 	if (target.kind === "plan") {
-		const planDirAbs = `${state.solyDir}/plans/${target.name}`;
+		// Plan dir is always flattened: `<prefix>-<name>` if a prefix is
+		// present (user typed `<prefix>/<slug>` or the project default
+		// applied), else just `<name>`.
+		const dirSlug = target.prefix ? `${target.prefix}-${target.name}` : target.name;
+		const planDirAbs = `${state.solyDir}/plans/${dirSlug}`;
 		const planFile = `${planDirAbs}/PLAN.md`;
 		let planBody: string;
 		try {
@@ -514,10 +518,11 @@ export function buildDiscussTransform(
 		};
 	}
 
-	// Plan mode: `<type>/<name>`
+	// Plan mode: `<slug>` or `<prefix>/<slug>`
 	const planParsed = parsePlanName(arg);
 	if (!("error" in planParsed)) {
-		const planDirAbs = `${state.solyDir}/plans/${planParsed.name}`;
+		const dirSlug = planParsed.prefix ? `${planParsed.prefix}-${planParsed.name}` : planParsed.name;
+		const planDirAbs = `${state.solyDir}/plans/${dirSlug}`;
 		const planFile = `${planDirAbs}/PLAN.md`;
 		let planBody: string;
 		try {
