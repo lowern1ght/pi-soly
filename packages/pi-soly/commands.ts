@@ -589,12 +589,12 @@ What must the LLM do?
 				}
 				switch (verb) {
 					case "new": {
-						const r = buildNewTransform(cmd, state, ui, ctx.cwd);
+						const r = buildNewTransform(cmd, state, ui, ctx.cwd, getConfig().plan.defaultBranchPrefix);
 						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
 						return;
 					}
 					case "done": {
-						const r = buildDoneTransform(cmd, state, ui, ctx.cwd);
+						const r = buildDoneTransform(cmd, state, ui, ctx.cwd, { defaultBranchPrefix: getConfig().plan.defaultBranchPrefix });
 						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
 						return;
 					}

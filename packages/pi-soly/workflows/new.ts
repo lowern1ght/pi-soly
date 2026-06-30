@@ -80,6 +80,7 @@ export function buildNewTransform(
 	state: SolyState,
 	ui: Notifier,
 	projectRoot: string,
+	defaultBranchPrefix = "",
 ): NewResult {
 	if (!state.exists) {
 		return reply(`soly new: no .agents/ directory in cwd — run /soly init first.`);
@@ -88,16 +89,18 @@ export function buildNewTransform(
 	const parsed = parsePlanName(cmd.args.join(" "));
 	if ("error" in parsed) return reply(`soly new: ${parsed.error}`);
 
-	const { name } = parsed;
-	// Branch IS the slug (no <type>/ prefix). Convention chosen over
-	// Conventional-Branches because `soly new` users tend to give a full
-	// descriptive name already; the type prefix adds noise without info.
-	const branchName = name;
-	// Path used by `git add`/`commit` — relative to projectRoot (where `.git/` is).
-	// The plan lives at `<root>/.agents/plans/<name>/`, so the repo-relative path
-	// is `.agents/plans/<name>`.
-	const planDirRel = `.agents/plans/${name}`;
-	const planDirAbs = `${state.solyDir}/plans/${name}`;
+	const { name, prefix } = parsed;
+	// Branch can be one of three shapes:
+	//   - "feature/statistic-preparation" (user typed <prefix>/<slug>)
+	//   - "feature/statistic-preparation" (config has defaultBranchPrefix "feature", user typed "statistic-preparation")
+	//   - "statistic-preparation"          (no prefix anywhere)
+	// The plan dir is always flattened to keep the on-disk layout one-deep:
+	// `.agents/plans/<prefix>-<slug>` or `.agents/plans/<slug>`.
+	const effectivePrefix = prefix ?? defaultBranchPrefix;
+	const branchName = effectivePrefix ? `${effectivePrefix}/${name}` : name;
+	const dirSlug = effectivePrefix ? `${effectivePrefix}-${name}` : name;
+	const planDirRel = `.agents/plans/${dirSlug}`;
+	const planDirAbs = `${state.solyDir}/plans/${dirSlug}`;
 	const planFile = `${planDirAbs}/PLAN.md`;
 
 	// 1. Preconditions

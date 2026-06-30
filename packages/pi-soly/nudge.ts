@@ -117,7 +117,11 @@ const ASK_DIRECTIVE = `**Confirm before coding.** Don't jump straight into writi
 
 export function buildNudgeSection(
 	heuristics: TaskHeuristics,
-	opts: { hasProject?: boolean; confirmBeforeCode?: boolean | ConfirmLevel } = {},
+	opts: {
+		hasProject?: boolean;
+		confirmBeforeCode?: boolean | ConfirmLevel;
+		defaultBranchPrefix?: string;
+	} = {},
 ): string {
 	// Always-on rules (cheap to add, high signal):
 	//   - Don't dive in on non-trivial tasks without a brief check
@@ -145,20 +149,27 @@ export function buildNudgeSection(
 	// model toward the workflow lifecycle instead of ad-hoc edits. This block
 	// also tells the model it may *itself* scaffold a new plan after asking the
 	// user — the user explicitly opted into this in 1.16.0.
+	const prefix = opts.defaultBranchPrefix ?? "";
+	const branchLine = prefix
+		? `Branches look like \`${prefix}/<slug>\` (the project default is **\`"${prefix}"\`**). Plan dir: \`.agents/plans/${prefix}-<slug>/\`.`
+		: `Branches look like \`<slug>\` (no project default prefix is set). Plan dir: \`.agents/plans/<slug>/\`.`;
 	const workflowPoint =
 		opts.hasProject && heuristics.nonTrivial
-			? `\n\n4. **Route project work through the soly plan workflow.** Each plan is a git branch named by a kebab-case slug (\`statistic-preparation\`, \`login-redirect-bug\`, \`stats-rollup\`, …) with \`.agents/plans/<slug>/PLAN.md\` on it. Two parallel plans don't collide.
+			? `\n\n4. **Route project work through the soly plan workflow.** Each plan is a git branch with \`.agents/plans/<slug>/PLAN.md\` on it. Two parallel plans don't collide.
+
+   **Branch naming convention for THIS project:** ${branchLine}
+   \`soly new <slug>\` applies the project prefix automatically. \`soly new <prefix>/<slug>\` overrides it (use this when the work isn't a "feature" — e.g. \`soly new fix/login-redirect-bug\`).
 
    Lifecycle (text commands you type — pi routes them through the workflow handlers):
-      - \`soly new <slug>\`        — scaffold: branch + plan dir + stub PLAN.md + commit
-      - \`soly discuss <slug>\`    — interactive discussion of the plan (uses ask_pro)
-      - \`soly plan <slug>\`       — flesh out PLAN.md via ask_pro
-      - \`soly execute <slug>\`    — execute the plan in a subagent
-      - \`soly done <slug>\`       — commit + push + open draft PR via gh
-      - \`soly verify\`             — self-review loop until clean
-      - \`soly status\`             — current position + progress (no LLM round-trip)
+      - \`soly new <slug-or-prefix>/<slug>\`   — scaffold: branch + plan dir + stub PLAN.md + commit
+      - \`soly discuss <slug>\`                — interactive discussion of the plan (uses ask_pro)
+      - \`soly plan <slug>\`                   — flesh out PLAN.md via ask_pro
+      - \`soly execute <slug>\`                — execute the plan in a subagent
+      - \`soly done <slug>\`                   — commit + push + open draft PR via gh
+      - \`soly verify\`                         — self-review loop until clean
+      - \`soly status\`                         — current position + progress (no LLM round-trip)
 
-   **You may scaffold a new plan yourself** when the user asks for a new piece of work and the scope is clear (or the user just confirmed). Propose the slug first via ask_pro (\"I'll create plan 'statistic-preparation' — continue?\"), then type \`soly new statistic-preparation\` in your next output. Don't ask for confirmation on trivial one-liners or when the user already said "go". Skip only for a genuine one-off that doesn't deserve a plan branch.`
+   **You may scaffold a new plan yourself** when the user asks for a new piece of work and the scope is clear (or the user just confirmed). Propose the slug AND the full branch name first via ask_pro — offer the default \`${prefix ? prefix + "/" : ""}<slug>\` plus the alternatives \`fix/<slug>\`, \`chore/<slug>\`, or just \`<slug>\` (no prefix). Pick whatever fits the work, then type \`soly new …\` in your next output. Don't ask for trivial one-liners or when the user already said "go". Skip only for a genuine one-off that doesn't deserve a plan branch.`
 			: "";
 
 	// Confirm-before-coding gate: for non-trivial implementation, pull the

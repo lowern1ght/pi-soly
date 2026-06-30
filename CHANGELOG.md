@@ -4,6 +4,39 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.16.1] — 2026-06-30
+
+### Added
+- **Project-local `plan.defaultBranchPrefix` config** — set in
+  `.agents/soly.json` (per-project, not global). Default: `""` (no
+  prefix). When set, `soly new <slug>` automatically becomes
+  `soly new <prefix>/<slug>`. Use case: a project where the team
+  convention is to put all feature branches under `feature/`:
+  \`\`\`json
+  { "plan": { "defaultBranchPrefix": "feature" } }
+  \`\`\`
+  Now \`soly new statistic-preparation\` → branch \`feature/statistic-preparation\`,
+  plan dir \`.agents/plans/feature-statistic-preparation/\`. The LLM
+  reads this value and uses it in its ask_pro prompt when it scaffolds
+  a new plan itself.
+- **Explicit `<prefix>/<slug>` form in `soly new|plan|execute|done`** —
+  user can override the project default: \`soly new fix/login-redirect\`
+  becomes branch \`fix/login-redirect\` regardless of the project default.
+  Plan dir flattens the slash: \`.agents/plans/fix-login-redirect/`.
+  Nested paths (\`feature/sub/auth-jwt\`) are rejected.
+- **LLM is taught to ask before scaffolding** — the workflow-routing
+  point in \`nudge.ts\` now embeds the actual \`defaultBranchPrefix\`
+  value and tells the LLM to propose the full branch name (with the
+  default prefix + alternates) via ask_pro before typing \`soly new …\`.
+
+### Migration from 1.16.0
+The \`feat/auth-jwt\` form is now parsed as a \`<prefix>/<slug>\` plan
+(named \`auth-jwt\`, prefix \`feat\`) instead of being rejected. If you
+had workflows that intentionally relied on the 1.15.x hard-rejection of
+the \`<type>/<name>\` shape, they still work — \`feat/x\` parses as
+prefix \`feat\`, slug \`x\`. The change is from "rejected" to "accepted
+as prefix form".
+
 ## [1.16.0] — 2026-06-30
 
 ### Changed (BREAKING for soly plan/workflow verb input)

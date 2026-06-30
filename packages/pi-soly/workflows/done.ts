@@ -84,7 +84,7 @@ export function buildDoneTransform(
 	state: SolyState,
 	ui: Notifier,
 	projectRoot: string,
-	opts: { ghPath?: string } = {},
+	opts: { ghPath?: string; defaultBranchPrefix?: string } = {},
 ): DoneResult {
 	if (!state.exists) {
 		return reply(`soly done: no .agents/ directory in cwd — run /soly init first.`);
@@ -93,10 +93,11 @@ export function buildDoneTransform(
 	const raw = cmd.args.join(" ").trim();
 	const parsed = parsePlanName(raw);
 	if ("error" in parsed) {
-		return reply(`soly done: ${parsed.error}\n\nUsage: soly done <slug>`);
+		return reply(`soly done: ${parsed.error}\n\nUsage: soly done <slug> OR soly done <prefix>/<slug>`);
 	}
-	const { name } = parsed;
-	const branchName = name;
+	const { name, prefix } = parsed;
+	const effectivePrefix = prefix ?? opts.defaultBranchPrefix ?? "";
+	const branchName = effectivePrefix ? `${effectivePrefix}/${name}` : name;
 
 	// 1. Preconditions
 	const currentBranch = git(["branch", "--show-current"], { cwd: projectRoot });

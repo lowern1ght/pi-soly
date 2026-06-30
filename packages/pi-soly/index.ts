@@ -694,6 +694,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 			buildNudgeSection(heuristics, {
 				hasProject: state.exists,
 				confirmBeforeCode: getActiveConfig().agent.confirmBeforeCode,
+				defaultBranchPrefix: getActiveConfig().plan.defaultBranchPrefix,
 			}),
 		);
 

@@ -148,7 +148,13 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 		}
 
 		if (cmd.verb === "new") {
-			const result = buildNewTransform(cmd, state, ctx.ui, ctx.cwd);
+			const result = buildNewTransform(
+				cmd,
+				state,
+				ctx.ui,
+				ctx.cwd,
+				getConfig().plan.defaultBranchPrefix,
+			);
 			if (!result.handled || !result.transformedText) return;
 			// Direct execution (the workflow already called ui.notify). The
 			// transformed text goes to the model so it can also tell the user
@@ -157,7 +163,9 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 		}
 
 		if (cmd.verb === "done") {
-			const result = buildDoneTransform(cmd, state, ctx.ui, ctx.cwd);
+			const result = buildDoneTransform(cmd, state, ctx.ui, ctx.cwd, {
+				defaultBranchPrefix: getConfig().plan.defaultBranchPrefix,
+			});
 			if (!result.handled || !result.transformedText) return;
 			// Direct execution — workflow already called ui.notify. The
 			// transformed text tells the LLM (and the user in chat) what happened.

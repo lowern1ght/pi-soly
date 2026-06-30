@@ -76,15 +76,38 @@ function run(cwd: string, args: string[]): string {
 describe("parsePlanName (pure)", () => {
 	test("valid kebab-case slug", () => {
 		const r = parsePlanName("statistic-preparation");
-		expect(r).toEqual({ name: "statistic-preparation" });
+		expect(r).toEqual({ name: "statistic-preparation", prefix: null });
 	});
 
 	test("digits allowed", () => {
-		expect(parsePlanName("api-v2-rate-limit")).toEqual({ name: "api-v2-rate-limit" });
+		expect(parsePlanName("api-v2-rate-limit")).toEqual({ name: "api-v2-rate-limit", prefix: null });
 	});
 
 	test("single-letter segments", () => {
-		expect(parsePlanName("a-b")).toEqual({ name: "a-b" });
+		expect(parsePlanName("a-b")).toEqual({ name: "a-b", prefix: null });
+	});
+
+	test("valid <prefix>/<slug> form", () => {
+		expect(parsePlanName("feature/auth-jwt")).toEqual({ name: "auth-jwt", prefix: "feature" });
+		expect(parsePlanName("fix/login-redirect-bug")).toEqual({ name: "login-redirect-bug", prefix: "fix" });
+	});
+
+	test("rejects <prefix>/<slug> with bad prefix", () => {
+		expect("error" in parsePlanName("Feature/auth-jwt")).toBe(true);
+		expect("error" in parsePlanName("feat-x/auth-jwt")).toBe(false); // multi-segment prefix is fine
+	});
+
+	test("rejects <prefix>/<slug> with bad slug", () => {
+		expect("error" in parsePlanName("feature/Auth-Jwt")).toBe(true);
+	});
+
+	test("rejects /leading-slash or trailing-slash/", () => {
+		expect("error" in parsePlanName("/foo")).toBe(true);
+		expect("error" in parsePlanName("foo/")).toBe(true);
+	});
+
+	test("rejects <prefix>/<slug> with two slashes (nested paths not allowed)", () => {
+		expect("error" in parsePlanName("feature/sub/auth-jwt")).toBe(true);
 	});
 
 	test("rejects empty", () => {
@@ -93,8 +116,12 @@ describe("parsePlanName (pure)", () => {
 	});
 
 	test("rejects type prefix (1.15.x dropped the <type>/<name> convention)", () => {
-		const r = parsePlanName("feat/auth-jwt");
-		expect("error" in r).toBe(true);
+		// Old convention was `feat/auth-jwt` with strict type validation.
+		// 1.16.0+ accepts `<prefix>/<slug>` as a free-form shape — the test
+		// below is now obsolete; replaced by a stricter "no nested paths" test.
+		const r = parsePlanName("feature/auth-jwt");
+		expect("error" in r).toBe(false);
+		expect(r).toEqual({ name: "auth-jwt", prefix: "feature" });
 	});
 
 	test("rejects name with uppercase", () => {
@@ -233,14 +260,31 @@ describe("buildNewTransform (real git)", () => {
 		expect(result.transformedText).toMatch(/not master\/main/);
 	});
 
-	test("rejects legacy <type>/<name> input (1.15.x convention)", () => {
+	test("accepts <prefix>/<slug> input (1.16.x convention)", () => {
 		const ui = fakeUi();
 		const state = fakeState(path.join(repo, ".agents"));
-		const result = buildNewTransform(cmd(["feat/auth-jwt"]), state, ui, repo);
+		const result = buildNewTransform(cmd(["feature/auth-jwt"]), state, ui, repo);
 		expect(result.handled).toBe(true);
-		expect(result.transformedText).toMatch(/bad plan name/);
-		// No branch created
-		expect(run(repo, ["branch", "--show-current"])).toBe("master");
+		expect(result.scaffolded?.branch).toBe("feature/auth-jwt");
+		expect(result.scaffolded?.planPath).toContain("plans/feature-auth-jwt/PLAN.md");
+	});
+
+	test("applies defaultBranchPrefix when user types just the slug", () => {
+		const ui = fakeUi();
+		const state = fakeState(path.join(repo, ".agents"));
+		const result = buildNewTransform(cmd(["auth-jwt"]), state, ui, repo, "feature");
+		expect(result.handled).toBe(true);
+		expect(result.scaffolded?.branch).toBe("feature/auth-jwt");
+		expect(result.scaffolded?.planPath).toContain("plans/feature-auth-jwt/PLAN.md");
+	});
+
+	test("user-supplied <prefix>/<slug> wins over defaultBranchPrefix", () => {
+		const ui = fakeUi();
+		const state = fakeState(path.join(repo, ".agents"));
+		const result = buildNewTransform(cmd(["fix/login-bug"]), state, ui, repo, "feature");
+		expect(result.handled).toBe(true);
+		expect(result.scaffolded?.branch).toBe("fix/login-bug");
+		expect(result.scaffolded?.planPath).toContain("plans/fix-login-bug/PLAN.md");
 	});
 
 	test("rejects single-character name (regex needs >=2)", () => {

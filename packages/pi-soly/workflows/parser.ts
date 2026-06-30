@@ -37,17 +37,44 @@ export type WorkflowVerb =
  *   soly new login-redirect-bug
  *   soly new stats-rollup
  */
-export function parsePlanName(raw: string): { name: string } | { error: string } {
+export function parsePlanName(
+	raw: string,
+): { name: string; prefix: string | null } | { error: string } {
 	const trimmed = raw.trim();
 	if (!trimmed) return { error: "missing plan name" };
-	// Must contain at least one letter — pure-digit strings are reserved for
-	// phase numbers (`soly plan 11` → phase 11), not plan slugs.
+
+	// Optional `<prefix>/<slug>` form: prefix is one kebab-case word
+	// (no internal slashes), slug is the same kebab-case shape. Examples:
+	//   feature/statistic-preparation
+	//   fix/login-redirect-bug
+	//   chore/upgrade-deps
+	// Plan dirs flatten the slash: `.agents/plans/<prefix>-<slug>`.
+	const slashIdx = trimmed.indexOf("/");
+	if (slashIdx > 0) {
+		const prefix = trimmed.slice(0, slashIdx);
+		const slug = trimmed.slice(slashIdx + 1);
+		const prefixOk = /^[a-z][a-z0-9-]*[a-z0-9]$/.test(prefix);
+		const slugOk = /^[a-z][a-z0-9-]*[a-z0-9]$/.test(slug);
+		if (!prefixOk || !slugOk) {
+			return {
+				error:
+					`bad plan name "${trimmed}".\n` +
+					`\nExpected: <slug> OR <prefix>/<slug>\n` +
+					`  prefix: one kebab-case word (e.g. "feature", "fix", "chore")\n` +
+					`  slug:   kebab-case (lowercase letters, digits, hyphens)\n` +
+					`\nExample: soly new feature/statistic-preparation`,
+			};
+		}
+		return { name: slug, prefix };
+	}
+
+	// Plain slug form. Must contain at least one letter — pure-digit strings
+	// are reserved for phase numbers (`soly plan 11` → phase 11), not slugs.
 	if (!/[a-z]/.test(trimmed)) {
 		return {
 			error:
 				`bad plan name "${trimmed}".\n` +
-				`\nExpected: <slug> (kebab-case, no type prefix, must contain a letter)\n` +
-				`  length: 2-64 chars\n` +
+				`\nExpected: <slug> OR <prefix>/<slug>\n` +
 				`  chars:  lowercase letters, digits, and hyphens\n` +
 				`         must start and end with a letter or digit\n` +
 				`\nExample: soly new statistic-preparation`,
@@ -58,7 +85,7 @@ export function parsePlanName(raw: string): { name: string } | { error: string }
 		return {
 			error:
 				`bad plan name "${trimmed}".\n` +
-				`\nExpected: <slug> (kebab-case, no type prefix)\n` +
+				`\nExpected: <slug> OR <prefix>/<slug>\n` +
 				`  length: 2-64 chars\n` +
 				`  chars:  lowercase letters, digits, and hyphens\n` +
 				`         must start and end with a letter or digit\n` +
@@ -68,7 +95,7 @@ export function parsePlanName(raw: string): { name: string } | { error: string }
 	if (trimmed.length > 64) {
 		return { error: `name "${trimmed}" is too long (max 64 chars)` };
 	}
-	return { name: trimmed };
+	return { name: trimmed, prefix: null };
 }
 
 export interface SolyCommand {

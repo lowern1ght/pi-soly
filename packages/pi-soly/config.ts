@@ -121,6 +121,18 @@ export interface SolyConfig {
 		 *  0 = keep forever. */
 		retentionDays: number;
 	};
+	plan: {
+		/** Optional branch prefix prepended when the user runs `soly new <slug>`
+		 *  without an explicit `<prefix>/<slug>` form. Common values:
+		 *    "feature"   → branches like `feature/statistic-preparation`
+		 *    "fix"       → branches like `fix/login-redirect`
+		 *    "" (default)→ no prefix; branch = slug verbatim.
+		 *  Per-project only (set in `.agents/soly.json`). User-supplied
+		 *  `<prefix>/<slug>` always wins over this default.
+		 *  Plan dir is always `.agents/plans/<prefix>-<slug>` (flattened)
+		 *  so the on-disk layout stays one-deep. */
+		defaultBranchPrefix: string;
+	};
 }
 
 export const DEFAULT_CONFIG: SolyConfig = {
@@ -183,6 +195,9 @@ export const DEFAULT_CONFIG: SolyConfig = {
 		server: true,
 		theme: "",
 		retentionDays: 7,
+	},
+	plan: {
+		defaultBranchPrefix: "", // "" = no prefix; branch = slug verbatim
 	},
 };
 
@@ -255,6 +270,13 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 	}
 	if (over.editor && typeof over.editor.command === "string") {
 		merged.editor.command = over.editor.command;
+	}
+	if (over.plan && typeof over.plan.defaultBranchPrefix === "string") {
+		// Sanitize: allow only kebab-case words (no slashes, dots, etc.).
+		// Empty string is allowed and means "no prefix".
+		const sanitized = over.plan.defaultBranchPrefix.replace(/[^a-z0-9-]/gi, "");
+		const collapsed = sanitized.replace(/-+/g, "-").replace(/^-|-$/g, "");
+		merged.plan.defaultBranchPrefix = collapsed;
 	}
 	if (over.chrome) {
 		if (typeof over.chrome.enabled === "boolean") merged.chrome.enabled = over.chrome.enabled;

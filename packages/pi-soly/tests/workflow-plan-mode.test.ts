@@ -58,6 +58,11 @@ describe("describePlanTarget — plan kind (W2)", () => {
 		expect(t).toEqual({ kind: "plan", name: "auth-jwt", raw: "auth-jwt" });
 	});
 
+	test("feature/auth-jwt → plan (prefixed form)", () => {
+		const t = describePlanTarget(["feature/auth-jwt"]);
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", raw: "feature/auth-jwt" });
+	});
+
 	test("login-redirect → plan", () => {
 		const t = describePlanTarget(["login-redirect"]);
 		expect(t?.kind).toBe("plan");
@@ -73,9 +78,9 @@ describe("describePlanTarget — plan kind (W2)", () => {
 		expect(t).toEqual({ kind: "phase", phase: 11, raw: "11" });
 	});
 
-	test("legacy <type>/<name> form is rejected (1.15.x convention)", () => {
+	test("legacy <type>/<name> form is now accepted as <prefix>/<slug> (1.16.x)", () => {
 		const t = describePlanTarget(["feat/auth-jwt"]);
-		expect(t).toBeNull();
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", raw: "feat/auth-jwt" });
 	});
 
 	test("Foo/Bar (uppercase) → null", () => {
@@ -98,6 +103,11 @@ describe("describeExecuteTarget — plan kind (W2)", () => {
 	test("auth-jwt → plan", () => {
 		const t = describeExecuteTarget(["auth-jwt"]);
 		expect(t).toEqual({ kind: "plan", name: "auth-jwt", raw: "auth-jwt" });
+	});
+
+	test("feature/auth-jwt → plan (prefixed form)", () => {
+		const t = describeExecuteTarget(["feature/auth-jwt"]);
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", raw: "feature/auth-jwt" });
 	});
 
 	test("plain 5 → still phase (backward compat)", () => {
