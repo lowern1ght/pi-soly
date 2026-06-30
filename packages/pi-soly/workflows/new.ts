@@ -88,8 +88,11 @@ export function buildNewTransform(
 	const parsed = parsePlanName(cmd.args.join(" "));
 	if ("error" in parsed) return reply(`soly new: ${parsed.error}`);
 
-	const { type, name } = parsed;
-	const branchName = `${type}/${name}`;
+	const { name } = parsed;
+	// Branch IS the slug (no <type>/ prefix). Convention chosen over
+	// Conventional-Branches because `soly new` users tend to give a full
+	// descriptive name already; the type prefix adds noise without info.
+	const branchName = name;
 	// Path used by `git add`/`commit` — relative to projectRoot (where `.git/` is).
 	// The plan lives at `<root>/.agents/plans/<name>/`, so the repo-relative path
 	// is `.agents/plans/<name>`.
@@ -116,7 +119,15 @@ export function buildNewTransform(
 	}
 
 	const currentBranch = git(["branch", "--show-current"], { cwd: projectRoot }) || "HEAD (detached)";
-	if (currentBranch !== "master" && currentBranch !== "main" && !/^[a-z]+\//.test(currentBranch)) {
+	// A plan branch is a kebab-case slug (no `<type>/` prefix after 1.15.x).
+	// The branch can also be the long-lived integration branches `master`
+	// or `main`. Anything else (release tags, weird suffixes) → user must
+	// checkout first.
+	if (
+		currentBranch !== "master" &&
+		currentBranch !== "main" &&
+		!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(currentBranch)
+	) {
 		return reply(
 			`soly new: currently on "${currentBranch}" (not master/main, not a soly plan branch). ` +
 				`Switch back to master first with \`git checkout master\`.`,

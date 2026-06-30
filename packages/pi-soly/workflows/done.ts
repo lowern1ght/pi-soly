@@ -93,10 +93,10 @@ export function buildDoneTransform(
 	const raw = cmd.args.join(" ").trim();
 	const parsed = parsePlanName(raw);
 	if ("error" in parsed) {
-		return reply(`soly done: ${parsed.error}\n\nUsage: soly done <type>/<name>`);
+		return reply(`soly done: ${parsed.error}\n\nUsage: soly done <slug>`);
 	}
-	const { type, name } = parsed;
-	const branchName = `${type}/${name}`;
+	const { name } = parsed;
+	const branchName = name;
 
 	// 1. Preconditions
 	const currentBranch = git(["branch", "--show-current"], { cwd: projectRoot });
@@ -126,7 +126,7 @@ export function buildDoneTransform(
 			// Re-check after add
 			const statusAfter = git(["status", "--short"], { cwd: projectRoot });
 			if (statusAfter) {
-				git(["commit", "-m", `${type}(${name}): wip`], { cwd: projectRoot });
+				git(["commit", "-m", `${name}: wip`], { cwd: projectRoot });
 			}
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);

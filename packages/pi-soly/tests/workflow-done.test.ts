@@ -120,7 +120,7 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 
 	test("full happy path: commits uncommitted file, pushes, opens draft PR", () => {
 		// Create the plan branch with an uncommitted file
-		run(repo, ["checkout", "-b", "feat/auth-jwt"]);
+		run(repo, ["checkout", "-b", "auth-jwt"]);
 		fs.mkdirSync(path.join(repo, "src"), { recursive: true });
 		fs.writeFileSync(path.join(repo, "src", "auth.ts"), "// wip");
 		// Don't add/commit — let soly do it
@@ -129,7 +129,7 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 		const ui = fakeUi();
 		const state = fakeState(path.join(repo, ".agents"));
 		const result = buildDoneTransform(
-			{ verb: "done", args: ["feat/auth-jwt"], raw: "soly done feat/auth-jwt" } as never,
+			{ verb: "done", args: ["auth-jwt"], raw: "soly done auth-jwt" } as never,
 			state,
 			ui,
 			repo,
@@ -137,12 +137,12 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 		);
 
 		expect(result.handled).toBe(true);
-		expect(result.completed?.branch).toBe("feat/auth-jwt");
+		expect(result.completed?.branch).toBe("auth-jwt");
 		expect(result.completed?.pushed).toBe(true);
 		expect(result.completed?.prUrl).toBe("https://github.com/test/repo/pull/42");
 
 		// Remote should have the new branch with the WIP commit
-		const logOut = run(originPath, ["log", "--oneline", "feat/auth-jwt"]);
+		const logOut = run(originPath, ["log", "--oneline", "auth-jwt"]);
 		expect(logOut).toMatch(/wip/);
 
 		// ui.notify called with success summary
@@ -150,22 +150,22 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 	});
 
 	test("blocks when current branch is not the plan branch", () => {
-		run(repo, ["checkout", "-b", "feat/something-else"]);
+		run(repo, ["checkout", "-b", "weirdBranch_underscores"]);
 		const ui = fakeUi();
 		const state = fakeState(path.join(repo, ".agents"));
 		const result = buildDoneTransform(
-			{ verb: "done", args: ["feat/auth-jwt"], raw: "soly done feat/auth-jwt" } as never,
+			{ verb: "done", args: ["auth-jwt"], raw: "soly done auth-jwt" } as never,
 			state,
 			ui,
 			repo,
 		);
 		expect(result.handled).toBe(true);
-		expect(result.transformedText).toMatch(/not the plan branch "feat\/auth-jwt"/);
+		expect(result.transformedText).toMatch(/not the plan branch "auth-jwt"/);
 		expect(result.completed).toBeUndefined();
 	});
 
 	test("no-op on clean tree (no extra commit)", () => {
-		run(repo, ["checkout", "-b", "feat/auth-jwt"]);
+		run(repo, ["checkout", "-b", "auth-jwt"]);
 		// Working tree is already clean
 		const headBefore = run(repo, ["rev-parse", "HEAD"]);
 
@@ -173,7 +173,7 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 		const ui = fakeUi();
 		const state = fakeState(path.join(repo, ".agents"));
 		const result = buildDoneTransform(
-			{ verb: "done", args: ["feat/auth-jwt"], raw: "soly done feat/auth-jwt" } as never,
+			{ verb: "done", args: ["auth-jwt"], raw: "soly done auth-jwt" } as never,
 			state,
 			ui,
 			repo,
@@ -187,11 +187,11 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 	});
 
 	test("skips PR when gh is not available, warns via ui.notify", () => {
-		run(repo, ["checkout", "-b", "feat/auth-jwt"]);
+		run(repo, ["checkout", "-b", "auth-jwt"]);
 		const ui = fakeUi();
 		const state = fakeState(path.join(repo, ".agents"));
 		const result = buildDoneTransform(
-			{ verb: "done", args: ["feat/auth-jwt"], raw: "soly done feat/auth-jwt" } as never,
+			{ verb: "done", args: ["auth-jwt"], raw: "soly done auth-jwt" } as never,
 			state,
 			ui,
 			repo,
@@ -209,13 +209,13 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 		// Use a fresh repo with no remote
 		const repoNoOrigin = initRepoNoOrigin();
 		try {
-			run(repoNoOrigin, ["checkout", "-b", "feat/auth-jwt"]);
+			run(repoNoOrigin, ["checkout", "-b", "auth-jwt"]);
 			fs.writeFileSync(path.join(repoNoOrigin, "f.txt"), "x");
 
 			const ui = fakeUi();
 			const state = fakeState(path.join(repoNoOrigin, ".agents"));
 			const result = buildDoneTransform(
-				{ verb: "done", args: ["feat/auth-jwt"], raw: "soly done feat/auth-jwt" } as never,
+				{ verb: "done", args: ["auth-jwt"], raw: "soly done auth-jwt" } as never,
 				state,
 				ui,
 				repoNoOrigin,
@@ -231,11 +231,11 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 	});
 
 	test("bad plan name returns clean error", () => {
-		run(repo, ["checkout", "-b", "feat/anything"]);
+		run(repo, ["checkout", "-b", "anything-branch"]);
 		const ui = fakeUi();
 		const state = fakeState(path.join(repo, ".agents"));
 		const result = buildDoneTransform(
-			{ verb: "done", args: ["no-slash"], raw: "soly done no-slash" } as never,
+			{ verb: "done", args: ["BadName"], raw: "soly done BadName" } as never,
 			state,
 			ui,
 			repo,
@@ -245,11 +245,11 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 	});
 
 	test("blocks when no .agents/ directory", () => {
-		run(repo, ["checkout", "-b", "feat/auth-jwt"]);
+		run(repo, ["checkout", "-b", "auth-jwt"]);
 		const ui = fakeUi();
 		const state = fakeState("/nonexistent", false);
 		const result = buildDoneTransform(
-			{ verb: "done", args: ["feat/auth-jwt"], raw: "soly done feat/auth-jwt" } as never,
+			{ verb: "done", args: ["auth-jwt"], raw: "soly done auth-jwt" } as never,
 			state,
 			ui,
 			repo,

@@ -4,6 +4,45 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.16.0] — 2026-06-30
+
+### Changed (BREAKING for soly plan/workflow verb input)
+- **Dropped `<type>/<name>` prefix from plan names** — was `feat/auth-jwt`,
+  now just `auth-jwt`. Branch = slug verbatim, no Conventional-Branches
+  type prefix. Reason: `soly new` users tend to give a full descriptive
+  name already; the type adds noise without information. The branch list
+  itself is the registry of in-flight plans, so the prefix doesn't help
+  readers pick.
+  Migration: rename existing branches `git branch -m feat/auth-jwt auth-jwt`
+  and update `.agents/plans/feat-auth-jwt/` → `.agents/plans/auth-jwt/`.
+
+### Added
+- **Workflow verbs as `/soly` slash-command subcommands** — `/soly new foo`,
+  `/soly plan foo`, `/soly execute foo`, `/soly discuss foo`,
+  `/soly done foo`, `/soly migrate`. Same handlers as the text-command
+  path; humans can now drive the lifecycle from the slash picker without
+  typing natural language and waiting for the LLM to translate.
+- **`/soly plan` is dual-purpose** — no args = show current PLAN.md body,
+  args = dispatch to the plan-mode workflow. Same key the state picker
+  already had; now also works for the workflow.
+- **LLM taught to scaffold plans itself** — the `soly behavioral nudge`
+  now includes a workflow-routing point that tells the model:
+  - The full plan lifecycle (`new → discuss → plan → execute → done`)
+  - That it MAY call `soly new <slug>` itself after asking the user
+    via `ask_pro` for the slug name
+  - That this is the new path; `<N>` phase form is legacy
+- **Reject pure-digit plan slugs** — `soly new 11` is ambiguous (phase
+  number vs slug) so we require at least one letter. `soly plan 11`
+  still works as the legacy phase-number path.
+
+### Fixed
+- **Task-id hex suffix is now case-insensitive** —
+  `auth-be-login-A3F9` and `auth-be-login-a3f9` both resolve to the
+  same task. The parsed `taskId` is normalized to lowercase hex.
+- **Task ids checked before plan slugs** — `auth-be-login-a3f9` is a
+  task id (specific trailing-4-hex shape) and wins over the kebab-case
+  plan-slug regex that used to gobble it up.
+
 ## [1.15.1] — 2026-06-29
 
 ### Fixed

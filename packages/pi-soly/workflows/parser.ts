@@ -21,36 +21,54 @@ export type WorkflowVerb =
 	| "plan" | "discuss" | "help" | "doctor" | "iterations" | "phase" | "todos" | "verify"
 	| "new" | "done" | "migrate";
 
-/** Allowed Conventional Commits types for `soly new` / `soly plan <type>/<name>` / etc. */
-export const PLAN_TYPES = ["feat", "fix", "chore", "refactor", "docs", "test", "perf", "build", "ci"] as const;
-
 /**
- * Validate `<type>/<name>` (e.g. `feat/auth-jwt`). Returns parsed parts or
+ * Validate `<slug>` (e.g. `statistic-preparation`). Returns parsed parts or
  * an error message. Pure — no I/O. Shared by `soly new` (workflows/new.ts)
  * and the plan-mode dispatch in `describePlanTarget` / `describeExecuteTarget`.
+ *
+ * Convention: a plan is a kebab-case slug that doubles as the git branch
+ * name. No type prefix — we dropped the Conventional-Branches `<type>/<name>`
+ * shape after 1.15.x because the type adds noise without information for
+ * `soly new` users (the branch list itself is the registry, and the prefix
+ * doesn't help readers pick the right branch).
+ *
+ * Examples:
+ *   soly new statistic-preparation
+ *   soly new login-redirect-bug
+ *   soly new stats-rollup
  */
-export function parsePlanName(raw: string): { type: string; name: string } | { error: string } {
+export function parsePlanName(raw: string): { name: string } | { error: string } {
 	const trimmed = raw.trim();
 	if (!trimmed) return { error: "missing plan name" };
-	const m = trimmed.match(/^([a-z]+)\/([a-z0-9][a-z0-9-]*[a-z0-9])$/);
+	// Must contain at least one letter — pure-digit strings are reserved for
+	// phase numbers (`soly plan 11` → phase 11), not plan slugs.
+	if (!/[a-z]/.test(trimmed)) {
+		return {
+			error:
+				`bad plan name "${trimmed}".\n` +
+				`\nExpected: <slug> (kebab-case, no type prefix, must contain a letter)\n` +
+				`  length: 2-64 chars\n` +
+				`  chars:  lowercase letters, digits, and hyphens\n` +
+				`         must start and end with a letter or digit\n` +
+				`\nExample: soly new statistic-preparation`,
+		};
+	}
+	const m = trimmed.match(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/);
 	if (!m) {
 		return {
 			error:
 				`bad plan name "${trimmed}".\n` +
-				`\nExpected: <type>/<name>\n` +
-				`  type  = one of ${PLAN_TYPES.join(", ")}\n` +
-				`  name  = kebab-case\n` +
-				`\nExample: soly plan feat/auth-jwt`,
+				`\nExpected: <slug> (kebab-case, no type prefix)\n` +
+				`  length: 2-64 chars\n` +
+				`  chars:  lowercase letters, digits, and hyphens\n` +
+				`         must start and end with a letter or digit\n` +
+				`\nExample: soly new statistic-preparation`,
 		};
 	}
-	const [, type, name] = m;
-	if (!(PLAN_TYPES as readonly string[]).includes(type as string)) {
-		return { error: `bad type "${type}". Must be one of: ${PLAN_TYPES.join(", ")}` };
+	if (trimmed.length > 64) {
+		return { error: `name "${trimmed}" is too long (max 64 chars)` };
 	}
-	if ((name as string).length > 64) {
-		return { error: `name "${name}" is too long (max 64 chars)` };
-	}
-	return { type: type as string, name: name as string };
+	return { name: trimmed };
 }
 
 export interface SolyCommand {
@@ -160,7 +178,10 @@ function parsePhaseOnlyShape(s: string): { phase: number } | null {
 
 /** Match task-id `<slug>-<4hex>`, case-insensitive. */
 function parseTaskIdShape(s: string): string | null {
-	return s.match(/^[a-z0-9][a-z0-9-]*-[a-f0-9]{4}$/i) ? s : null;
+	const m = s.match(/^([a-z0-9][a-z0-9-]*)-([a-f0-9]{4})$/i);
+	if (!m) return null;
+	// Normalize to lowercase hex so downstream comparisons match.
+	return `${m[1]}-${m[2].toLowerCase()}`;
 }
 
 /** Extract `--feature <name>` from args. Returns null if not present or invalid. */
@@ -193,7 +214,7 @@ function parseNewTaskFlag(
  */
 export type ExecuteTarget =
 	| { kind: "phase"; phase: number; plan: number | null; raw: string }
-	| { kind: "plan"; type: string; name: string; raw: string }
+	| { kind: "plan"; name: string; raw: string }
 	| { kind: "task"; taskId: string; raw: string }
 	| { kind: "all"; raw: string }
 	| { kind: "feature"; feature: string; raw: string };
@@ -228,20 +249,23 @@ export function describeExecuteTarget(args: string[]): ExecuteTarget | null {
 	const target = positional.trim();
 	if (!target) return null;
 
-	// <type>/<name> plan name — same identifier model as `soly new`.
+	// <slug> plan name — same identifier model as `soly new`. Checked AFTER
+	// task ids because some task ids look exactly like plan slugs (e.g.
+	// `auth-be-login-a3f9` matches the kebab-case regex). Task-id check
+	// is more specific (trailing 4-hex) so it wins.
+	const taskId = parseTaskIdShape(target);
+	if (taskId) {
+		return { kind: "task", taskId, raw };
+	}
+
 	const plan = parsePlanName(target);
 	if (!("error" in plan)) {
-		return { kind: "plan", type: plan.type, name: plan.name, raw };
+		return { kind: "plan", name: plan.name, raw };
 	}
 
 	const phase = parsePhaseShape(target);
 	if (phase) {
 		return { kind: "phase", phase: phase.phase, plan: phase.plan, raw };
-	}
-
-	const taskId = parseTaskIdShape(target);
-	if (taskId) {
-		return { kind: "task", taskId, raw };
 	}
 
 	return null;
@@ -262,7 +286,7 @@ export function describeExecuteTarget(args: string[]): ExecuteTarget | null {
  */
 export type PlanTarget =
 	| { kind: "phase"; phase: number; raw: string }
-	| { kind: "plan"; type: string; name: string; raw: string }
+	| { kind: "plan"; name: string; raw: string }
 	| { kind: "task"; taskId: string; raw: string }
 	| { kind: "new-task"; slug: string; feature: string; raw: string }
 	| { kind: "feature"; feature: string; raw: string };
@@ -298,11 +322,19 @@ export function describePlanTarget(args: string[]): PlanTarget | null {
 	const target = positional.trim();
 	if (!target) return null;
 
-	// <type>/<name> plan name (e.g. feat/auth-jwt) — plans live at
-	// .agents/plans/<name>/PLAN.md, identity is the branch name.
+	// <slug> plan name (e.g. statistic-preparation) — plans live at
+	// .agents/plans/<slug>/PLAN.md, identity is the branch name. Checked
+	// AFTER task ids because some task ids look exactly like plan slugs
+	// (e.g. `auth-be-login-a3f9` matches the kebab-case regex). Task-id
+	// check is more specific (trailing 4-hex) so it wins.
+	const taskId = parseTaskIdShape(target);
+	if (taskId) {
+		return { kind: "task", taskId, raw };
+	}
+
 	const plan = parsePlanName(target);
 	if (!("error" in plan)) {
-		return { kind: "plan", type: plan.type, name: plan.name, raw };
+		return { kind: "plan", name: plan.name, raw };
 	}
 
 	// Plan target only matches plain N (no .MM — plan is per-phase, executed
@@ -310,11 +342,6 @@ export function describePlanTarget(args: string[]): PlanTarget | null {
 	const phase = parsePhaseOnlyShape(target);
 	if (phase) {
 		return { kind: "phase", phase: phase.phase, raw };
-	}
-
-	const taskId = parseTaskIdShape(target);
-	if (taskId) {
-		return { kind: "task", taskId, raw };
 	}
 
 	return null;

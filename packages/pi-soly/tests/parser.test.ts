@@ -102,8 +102,12 @@ describe("describeExecuteTarget", () => {
 
 	test("rejects malformed numbers", () => {
 		expect(describeExecuteTarget(["11.2.3"])).toBeNull();
-		expect(describeExecuteTarget(["abc"])).toBeNull();
 		expect(describeExecuteTarget(["-5"])).toBeNull();
+	});
+
+	test("plain letters are now a valid plan slug (1.15.x)", () => {
+		// `abc` matches the kebab-case slug regex, so it's a valid plan name.
+		expect(describeExecuteTarget(["abc"])).toEqual({ kind: "plan", name: "abc", raw: "abc" });
 	});
 
 	test("parses task id (slug-4hex)", () => {
@@ -113,7 +117,17 @@ describe("describeExecuteTarget", () => {
 
 	test("task id is case-insensitive on the hex part", () => {
 		expect(describeExecuteTarget(["auth-be-login-A3F9"])).not.toBeNull();
-		expect(describeExecuteTarget(["auth-be-login-zzzz"])).toBeNull(); // not hex
+	});
+
+	test("non-hex task-id-shaped string is treated as a plan slug (1.15.x)", () => {
+		// `auth-be-login-zzzz` looks task-id-shaped but the trailing part isn't
+		// hex. Before 1.15.x this was null. After 1.15.x it matches the
+		// kebab-case plan-slug regex and is a valid plan name.
+		expect(describeExecuteTarget(["auth-be-login-zzzz"])).toEqual({
+			kind: "plan",
+			name: "auth-be-login-zzzz",
+			raw: "auth-be-login-zzzz",
+		});
 	});
 
 	test("parses --all flag", () => {
@@ -196,8 +210,15 @@ describe("describePlanTarget", () => {
 		});
 	});
 
-	test("--new-task without --feature is rejected", () => {
-		expect(describePlanTarget(["--new-task", "add-logout"])).toBeNull();
+	test("--new-task without --feature falls through to plan mode (1.15.x)", () => {
+		// Old behavior rejected this with null. After 1.15.x, the parser
+		// treats --new-task (a flag we don't know how to honor without
+		// --feature) as a no-op and the positional arg becomes a plan slug.
+		expect(describePlanTarget(["--new-task", "add-logout"])).toEqual({
+			kind: "plan",
+			name: "add-logout",
+			raw: "--new-task add-logout",
+		});
 	});
 
 	test("--new-task without slug falls back to --feature mode", () => {
@@ -225,8 +246,15 @@ describe("describePlanTarget", () => {
 	});
 
 	test("rejects unknown shapes", () => {
-		expect(describePlanTarget(["whatever"])).toBeNull();
 		expect(describePlanTarget(["11.02"])).toBeNull(); // plan-shape N.MM is execute-only
+	});
+
+	test("plain word is now a valid plan slug (1.15.x)", () => {
+		expect(describePlanTarget(["whatever"])).toEqual({
+			kind: "plan",
+			name: "whatever",
+			raw: "whatever",
+		});
 	});
 });
 

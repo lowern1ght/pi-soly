@@ -142,10 +142,23 @@ export function buildNudgeSection(
 		: "";
 
 	// When there's an active soly project and the task is non-trivial, steer the
-	// model toward the workflow lifecycle instead of ad-hoc edits.
+	// model toward the workflow lifecycle instead of ad-hoc edits. This block
+	// also tells the model it may *itself* scaffold a new plan after asking the
+	// user — the user explicitly opted into this in 1.16.0.
 	const workflowPoint =
 		opts.hasProject && heuristics.nonTrivial
-			? `\n\n4. **Route project work through the soly workflow.** For phase/task work in \`.agents/\`, prefer the lifecycle over ad-hoc edits: \`soly discuss <N>\` (scope) → \`soly plan <N>\` (write tasks) → \`soly execute <N>\` (do them) → \`soly verify\` (review). Run \`soly status\` to see where you are. Skip only for a genuine one-off.`
+			? `\n\n4. **Route project work through the soly plan workflow.** Each plan is a git branch named by a kebab-case slug (\`statistic-preparation\`, \`login-redirect-bug\`, \`stats-rollup\`, …) with \`.agents/plans/<slug>/PLAN.md\` on it. Two parallel plans don't collide.
+
+   Lifecycle (text commands you type — pi routes them through the workflow handlers):
+      - \`soly new <slug>\`        — scaffold: branch + plan dir + stub PLAN.md + commit
+      - \`soly discuss <slug>\`    — interactive discussion of the plan (uses ask_pro)
+      - \`soly plan <slug>\`       — flesh out PLAN.md via ask_pro
+      - \`soly execute <slug>\`    — execute the plan in a subagent
+      - \`soly done <slug>\`       — commit + push + open draft PR via gh
+      - \`soly verify\`             — self-review loop until clean
+      - \`soly status\`             — current position + progress (no LLM round-trip)
+
+   **You may scaffold a new plan yourself** when the user asks for a new piece of work and the scope is clear (or the user just confirmed). Propose the slug first via ask_pro (\"I'll create plan 'statistic-preparation' — continue?\"), then type \`soly new statistic-preparation\` in your next output. Don't ask for confirmation on trivial one-liners or when the user already said "go". Skip only for a genuine one-off that doesn't deserve a plan branch.`
 			: "";
 
 	// Confirm-before-coding gate: for non-trivial implementation, pull the

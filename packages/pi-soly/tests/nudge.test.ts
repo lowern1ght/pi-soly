@@ -191,9 +191,10 @@ describe("buildNudgeSection — workflow routing (point 4)", () => {
 
 	test("suggests the soly lifecycle when a project exists and the task is non-trivial", () => {
 		const s = buildNudgeSection(nonTrivial, { hasProject: true });
-		expect(s.includes("Route project work through the soly workflow")).toBe(true);
+		expect(s.includes("Route project work through the soly plan workflow")).toBe(true);
 		expect(s.includes("soly discuss")).toBe(true);
 		expect(s.includes("soly verify")).toBe(true);
+		expect(s.includes("soly new <slug>")).toBe(true);
 	});
 
 	test("omitted without a project", () => {

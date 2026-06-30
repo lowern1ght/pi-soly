@@ -53,19 +53,19 @@ function initTmpRepoWithSoly(): string {
 }
 
 describe("describePlanTarget — plan kind (W2)", () => {
-	test("feat/auth-jwt → plan", () => {
-		const t = describePlanTarget(["feat/auth-jwt"]);
-		expect(t).toEqual({ kind: "plan", type: "feat", name: "auth-jwt", raw: "feat/auth-jwt" });
+	test("auth-jwt → plan", () => {
+		const t = describePlanTarget(["auth-jwt"]);
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", raw: "auth-jwt" });
 	});
 
-	test("fix/login-redirect → plan", () => {
-		const t = describePlanTarget(["fix/login-redirect"]);
+	test("login-redirect → plan", () => {
+		const t = describePlanTarget(["login-redirect"]);
 		expect(t?.kind).toBe("plan");
 	});
 
-	test("chore/upgrade-deps → plan", () => {
-		const t = describePlanTarget(["chore/upgrade-deps"]);
-		expect(t).toMatchObject({ kind: "plan", type: "chore", name: "upgrade-deps" });
+	test("upgrade-deps → plan", () => {
+		const t = describePlanTarget(["upgrade-deps"]);
+		expect(t).toMatchObject({ kind: "plan", name: "upgrade-deps" });
 	});
 
 	test("plain 11 → still phase (backward compat)", () => {
@@ -73,8 +73,8 @@ describe("describePlanTarget — plan kind (W2)", () => {
 		expect(t).toEqual({ kind: "phase", phase: 11, raw: "11" });
 	});
 
-	test("notatype/foo → null (rejected before plan recognition)", () => {
-		const t = describePlanTarget(["notatype/foo"]);
+	test("legacy <type>/<name> form is rejected (1.15.x convention)", () => {
+		const t = describePlanTarget(["feat/auth-jwt"]);
 		expect(t).toBeNull();
 	});
 
@@ -83,21 +83,21 @@ describe("describePlanTarget — plan kind (W2)", () => {
 		expect(t).toBeNull();
 	});
 
-	test("only-type-slash → null", () => {
-		const t = describePlanTarget(["feat/"]);
+	test("name with leading dash → null", () => {
+		const t = describePlanTarget(["-auth"]);
 		expect(t).toBeNull();
 	});
 
-	test("no slash at all → null", () => {
-		const t = describePlanTarget(["auth-jwt"]);
+	test("name with trailing dash → null", () => {
+		const t = describePlanTarget(["auth-"]);
 		expect(t).toBeNull();
 	});
 });
 
 describe("describeExecuteTarget — plan kind (W2)", () => {
-	test("feat/auth-jwt → plan", () => {
-		const t = describeExecuteTarget(["feat/auth-jwt"]);
-		expect(t).toEqual({ kind: "plan", type: "feat", name: "auth-jwt", raw: "feat/auth-jwt" });
+	test("auth-jwt → plan", () => {
+		const t = describeExecuteTarget(["auth-jwt"]);
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", raw: "auth-jwt" });
 	});
 
 	test("plain 5 → still phase (backward compat)", () => {
@@ -121,23 +121,23 @@ describe("buildPlanTransform — plan mode", () => {
 		// Scaffold a plan via fs (skip the new-workflow to keep this test focused)
 		const planFile = path.join(repo, ".agents", "plans", "auth-jwt", "PLAN.md");
 		fs.mkdirSync(path.dirname(planFile), { recursive: true });
-		fs.writeFileSync(planFile, "# Plan: feat/auth-jwt\n\n## Goal\nTBD\n");
+		fs.writeFileSync(planFile, "# Plan: auth-jwt\n\n## Goal\nTBD\n");
 
 		const state = fakeState(path.join(repo, ".agents"));
 		const result = buildPlanTransform(
-			{ verb: "plan", args: ["feat/auth-jwt"], raw: "soly plan feat/auth-jwt" } as never,
+			{ verb: "plan", args: ["auth-jwt"], raw: "soly plan auth-jwt" } as never,
 			state,
 		);
 
 		expect(result.handled).toBe(true);
 		expect(result.transformedText).toContain(".agents/plans/auth-jwt/PLAN.md");
-		expect(result.transformedText).toContain("feat/auth-jwt");
+		expect(result.transformedText).toContain("auth-jwt");
 	});
 
 	test("error if PLAN.md does not exist (uses TBD placeholder in body)", () => {
 		const state = fakeState(path.join(repo, ".agents"));
 		const result = buildPlanTransform(
-			{ verb: "plan", args: ["feat/missing-plan"], raw: "soly plan feat/missing-plan" } as never,
+			{ verb: "plan", args: ["missing-plan"], raw: "soly plan missing-plan" } as never,
 			state,
 		);
 		// Even with missing PLAN.md, plan-mode should return handled (LLM will be
@@ -161,11 +161,11 @@ describe("buildExecuteTransform — plan mode", () => {
 	test("returns transformedText that includes plan body", () => {
 		const planFile = path.join(repo, ".agents", "plans", "auth-jwt", "PLAN.md");
 		fs.mkdirSync(path.dirname(planFile), { recursive: true });
-		fs.writeFileSync(planFile, "# Plan: feat/auth-jwt\n\n## Goal\nShip JWT auth\n");
+		fs.writeFileSync(planFile, "# Plan: auth-jwt\n\n## Goal\nShip JWT auth\n");
 
 		const state = fakeState(path.join(repo, ".agents"));
 		const result = buildExecuteTransform(
-			{ verb: "execute", args: ["feat/auth-jwt"], raw: "soly execute feat/auth-jwt" } as never,
+			{ verb: "execute", args: ["auth-jwt"], raw: "soly execute auth-jwt" } as never,
 			state,
 		);
 
@@ -177,7 +177,7 @@ describe("buildExecuteTransform — plan mode", () => {
 	test("clean error if PLAN.md does not exist", () => {
 		const state = fakeState(path.join(repo, ".agents"));
 		const result = buildExecuteTransform(
-			{ verb: "execute", args: ["feat/missing"], raw: "soly execute feat/missing" } as never,
+			{ verb: "execute", args: ["missing"], raw: "soly execute missing" } as never,
 			state,
 		);
 		expect(result.handled).toBe(true);

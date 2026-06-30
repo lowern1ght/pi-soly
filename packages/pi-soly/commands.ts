@@ -46,6 +46,12 @@ import type { SolyConfig } from "./config.ts";
 import { initSolyProject } from "./init.js";
 import { ListPanel, type ListItem, type ListAction } from "./visual/list-panel.ts";
 import { getArtifactServer, ensureArtifactServer, artifactDir } from "./artifact/session.ts";
+import { parseSolyCommand, type SolyCommand, type WorkflowVerb } from "./workflows/parser.ts";
+import { buildNewTransform } from "./workflows/new.ts";
+import { buildDoneTransform } from "./workflows/done.ts";
+import { buildMigrateTransform } from "./workflows/migrate.ts";
+import { buildPlanTransform, buildDiscussTransform } from "./workflows/planning.ts";
+import { buildExecuteTransform } from "./workflows/execute.ts";
 
 /** Minimum ui surface the command handlers actually need. */
 export interface CommandUI {
@@ -558,6 +564,70 @@ What must the LLM do?
 				description: string;
 				run: (parts: string[]) => void | Promise<void>;
 			};
+			/** Dispatch a workflow verb from the `/soly` slash-command picker.
+			 *  Same handlers used by the `soly <verb> ...` text-command path —
+			 *  registered here so humans can also drive them via
+			 *  `/soly <verb> ...` without having to type natural language and
+			 *  wait for the LLM to translate. */
+			const runWorkflow = async (
+				verb: WorkflowVerb,
+				parts: string[],
+				ctx: ExtensionCommandContext,
+				ui: CommandUI,
+			): Promise<void> => {
+				// parts[0] is the verb name; the args follow.
+				const args = parts.slice(1);
+				const cmd: SolyCommand = {
+					verb,
+					args,
+					raw: `soly ${verb}${args.length ? " " + args.join(" ") : ""}`,
+				};
+				const state = getState();
+				if (!state.exists) {
+					ui.notify("soly: no .agents/ project here — run `/soly init` to scaffold one", "info");
+					return;
+				}
+				switch (verb) {
+					case "new": {
+						const r = buildNewTransform(cmd, state, ui, ctx.cwd);
+						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
+						return;
+					}
+					case "done": {
+						const r = buildDoneTransform(cmd, state, ui, ctx.cwd);
+						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
+						return;
+					}
+					case "migrate": {
+						const r = buildMigrateTransform(state, ui, ctx.cwd);
+						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
+						return;
+					}
+					case "plan": {
+						const r = buildPlanTransform(cmd, state);
+						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
+						return;
+					}
+					case "discuss": {
+						// Slash-command path doesn't have live ask_pro detection.
+						// Pass `false` so the discuss transform falls back to its
+						// plain-text discussion format; the LLM-driven path still
+						// gets the richer ask_pro flow.
+						const r = buildDiscussTransform(cmd, state, { hasAskPro: false });
+						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
+						return;
+					}
+					case "execute": {
+						// Slash-command path doesn't have live interactive rules.
+						const r = buildExecuteTransform(cmd, state, []);
+						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
+						return;
+					}
+					default:
+						ui.notify(`soly: workflow '${verb}' not yet wired into slash command`, "info");
+						return;
+				}
+			};
 			const subcommands: Record<string, SolySub> = {
 				// `agent` subcommand REMOVED — moved to the separate `pi-switch`
 				// extension (rotor switcher removed in 1.4.0).
@@ -612,17 +682,25 @@ What must the LLM do?
 					run: () => showFile("STATE.md", getState().stateBody),
 				},
 				plan: {
-					description: "current PLAN.md body",
-					run: () => {
-						const s = getState();
-						if (!s.currentPlanPath) {
-							ui.notify("soly: no current plan", "error");
+					description: "current PLAN.md body, OR `plan <slug>` to flesh out a plan",
+					run: (parts) => {
+						// Dual-purpose: no args = show current PLAN.md; with args
+						// = dispatch to the plan-mode workflow. Same key the
+						// state picker already had (state picker items and
+						// workflow verbs share the same `/soly` namespace).
+						if (parts.length <= 1) {
+							const s = getState();
+							if (!s.currentPlanPath) {
+								ui.notify("soly: no current plan", "error");
+								return;
+							}
+							showFile(
+								`PLAN: ${path.basename(s.currentPlanPath)}`,
+								readIfExists(s.currentPlanPath),
+							);
 							return;
 						}
-						showFile(
-							`PLAN: ${path.basename(s.currentPlanPath)}`,
-							readIfExists(s.currentPlanPath),
-						);
+						void runWorkflow("plan", parts, ctx, ui);
 					},
 				},
 				context: {
@@ -796,6 +874,35 @@ What must the LLM do?
 							"info",
 						);
 					},
+				},
+				// ------------------------------------------------------------------
+				// Workflow verbs — same handlers used by the `soly <verb> ...`
+				// text-command path. Registered here so humans can also drive
+				// them via `/soly <verb> ...` from the slash picker without
+				// typing natural language and waiting for the LLM to translate.
+				// Each verb's buildXxxTransform already calls ui.notify on
+				// success, so we just need to construct a fake `SolyCommand`
+				// from the slash args and call the handler.
+				// ------------------------------------------------------------------
+				new: {
+					description: "scaffold a new plan: create branch + .agents/plans/<slug>/PLAN.md (e.g. `/soly new statistic-preparation`)",
+					run: (parts) => runWorkflow("new", parts, ctx, ui),
+				},
+				execute: {
+					description: "execute a plan via subagent (e.g. `/soly execute statistic-preparation`)",
+					run: (parts) => runWorkflow("execute", parts, ctx, ui),
+				},
+				discuss: {
+					description: "interactive discussion of a plan (e.g. `/soly discuss statistic-preparation`)",
+					run: (parts) => runWorkflow("discuss", parts, ctx, ui),
+				},
+				done: {
+					description: "commit + push + open draft PR for a plan branch (e.g. `/soly done statistic-preparation`)",
+					run: (parts) => runWorkflow("done", parts, ctx, ui),
+				},
+				migrate: {
+					description: "one-shot: import .agents/phases/<NN>-<slug>/plans/PLAN.md as plan branches",
+					run: () => runWorkflow("migrate", [], ctx, ui),
 				},
 			};
 
