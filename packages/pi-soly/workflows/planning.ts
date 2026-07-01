@@ -118,6 +118,8 @@ ${planBody.slice(0, 4000)}${planBody.length > 4000 ? "\n…(truncated)" : ""}
 
 **0-POINT CHECK.** Re-read .agents/docs/ (intent) before fleshing out the plan.
 
+**STUDY THE REPO.** Before writing PLAN.md, use \`soly_snippet(path, offset, limit)\` and \`soly_doc_search(query)\` to understand the area this plan will touch. Look at how similar features are implemented in this codebase (naming, file layout, error handling, test convention), and check \`## project layout\` from the system prompt for orientation. Extract enough context that the plan names concrete files and conventions, not abstractions. Surface ambiguities as \`ask_pro\` questions BEFORE writing PLAN.md.
+
 If ask_pro is available, use it ONCE to gather goal / steps / acceptance criteria (freeText questions, batched). Then write PLAN.md with the answers. If ask_pro is NOT available, write a sensible stub plan and tell the user to refine it via \`soly plan ${target.raw}\` again.
 
 Hard rules:
@@ -542,6 +544,8 @@ ${planBody.slice(0, 4000)}${planBody.length > 4000 ? "\n…(truncated)" : ""}
 \`\`\`
 
 **0-POINT CHECK.** Re-read .agents/docs/ (intent) before discussing.
+
+**STUDY THE REPO.** Use \`soly_snippet(path, offset, limit)\`, \`soly_doc_search(query)\`, and \`## project layout\` from the system prompt to understand the area the plan touches. The discussion should resolve real ambiguities in the existing code, not invent new ones. If the plan body mentions files you haven't read, read them first.
 
 Use \`soly_finish_discuss\` to capture the discussion outcome. The flow:
 1. Read the plan above.

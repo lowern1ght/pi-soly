@@ -4,6 +4,60 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.16.3] — 2026-06-30
+
+### Added
+- **"STUDY THE REPO" directive in the workflow instructions** — tells the
+  LLM to use \`soly_snippet\`, \`soly_doc_search\`, and the \`## project layout\`
+  section from the system prompt to understand the area before writing
+  PLAN.md or editing code. No new modules, no new dependencies — just
+  prompt engineering in three places:
+    - \`nudge.ts\` workflowPoint: LLM is told to study before scaffolding
+      a new plan itself
+    - \`workflows/planning.ts\`: \`soly plan <slug>\` instructs the model
+      to read the relevant files before fleshing out the plan, and
+      surface ambiguities as ask_pro questions
+    - \`workflows/execute.ts\`: \`soly execute <slug>\` instructs the
+      worker to study the area (the module being modified, one
+      adjacent feature, the test file) before changing any code
+    - \`workflows/planning.ts\` discuss path: same directive for
+      \`soly discuss\` so discussion resolves real code ambiguities
+      rather than invented ones
+
+  The point: plans that name concrete files and conventions beat plans
+  that pick an arbitrary location and rewrite. The LLM already has
+  the read tools — this just makes it use them in the right order.
+
+### Tests
+- +2 in \`tests/nudge.test.ts\` covering the STUDY directive and the
+  embedded \`defaultBranchPrefix\`. 578/578 pass (was 576).
+
+## [1.16.2] — 2026-06-30
+
+### Fixed (audit pass)
+- **\`config.ts\` sanitize was case-preserving** — \`/[^a-z0-9-]/gi\` with
+  the \`i\` flag broadens \`[a-z]\` to \`[a-zA-Z]\`, so the negated class
+  matched everything except alphanumerics + hyphen (uppercase stayed).
+  Result: \`plan.defaultBranchPrefix: "Feature"\` in \`.agents/soly.json\`
+  became branch \`Feature/foo\` instead of \`feature/foo\`. Fix:
+  lowercase first, then filter (no \`i\` flag on the char class).
+- **\`planning.ts\` and \`execute.ts\` couldn't read PLAN.md for
+  \`<prefix>/<slug>\` plans** — they computed
+  \`planDirAbs = .agents/plans/\${target.name}\` (just the slug) but
+  the on-disk dir is \`.agents/plans/<prefix>-<slug>/\`. So
+  \`soly plan feature/foo\` after \`soly new feature/foo\` silently
+  missed the file. Fix: thread \`prefix\` through the PlanTarget /
+  ExecuteTarget types and compute the flattened \`dirSlug\` for the
+  on-disk path. Same fix for the discuss path (planning.ts:524).
+- **\`PlanTarget\` / \`ExecuteTarget\` carried no \`prefix\`** — once
+  consumers needed it for the dir lookup, the union types had to
+  gain \`prefix: string | null\`. Updated parser.ts and all tests.
+
+### Tests
+- +6 regression tests (5 in \`config.test.ts\` for sanitize, 1 in
+  \`workflow-plan-mode.test.ts\` for the flattened dir lookup).
+  576/576 pass (was 570).
+
 ## [1.16.1] — 2026-06-30
 
 ### Added

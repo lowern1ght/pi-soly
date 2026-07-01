@@ -169,7 +169,15 @@ export function buildNudgeSection(
       - \`soly verify\`                         — self-review loop until clean
       - \`soly status\`                         — current position + progress (no LLM round-trip)
 
-   **You may scaffold a new plan yourself** when the user asks for a new piece of work and the scope is clear (or the user just confirmed). Propose the slug AND the full branch name first via ask_pro — offer the default \`${prefix ? prefix + "/" : ""}<slug>\` plus the alternatives \`fix/<slug>\`, \`chore/<slug>\`, or just \`<slug>\` (no prefix). Pick whatever fits the work, then type \`soly new …\` in your next output. Don't ask for trivial one-liners or when the user already said "go". Skip only for a genuine one-off that doesn't deserve a plan branch.`
+   **You may scaffold a new plan yourself** when the user asks for a new piece of work and the scope is clear (or the user just confirmed). Propose the slug AND the full branch name first via ask_pro — offer the default \`${prefix ? prefix + "/" : ""}<slug>\` plus the alternatives \`fix/<slug>\`, \`chore/<slug>\`, or just \`<slug>\` (no prefix). Pick whatever fits the work, then type \`soly new …\` in your next output. Don't ask for trivial one-liners or when the user already said "go". Skip only for a genuine one-off that doesn't deserve a plan branch.
+
+   **STUDY THE REPO before scaffolding or fleshing out a plan.** Before you write or edit any plan, use the available tools to understand the area you're about to touch:
+   - \`soly_snippet(path, offset, limit)\` and \`soly_doc_search(query)\` for bounded reads of the relevant files (don't \`read\` the whole tree — that's why these tools exist).
+   - The \`## project layout\` section in this system prompt for a directory overview.
+   - \`.agents/docs/\` (intent) for *why* the project is the way it is.
+   - \`git log --oneline -20\` for recent context (existing patterns, prior decisions).
+
+   What to extract: where similar features live, the naming/file-layout conventions, how errors are handled, how tests are written, and any constraints you missed in the prompt. Surface ambiguities as \`ask_pro\` questions BEFORE writing the plan — a plan that knows "the tests go in __tests__/" beats a plan that picks an arbitrary location and rewrites.`
 			: "";
 
 	// Confirm-before-coding gate: for non-trivial implementation, pull the

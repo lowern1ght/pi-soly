@@ -197,6 +197,22 @@ describe("buildNudgeSection — workflow routing (point 4)", () => {
 		expect(s.includes("soly new <slug>")).toBe(true);
 	});
 
+	test("instructs LLM to study the repo before scaffolding or fleshing out a plan", () => {
+		const s = buildNudgeSection(nonTrivial, { hasProject: true });
+		expect(s.includes("STUDY THE REPO")).toBe(true);
+		expect(s.includes("soly_snippet")).toBe(true);
+		expect(s.includes("soly_doc_search")).toBe(true);
+	});
+
+	test("embeds the actual defaultBranchPrefix in the workflow point", () => {
+		const s = buildNudgeSection(nonTrivial, {
+			hasProject: true,
+			defaultBranchPrefix: "feature",
+		});
+		expect(s.includes("Branches look like `feature/<slug>`")).toBe(true);
+		expect(s.includes('project default is **`"feature"`**')).toBe(true);
+	});
+
 	test("omitted without a project", () => {
 		expect(buildNudgeSection(nonTrivial, { hasProject: false }).includes("Route project work")).toBe(false);
 		expect(buildNudgeSection(nonTrivial).includes("Route project work")).toBe(false);

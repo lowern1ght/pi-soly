@@ -181,6 +181,8 @@ The worker reads this file first — it contains intent, STATE, ROADMAP (n/a for
 
 **0-POINT CHECK.** Worker must re-read .agents/docs/ (intent) and .agents/features/${task.feature}/README.md before implementing.
 
+**STUDY THE REPO.** The worker MUST use \`soly_snippet(path, offset, limit)\`, \`soly_doc_search(query)\`, and \`## project layout\` from the system prompt to understand the area before changing any file. Read at least: the module being modified, one similar feature for the pattern, and the corresponding test file. Do NOT change code based on assumptions about how the existing code works.
+
 Launch a single subagent for this work. Do NOT do the work inline.
 
 subagent({
@@ -325,6 +327,8 @@ ${planBody.slice(0, 4000)}${planBody.length > 4000 ? "\n…(truncated)" : ""}
 \`\`\`
 
 **0-POINT CHECK.** Worker must re-read .agents/docs/ (intent) before implementing.
+
+**STUDY THE REPO.** Worker MUST use \`soly_snippet(path, offset, limit)\`, \`soly_doc_search(query)\`, and \`## project layout\` from the system prompt to map the area before editing. Read at least: the module(s) the plan touches, one adjacent feature for the convention, and any test files in the same area. Do NOT edit code on assumptions about how existing code is structured.
 
 Launch a single subagent to execute the plan. Do NOT do the work inline.
 
