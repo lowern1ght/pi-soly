@@ -330,6 +330,8 @@ ${planBody.slice(0, 4000)}${planBody.length > 4000 ? "\n…(truncated)" : ""}
 
 **STUDY THE REPO.** Worker MUST use \`soly_snippet(path, offset, limit)\`, \`soly_doc_search(query)\`, and \`## project layout\` from the system prompt to map the area before editing. Read at least: the module(s) the plan touches, one adjacent feature for the convention, and any test files in the same area. Do NOT edit code on assumptions about how existing code is structured.
 
+**Corporate reviewer — gap-hunt the plan first.** Re-read the entire PLAN.md end-to-end. Identify concrete gaps (file paths not named, error handling missing, boundary cases unmentioned, no test file cited, no migration plan for existing instances, etc.). If you find ANY material gap, use \`ask_pro\` to surface it to the user BEFORE editing a single file — phrase each question with a recommended default + 2-3 alternatives. Only after gaps are resolved (or explicitly accepted by the user) may implementation begin.
+
 Launch a single subagent to execute the plan. Do NOT do the work inline.
 
 subagent({

@@ -177,7 +177,23 @@ export function buildNudgeSection(
    - \`.agents/docs/\` (intent) for *why* the project is the way it is.
    - \`git log --oneline -20\` for recent context (existing patterns, prior decisions).
 
-   What to extract: where similar features live, the naming/file-layout conventions, how errors are handled, how tests are written, and any constraints you missed in the prompt. Surface ambiguities as \`ask_pro\` questions BEFORE writing the plan — a plan that knows "the tests go in __tests__/" beats a plan that picks an arbitrary location and rewrites.`
+   What to extract: where similar features live, the naming/file-layout conventions, how errors are handled, how tests are written, and any constraints you missed in the prompt. Surface ambiguities as \`ask_pro\` questions BEFORE writing the plan — a plan that knows "the tests go in __tests__/" beats a plan that picks an arbitrary location and rewrites.
+
+   **Corporate reviewer — gap-hunt the plan before coding.** Even when PLAN.md already exists and looks approved, BEFORE you touch any code (a phase, a task, or an arbitrary edit):
+      1. Re-read the entire PLAN.md end-to-end. Read adjacent code (one similar feature) with \`soly_snippet\`.
+      2. List concrete gaps the plan doesn't address, in priority order. Examples to look for:
+         - **Placement** — which file(s) does the new code live in? If the plan names them, read them; if not, decide and ask.
+         - **Naming** — function/class/variable names that match existing conventions? (camelCase vs snake_case, verb vs noun, get/set prefix)
+         - **Boundary cases** — empty inputs, large inputs, concurrent access, missing files, malformed data. Did the plan mention any? Will the implementation handle them?
+         - **Errors** — what does this code do when X fails? Does the plan say? Does the codebase have an existing error pattern to follow?
+         - **Existing instances** — if the pattern already exists in the codebase (e.g. another route, another component, another handler), what happens to them? Migration? Coexistence?
+         - **Tests** — does the plan name the test file? The fixture data? The assertion style?
+         - **Rollout / risk** — is this safe to merge? Does anything need a feature flag, a config gate, or a deprecation window?
+      3. If you find ANY material gap, ask the user via \`ask_pro\` BEFORE writing a single line of code. Phrase each question with a recommended default + 2-3 alternatives. Don't pick for the user.
+      4. If the plan is genuinely complete and you find no gaps, say so explicitly ("No gaps found in PLAN.md, proceeding") and proceed.
+      5. This is independent of \`confirmBeforeCode\` (\`scope\` / \`ask\` / \`off\`). The reviewer runs even when the user said "go" — it's the last filter, not the first.
+
+   Why this exists: plans that look complete often aren't. Asking 4 sharp questions with defaults saves a 40-minute rebuild when an assumption turns out to be wrong. Don't rush.`
 			: "";
 
 	// Confirm-before-coding gate: for non-trivial implementation, pull the

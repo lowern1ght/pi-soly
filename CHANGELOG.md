@@ -4,6 +4,25 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [1.16.4] — 2026-06-30
+
+### Added
+- **"Corporate reviewer" gap-hunt directive** — new point in
+  \`nudge.ts\` workflowPoint and new step in \`workflows/execute.ts\`
+  worker instruction. Tells the LLM (a) re-read the entire PLAN.md
+  before coding, (b) list every material gap (placement, naming,
+  boundary cases, errors, existing instances, tests, rollout),
+  (c) surface gaps via \`ask_pro\` with a recommended default + 2-3
+  alternatives BEFORE editing a single file. Independent of the
+  existing \`confirmBeforeCode\` config (\`scope\` / \`ask\` / \`off\`)
+  — runs even when the user said "go", as a final filter not the
+  first. The point: plans that look complete often aren't, and
+  asking 4 sharp questions with defaults saves a 40-minute rebuild.
+
+### Tests
+- +1 in \`tests/nudge.test.ts\` covering the corporate reviewer
+  directive. 579/579 pass (was 578).
+
 ## [1.16.3] — 2026-06-30
 
 ### Added

@@ -213,6 +213,17 @@ describe("buildNudgeSection — workflow routing (point 4)", () => {
 		expect(s.includes('project default is **`"feature"`**')).toBe(true);
 	});
 
+	test("instructs LLM to gap-hunt the plan before coding (corporate reviewer)", () => {
+		const s = buildNudgeSection(nonTrivial, { hasProject: true });
+		expect(s.includes("Corporate reviewer")).toBe(true);
+		expect(s.includes("gap-hunt")).toBe(true);
+		expect(s.includes("ask_pro")).toBe(true); // mentions ask_pro for surfacing gaps
+		// Names the most common gap categories the LLM should look for
+		expect(s.includes("Boundary cases")).toBe(true);
+		expect(s.includes("Existing instances")).toBe(true);
+		expect(s.includes("Tests")).toBe(true);
+	});
+
 	test("omitted without a project", () => {
 		expect(buildNudgeSection(nonTrivial, { hasProject: false }).includes("Route project work")).toBe(false);
 		expect(buildNudgeSection(nonTrivial).includes("Route project work")).toBe(false);
