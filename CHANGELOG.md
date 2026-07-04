@@ -4,6 +4,23 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-07-04
+
+### Removed
+- **Pre-action rule reminder — deleted entirely.** After every `edit`/`write`
+  soly used to append a "📋 Applicable rules for `<path>`:" block to the tool
+  result AND instruct the model to "confirm in your next message which were
+  applied" — so the assistant echoed an "Applied rules …" line on basically
+  every turn. In practice this was noise in the output, not signal. Gone:
+  - the `tool_result` hook in `index.ts` that injected the block,
+  - `formatRuleReminder` and `getApplicableRulesForFile` in `core.ts`,
+  - the `agent.preActionRuleReminder` config flag (unknown keys in an existing
+    `soly.json` are ignored, so no crash for anyone who set it),
+  - `tests/rule-reminder.test.ts`.
+  Rules still live in the system prompt every turn (the MANDATORY section is
+  untouched), and the silent per-turn rule tracking that powers `/why` stays —
+  it never wrote to the chat. 576 pass, tsc clean.
+
 ## [2.0.0] — 2026-07-04
 
 ### Changed (breaking — interaction model)
