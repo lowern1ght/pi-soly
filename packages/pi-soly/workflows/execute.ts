@@ -3,17 +3,17 @@
 // =============================================================================
 //
 // Intercepts "soly execute 11" (phase) or "soly execute 11.02" (specific plan)
-// and transforms it into a detailed LLM instruction that launches a worker
-// subagent with the soly execute workflow loaded into its system prompt.
+// and transforms it into a detailed LLM instruction that carries the soly
+// execute workflow inline.
 //
-// We use `action: "transform"` (not `action: "handled"`) — the LLM still
-// receives the request, but with the full workflow context, so it can call
-// the `subagent(...)` tool itself and apply the SOLY-specific close-out
-// discipline (commits, SUMMARY.md, STATE.md update).
+// We use `action: "transform"` (not `action: "handled"`) — the LLM receives
+// the request enriched with the full workflow context and executes it INLINE,
+// in the same session, applying the SOLY-specific close-out discipline
+// (commits, SUMMARY.md, STATE.md update).
 //
-// We do NOT spawn the subagent directly from the extension — `subagent(...)`
-// is a tool only available to the LLM (via pi-subagents), and the parent
-// session needs to keep ownership of the close-out loop.
+// No external subagent plugin is involved: the model does the work itself.
+// The same instruction is emitted whether the request arrives as the plain
+// "soly execute …" verb (input hook) or via the `soly_workflow` tool.
 // =============================================================================
 
 import * as fs from "node:fs";
@@ -67,7 +67,6 @@ export function buildExecuteTransform(
 	cmd: SolyCommand,
 	state: SolyState,
 	interactiveRules: string[] = [],
-	opts: { agent?: string } = {},
 ): ExecuteHandlerResult {
 	if (!state.exists) {
 		return {
@@ -165,7 +164,7 @@ export function buildExecuteTransform(
 		});
 		const inlineSummary = inlinePlanSummary(path.join(task.dir, "PLAN.md"));
 
-		const instruction = `soly execute ${target.taskId} — launching worker for task.
+		const instruction = `soly execute ${target.taskId} — executing task.
 
 **Task:** ${task.id}
 **Feature:** ${task.feature}
@@ -177,20 +176,13 @@ export function buildExecuteTransform(
 **Dir:** ${task.dir}
 
 **Iteration context file written:** \`${iter.relPath}\` (${iter.tokens} tokens, ${iter.bytes} bytes)
-The worker reads this file first — it contains intent, STATE, ROADMAP (n/a for tasks), the feature README, prior task SUMMARYs, and the current task PLAN.
+Read this file first — it contains intent, STATE, ROADMAP (n/a for tasks), the feature README, prior task SUMMARYs, and the current task PLAN.
 
-**0-POINT CHECK.** Worker must re-read .agents/docs/ (intent) and .agents/features/${task.feature}/README.md before implementing.
+**0-POINT CHECK.** Re-read .agents/docs/ (intent) and .agents/features/${task.feature}/README.md before implementing.
 
-**STUDY THE REPO.** The worker MUST use \`soly_snippet(path, offset, limit)\`, \`soly_doc_search(query)\`, and \`## project layout\` from the system prompt to understand the area before changing any file. Read at least: the module being modified, one similar feature for the pattern, and the corresponding test file. Do NOT change code based on assumptions about how the existing code works.
+**STUDY THE REPO.** Use \`soly_snippet(path, offset, limit)\`, \`soly_doc_search(query)\`, and \`## project layout\` from the system prompt to understand the area before changing any file. Read at least: the module being modified, one similar feature for the pattern, and the corresponding test file. Do NOT change code based on assumptions about how the existing code works.
 
-Launch a single subagent for this work. Do NOT do the work inline.
-
-subagent({
-  agent: ${JSON.stringify(opts.agent ?? "worker")},
-  context: "fresh",
-  async: true,
-  maxSubagentDepth: 1,
-  task: \`You are soly-executor (single-task writer).
+**Execute this now — inline, in THIS session. You are soly-executor (single-task writer). Do the work directly; there is no separate worker to delegate to.**
 
 Your job: execute ONE task (atomic unit) and produce its SUMMARY.md.
 
@@ -227,15 +219,12 @@ ${workflow}
 Hard rules:
   - Do not skip the close-out order: production commits -> SUMMARY commit -> status: done.
   - Do not modify any .agents/rules/ files.
-  - Do not run subagents yourself.
   - Do not start a task whose \`depends-on:\` lists tasks that are not \`done\`.
   - PATH DISCIPLINE: all files YOU create must live under \`.agents/\` (iteration, handoff, etc.) or under the project's source dirs. Never write to the project root.
-  - Return: changed files, commands run with exit codes, validation evidence, surprises, decisions needing parent approval.
-  - Interactive-only rules are NOT in scope for you: ${interactiveRules.length > 0 ? interactiveRules.join(", ") : "(none)"}.
-\`
-})
+  - Report as you go: changed files, commands run with exit codes, validation evidence, surprises, decisions needing user approval.
+  - Interactive-only rules are NOT in scope here: ${interactiveRules.length > 0 ? interactiveRules.join(", ") : "(none)"}.
 
-When the subagent completes, synthesize the result. Do not re-execute its work. Then suggest \`soly verify\` to self-review the change with fresh eyes before calling it done.`;
+When done, confirm the SUMMARY.md was written and the task flipped to \`status: done\`. Then suggest \`soly verify\` to self-review the change with fresh eyes before calling it done.`;
 		return { handled: true, transformedText: instruction };
 	}
 
@@ -272,7 +261,7 @@ When the subagent completes, synthesize the result. Do not re-execute its work. 
 				`**v0.1 limitation:** tasks run sequentially, not in parallel. Parallel mode is v0.2.\n\n` +
 				`Ready tasks (in suggested order):\n` +
 				ready.map((t, i) => `  ${i + 1}. ${t.id}  [${t.kind}]  prio=${t.priority}`).join("\n") +
-				`\n\nLaunch a single subagent to execute them one at a time in this order. The subagent uses the task execution workflow (execute-task.md) per task.`,
+				`\n\nExecute them one at a time in this order, inline in this session, using the task execution workflow (execute-task.md) per task.`,
 		};
 	}
 
@@ -318,7 +307,7 @@ When the subagent completes, synthesize the result. Do not re-execute its work. 
 **PLAN.md:** ${planFile}
 
 **Iteration context file written:** \`${iter.relPath}\` (${iter.tokens} tokens)
-The worker reads this file first — it contains intent, STATE, ROADMAP, the
+Read this file first — it contains intent, STATE, ROADMAP, the
 plan body inline, and any prior SUMMARYs for this plan (none on first run).
 
 **Inline plan body (so you have must-haves before reading the file):**
@@ -326,20 +315,13 @@ plan body inline, and any prior SUMMARYs for this plan (none on first run).
 ${planBody.slice(0, 4000)}${planBody.length > 4000 ? "\n…(truncated)" : ""}
 \`\`\`
 
-**0-POINT CHECK.** Worker must re-read .agents/docs/ (intent) before implementing.
+**0-POINT CHECK.** Re-read .agents/docs/ (intent) before implementing.
 
-**STUDY THE REPO.** Worker MUST use \`soly_snippet(path, offset, limit)\`, \`soly_doc_search(query)\`, and \`## project layout\` from the system prompt to map the area before editing. Read at least: the module(s) the plan touches, one adjacent feature for the convention, and any test files in the same area. Do NOT edit code on assumptions about how existing code is structured.
+**STUDY THE REPO.** Use \`soly_snippet(path, offset, limit)\`, \`soly_doc_search(query)\`, and \`## project layout\` from the system prompt to map the area before editing. Read at least: the module(s) the plan touches, one adjacent feature for the convention, and any test files in the same area. Do NOT edit code on assumptions about how existing code is structured.
 
 **Corporate reviewer — gap-hunt the plan first.** Re-read the entire PLAN.md end-to-end. Identify concrete gaps (file paths not named, error handling missing, boundary cases unmentioned, no test file cited, no migration plan for existing instances, etc.). If you find ANY material gap, use \`ask_pro\` to surface it to the user BEFORE editing a single file — phrase each question with a recommended default + 2-3 alternatives. Only after gaps are resolved (or explicitly accepted by the user) may implementation begin.
 
-Launch a single subagent to execute the plan. Do NOT do the work inline.
-
-subagent({
-  agent: ${JSON.stringify(opts.agent ?? "worker")},
-  context: "fresh",
-  async: true,
-  maxSubagentDepth: 1,
-  task: \`You are soly-executor. Execute the plan at \`${planFile}\` end-to-end.
+**Execute this now — inline, in THIS session. You are soly-executor. Execute the plan at \`${planFile}\` end-to-end. Do the work directly.**
 
 **FIRST ACTION — read the iteration context file:**
 \`\`\`
@@ -364,8 +346,8 @@ Hard rules:
   - When the plan is fully executed and verified, write a SUMMARY.md next to
     PLAN.md summarizing what was done, what was deferred, and any deviations.
   - Do not commit unless the workflow tells you to; the user reviews and merges.
-\`)
-}`;
+
+When done, suggest \`soly verify\` to self-review with fresh eyes, then \`soly done ${target.raw}\` to open the PR.`;
 		return { handled: true, transformedText: instruction };
 	}
 
@@ -451,26 +433,19 @@ The iteration context file lists all plans (their frontmatter) in section 6, gro
 		? `soly-executor (single-plan writer)`
 		: `soly-executor (wave-based parallel phase executor)`;
 
-	const instruction = `soly execute ${target.raw} — launching worker for ${targetDesc}.
+	const instruction = `soly execute ${target.raw} — executing ${targetDesc}.
 
 **Iteration context file written:** \`${iter.relPath}\` (${iter.tokens} tokens, ${iter.bytes} bytes)
-The worker reads this file first — it contains intent, STATE, ROADMAP row for this phase, phase CONTEXT, phase RESEARCH, prior SUMMARYs, ${isPlanLevel ? "and the current PLAN" : "and all PLAN frontmatter summaries"}, and (for exec) the Critical Anti-Patterns from .continue-here.md.
+Read this file first — it contains intent, STATE, ROADMAP row for this phase, phase CONTEXT, phase RESEARCH, prior SUMMARYs, ${isPlanLevel ? "and the current PLAN" : "and all PLAN frontmatter summaries"}, and (for exec) the Critical Anti-Patterns from .continue-here.md.
 
-**0-POINT CHECK — worker must read .agents/docs/ first.**
-These are the project's INTENT docs. The worker is about to implement tasks; if the implementation diverges from intent, it will be wrong even if the tests pass. Have the worker re-read .agents/docs/ (and any intent docs linked from PLAN.md) before each plan.
+**0-POINT CHECK — read .agents/docs/ first.**
+These are the project's INTENT docs. You are about to implement tasks; if the implementation diverges from intent, it will be wrong even if the tests pass. Re-read .agents/docs/ (and any intent docs linked from PLAN.md) before each plan.
 
 ${scopeBlock}
 
-Launch a single subagent for this work. Do NOT do the work inline.
+**Execute this now — inline, in THIS session. You are ${childRole}. Do the work directly; there is no separate worker to delegate to.**
 
-subagent({
-  agent: ${JSON.stringify(opts.agent ?? "worker")},
-  context: "fresh",
-  async: true,
-  maxSubagentDepth: 1,  // worker must not spawn sub-sub-agents
-  task: \`You are ${childRole}.
-
-Your job: ${isPlanLevel ? "execute ONE plan and produce its SUMMARY.md" : useTasks ? "execute the phase's ready tasks in dependency order, each producing its SUMMARY.md" : "execute ALL plans in this phase using wave-based parallel execution"}.
+Your job: ${isPlanLevel ? "execute ONE plan and produce its SUMMARY.md" : useTasks ? "execute the phase's ready tasks in dependency order, each producing its SUMMARY.md" : "execute ALL plans in this phase using wave-based sequential execution"}.
 
 **FIRST ACTION — read the iteration context file:**
 \`\`\`
@@ -499,14 +474,11 @@ ${workflow}
 Hard rules:
   - Do not skip the close-out order: production commits -> SUMMARY commit -> STATE/ROADMAP update.
   - Do not modify any .agents/rules/ files.
-  - Do not run subagents yourself.
   - PATH DISCIPLINE: all files YOU create must live under \`.agents/\` (e.g. .agents/iterations/, .agents/phases/<slug>/, .agents/HANDOFF.json) or under the project's source dirs. Never write PLAN/SUMMARY/CONTEXT/RESEARCH/iteration files to the project root.
-  - Return: changed files, commands run with exit codes, validation evidence, surprises, and any decisions needing parent approval.
-  - Interactive-only rules are NOT in scope for you: ${interactiveRules.length > 0 ? interactiveRules.join(", ") : "(none)"}. They describe how the user-facing conversation should go, not how to execute work.
-\`
-})
+  - Report as you go: changed files, commands run with exit codes, validation evidence, surprises, and any decisions needing user approval.
+  - Interactive-only rules are NOT in scope here: ${interactiveRules.length > 0 ? interactiveRules.join(", ") : "(none)"}. They describe how the user-facing conversation should go, not how to execute work.
 
-When the subagent completes, synthesize the result and confirm STATE.md was updated. Do not re-execute its work. Then suggest \`soly verify\` to self-review the work with fresh eyes before calling the phase done.`;
+When done, confirm STATE.md was updated. Then suggest \`soly verify\` to self-review the work with fresh eyes before calling the phase done.`;
 
 	return { handled: true, transformedText: instruction };
 }

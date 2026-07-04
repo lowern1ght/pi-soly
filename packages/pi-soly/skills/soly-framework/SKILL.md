@@ -47,17 +47,28 @@ Workflow verbs are **plain text** — type `soly <verb>` (NOT a slash command):
 | `/why` | What rules + state grounded the last turn |
 | `/rulewizard` | Rule vs .editorconfig vs linter guide |
 
-## Delegation
+## How work runs (inline — no subagent plugin)
 
-`soly plan` and `soly execute` delegate the heavy work to a `worker` subagent
-(via the `subagent(...)` tool from pi-subagents); the parent session keeps the
-close-out (production commits → `SUMMARY.md` → `STATE.md` → then `soly verify`).
-If the `subagent` tool is NOT installed they run **inline** in the main session
-instead — `soly doctor` reports which mode is active. First-party delegation is
-on the roadmap. Other agents are read-only helpers: `oracle` (second opinion),
-`scout` (recon), `reviewer` (adversarial review). `soly discuss` is always
-interactive in the main session (not delegated). Rotors / `Ctrl+Tab` cycling
-were removed in 1.4.0.
+soly runs everything **inline, in the main session**. `soly plan` and
+`soly execute` transform your request into a detailed instruction (the relevant
+workflow markdown, the iteration context bundle, the close-out discipline) and
+the model does the work itself — production commits → `SUMMARY.md` → `STATE.md`
+→ then `soly verify`. There is **no dependency on the external pi-subagents
+plugin** (removed in 2.0.0); nothing breaks when that plugin changes.
+
+**Two ways to drive the workflow — both hit the same code:**
+
+1. **Let the model propose and run it (preferred).** soly injects a "suggested
+   next step" into the system prompt every turn. Just say what you want in
+   plain language ("let's plan this", "go", "start executing", "wrap it up")
+   and the model calls the `soly_workflow` tool for you — you never have to
+   memorize a verb.
+2. **Type the verb yourself.** `soly plan <slug>`, `soly execute <slug>`, etc.
+   still work as plain-text input (a fallback for power users).
+
+`soly discuss` is always interactive in the main session. `soly verify` is a
+stateful self-review loop you start by typing `soly verify` (it's not a
+`soly_workflow` action).
 
 ## File structure
 
@@ -212,6 +223,7 @@ Once production commits exist, returning without a committed `SUMMARY.md` is an 
 
 | Tool | Purpose |
 |---|---|
+| `soly_workflow(action, target?)` | Drive the lifecycle inline: `new` / `discuss` / `plan` / `execute` / `done`. Call it on the user's natural-language intent instead of making them type `soly <verb>`. Returns the workflow instruction to follow in this session |
 | `soly_read(artifact, phase, taskId)` | Read soly artifacts: STATE, plan, context, research, ROADMAP, requirements, project, milestone, task |
 | `soly_log_decision(decision, rationale, phase)` | Append to STATE.md Decisions table |
 | `soly_list_phases()` | List all phases with plan counts, C/R markers |
@@ -296,6 +308,6 @@ Call `soly_read(artifact: "state")` and `soly_read(artifact: "roadmap")` first. 
 
 - ❌ Edit `.agents/rules/` files you didn't write — those are project invariants
 - ❌ Skip the SUMMARY — illegal partial state
-- ❌ Spawn `soly-manager` / `soly-worker` / etc. — there are no soly subagents (removed in 1.3.0). Use pi's built-in subagents via the parent LLM's `subagent(...)` call.
+- ❌ Reach for a `subagent(...)` tool — soly runs inline, in this session. There is no soly subagent and no dependency on pi-subagents (removed in 2.0.0). Use `soly_workflow` (or the plain `soly <verb>` text) instead.
 - ❌ Edit `.agents/phases/*/PLAN.md` after `status: in_progress` — create a new plan
 - ❌ Put intent docs anywhere other than `.agents/docs/`

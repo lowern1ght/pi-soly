@@ -200,15 +200,15 @@ export function showDoctor(_cmd: unknown, state: SolyState, ui: InspectUI, confi
 		});
 	}
 
-	// 11. subagent tool (execute/plan delegate to it; without it they run inline)
+	// 11. execution model (always inline — no external subagent plugin)
 	if (state.exists) {
-		const hasSubagent = activeTools.includes("subagent");
+		const hasWorkflowTool = activeTools.includes("soly_workflow");
 		checks.push({
-			name: "subagent tool (delegated execution)",
-			status: hasSubagent ? "pass" : "info",
-			detail: hasSubagent
-				? "subagent tool loaded — soly execute/plan delegate to a worker"
-				: "not installed — soly execute/plan run inline in this session (install pi-subagents for delegated/parallel execution)",
+			name: "workflow execution (inline)",
+			status: hasWorkflowTool ? "pass" : "info",
+			detail: hasWorkflowTool
+				? "soly_workflow tool loaded — the model drives plan/execute/etc. inline in this session (no subagent plugin needed)"
+				: "soly_workflow tool not detected — the plain-text `soly <verb>` forms still run inline; reload if it's missing",
 		});
 	}
 

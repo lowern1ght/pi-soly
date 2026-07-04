@@ -57,7 +57,8 @@ import {
 	pruneOldIterations,
 	type SolyConfig,
 } from "./config.ts";
-import { classifyTaskHeuristics, buildNudgeSection } from "./nudge.ts";
+import { classifyTaskHeuristics, buildNudgeSection, buildSuggestionSection, type WorkflowSituation } from "./nudge.ts";
+import { registerWorkflowTool } from "./workflows/llm-tools.ts";
 import { detectToolHints, buildToolHintSection } from "./tool-hints.ts";
 import { notifyNudge, notifyDeprecation } from "./notification.ts";
 import { registerCommands, type CommandUI } from "./commands.ts";
@@ -403,6 +404,24 @@ export default function solyExtension(pi: ExtensionAPI) {
 		},
 	});
 
+	// First-party LLM tool that drives the same workflow verbs — lets the model
+	// start plan/execute/etc. itself on the user's natural-language intent,
+	// with no external subagent plugin. Reuses the workflow builders.
+	registerWorkflowTool(pi, {
+		getState: () => state,
+		getInteractiveRules: () =>
+			combinedRules()
+				.filter((r) => r.interactiveOnly)
+				.map((r) => r.relPath),
+		getActiveTools: () => pi.getActiveTools(),
+		getConfig: getActiveConfig,
+		onWorkflowUsed: resetSolyDrift,
+		setVerbLabel: (verb) => {
+			chrome.data.verbLabel = verb;
+			chrome.poke();
+		},
+	});
+
 	// ============================================================================
 	// Events
 	// ============================================================================
@@ -612,6 +631,44 @@ export default function solyExtension(pi: ExtensionAPI) {
 		persistRuleMtimes();
 	});
 
+	// Snapshot where the user is in the plan-branch workflow, for the proactive
+	// "suggested next step" section. Reads git branch (cached) + the plan dir on
+	// disk; the section builder itself is pure (nudge.ts).
+	const computeWorkflowSituation = (): WorkflowSituation => {
+		const branch = gitContext.branch;
+		const onPlanBranch =
+			!!branch && branch !== "master" && branch !== "main" && !branch.startsWith("HEAD");
+		const dirSlug = branch ? branch.replace(/\//g, "-") : null;
+		let planExists = false;
+		let planIsStub = false;
+		if (onPlanBranch && dirSlug && state.exists) {
+			const planFile = path.join(state.solyDir, "plans", dirSlug, "PLAN.md");
+			try {
+				const body = fs.readFileSync(planFile, "utf-8");
+				planExists = true;
+				planIsStub = body.includes("_Stub — fill in via");
+			} catch {
+				planExists = false;
+			}
+		}
+		const doneIds = new Set(state.tasks.filter((t) => t.status === "done").map((t) => t.id));
+		const readyTaskIds = state.tasks
+			.filter((t) => t.status === "ready" && t.dependsOn.every((d) => doneIds.has(d)))
+			.map((t) => t.id);
+		return {
+			hasProject: state.exists,
+			branch,
+			onPlanBranch,
+			// Target the branch name verbatim — the workflow builders accept
+			// `<prefix>/<slug>` and `<slug>` alike.
+			planSlug: onPlanBranch ? branch : null,
+			planExists,
+			planIsStub,
+			dirty: !!gitContext.statusShort && gitContext.statusShort.trim().length > 0,
+			readyTaskIds,
+		};
+	};
+
 	pi.on("before_agent_start", async (event, ctx) => {
 		// Keep the chrome (ctx%, model, phase) current for the upcoming turn.
 		updateChromeData(ctx);
@@ -697,6 +754,14 @@ export default function solyExtension(pi: ExtensionAPI) {
 				defaultBranchPrefix: getActiveConfig().plan.defaultBranchPrefix,
 			}),
 		);
+
+		// 7.05 Proactive "suggested next step" — always on when a project exists.
+		// Lets the model OFFER the next workflow action and call `soly_workflow`
+		// itself, so the user never has to remember a verb.
+		if (state.exists) {
+			const suggestion = buildSuggestionSection(computeWorkflowSituation());
+			if (suggestion) sections.push(suggestion);
+		}
 
 		// 7.1 Interactive-tool affordance hints (examples → html_artifact, options
 		// → decision_deck, …) — only on turns whose wording mentions them.

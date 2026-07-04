@@ -8,8 +8,8 @@
 //                          phase before any planning starts (phase-only in v0.2)
 //
 // Both transform into LLM instructions that load the relevant workflow
-// markdown (plan-phase.md / plan-task.md / discuss-phase.md) and delegate
-// to a subagent.
+// markdown (plan-phase.md / plan-task.md / discuss-phase.md) inline — the
+// model does the planning itself, in the same session. No subagent plugin.
 // =============================================================================
 
 import * as fs from "node:fs";
@@ -172,13 +172,9 @@ These documents hold the project's INTENT — business context, design vision, w
 Phase directory: ${phase.dir}
 Current state:   planCount=${phase.planCount}, context=${phase.contextExists}, research=${phase.researchExists}
 
-Launch a subagent to produce the phase's tasks. Do NOT plan inline.
+**Plan this now — inline, in THIS session. You are the planner. Produce the phase's tasks directly.**
 
-subagent({
-  agent: "worker",
-  context: "fresh",
-  async: true,
-  task: \`You are a planner. Break phase ${target.phase} into discrete tasks (unified model): write one PLAN.md per task at phases/<NN>-slug/tasks/<task-id>/PLAN.md with frontmatter, plus ${phase.contextExists ? "" : "CONTEXT.md / "}RESEARCH.md if missing.
+Break phase ${target.phase} into discrete tasks (unified model): write one PLAN.md per task at phases/<NN>-slug/tasks/<task-id>/PLAN.md with frontmatter, plus ${phase.contextExists ? "" : "CONTEXT.md / "}RESEARCH.md if missing.
 
 **FIRST ACTION — read the iteration context file:**
 \`\`\`
@@ -203,11 +199,8 @@ Hard rules:
   - Each task PLAN needs requirements, must_haves.truths, must_haves.artifacts, must_haves.key_links.
   - PATH DISCIPLINE: all task PLAN.md / phase CONTEXT.md / RESEARCH.md go under \`.agents/phases/<NN>-<slug>/\`. Never write to the project root.
   - Update .agents/STATE.md Current Position at the end.
-  - Return: created task ids, the dependency order (which tasks are ready first), open questions.
-\`
-})
 
-When the subagent returns, summarize the tasks + their dependency order, then suggest \`soly execute ${target.phase}\` (or ask the user to confirm before execution).`;
+When done, summarize the created task ids + their dependency order (which are ready first) and any open questions, then suggest \`soly execute ${target.phase}\` (or ask the user to confirm before execution).`;
 		return { handled: true, transformedText: instruction };
 	}
 
@@ -278,13 +271,7 @@ ${inlineSummary}
 
 This task already has PLAN.md. Your job is to flesh it out / improve it based on intent and feature context — not to start from scratch.
 
-Launch a single subagent to refine the plan:
-
-subagent({
-  agent: "worker",
-  context: "fresh",
-  async: true,
-  task: \`You are a planner. Refine PLAN.md for an existing task.
+**Refine this now — inline, in THIS session. You are the planner. Refine PLAN.md for an existing task, directly.**
 
 **FIRST ACTION — read the iteration context file:**
 \`\`\`
@@ -309,11 +296,8 @@ Hard rules:
   - If you change the plan body materially, commit it as \`chore(tasks): refine plan <task-id>\`.
   - If you only add small clarifications, no commit needed (or include in same commit).
   - PATH DISCIPLINE: PLAN.md lives at \`.agents/features/<feature>/tasks/<id>/PLAN.md\`. Never write to the project root.
-  - Return: what changed, open questions, dependencies discovered.
-\`
-})
 
-When the subagent returns, summarize what was refined. Do not execute — planning only.`;
+When done, summarize what was refined (what changed, open questions, dependencies discovered). Do not execute — planning only.`;
 		return { handled: true, transformedText: instruction };
 	}
 
@@ -402,13 +386,7 @@ depends-on: []
 [body produced by the planner workflow below]
 \`\`\`
 
-Launch a single subagent to flesh out the plan body:
-
-subagent({
-  agent: "worker",
-  context: "fresh",
-  async: true,
-  task: \`You are a planner. Create a new task dir + write PLAN.md with frontmatter.
+**Do this now — inline, in THIS session. You are the planner. Create a new task dir + write PLAN.md with frontmatter, directly.**
 
 Project root: ${projectRoot}
 Soly dir:    ${state.solyDir}
@@ -428,11 +406,8 @@ Hard rules:
   - Pick a reasonable \`priority:\` (default: medium).
   - Leave \`depends-on:\` as \`[]\` unless you have a clear dep on an existing task.
   - Commit: \`chore(tasks): plan <id>\`.
-  - Return: created path, task id, plan summary.
-\`
-})
 
-When the subagent returns, show the user the new task id + summary. They can then run \`soly execute <id>\`.`;
+When done, show the user the created path, new task id + plan summary. They can then run \`soly execute <id>\`.`;
 		return { handled: true, transformedText: instruction };
 	}
 
@@ -479,7 +454,7 @@ When the subagent returns, show the user the new task id + summary. They can the
 				`soly plan --feature ${target.feature}: ${ready.length} task(s) need planning.\n\n` +
 				`Tasks:\n` +
 				ready.map((t, i) => `  ${i + 1}. ${t.id}  [${t.kind}]  prio=${t.priority}`).join("\n") +
-				`\n\nLaunch a single subagent to plan them in order. The subagent uses the plan-task.md workflow per task.`,
+				`\n\nPlan them in order, inline in this session, using the plan-task.md workflow per task.`,
 		};
 	}
 
@@ -614,7 +589,7 @@ Read it first — it contains intent, STATE, ROADMAP, and any existing phase art
 
 ${resumeBlock}
 
-**This is NOT a subagent task.** You're running interactively. Drive the discussion yourself, in this session, by asking the user a few questions one at a time.
+**This is interactive.** Drive the discussion yourself, in this session, by asking the user a few questions one at a time.
 
 ---
 

@@ -4,6 +4,60 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-07-04
+
+### Changed (breaking — interaction model)
+- **Dropped the pi-subagents dependency. Everything runs inline now.**
+  `soly plan` / `soly execute` no longer emit a `subagent({...})` call for
+  the external pi-subagents plugin — they transform the request into a
+  detailed instruction the model follows **inline, in the main session**.
+  This removes the recurring breakage where a pi-subagents release changed
+  the `subagent` tool's shape and took soly down with it. Affected:
+  `workflows/execute.ts` (task / plan / phase / all-feature blocks),
+  `workflows/planning.ts` (phase / task / new-task blocks).
+- **Removed `withSubagentPreflight`** (`workflows/index.ts`) and its call
+  sites. The band-aid that prepended "the subagent tool isn't installed, do
+  it inline" is gone — inline IS the path now, so there's no conflicting
+  pair of instructions in the prompt.
+
+### Added
+- **`soly_workflow` tool (first-party, no subagents)** — a single LLM tool
+  (`workflows/llm-tools.ts`) that drives the lifecycle: `action` ∈
+  `new | discuss | plan | execute | done`, optional `target`. It reuses the
+  exact same builders as the plain-text verbs (one implementation each) and
+  returns the workflow instruction as tool-result content, which the model
+  follows inline. Lets the model start plan/execute/etc. **itself** on the
+  user's intent instead of the user typing a verb. (`verify` stays a
+  text-only stateful loop.)
+- **Proactive "suggested next step" section** (`buildSuggestionSection` in
+  `nudge.ts`, injected every turn from `index.ts` `before_agent_start` when a
+  project exists). soly computes where the user is in the plan-branch
+  workflow (on a plan branch? PLAN.md still a stub? ready tasks? dirty tree?)
+  and surfaces the single best next action, plus teaches the model to call
+  `soly_workflow` on loose natural-language intent ("давай план", "go",
+  "wrap it up"). The user never has to remember a verb.
+
+### Changed (nudge)
+- Rewrote nudge points 2 & 3: "Background subagents by default" →
+  **"Scout with soly's own read tools"** (soly_snippet / soly_doc_search /
+  soly_read + grep/find); "Subagent tool ergonomics" → **"Reach for soly's
+  interaction tools"** (ask_pro / decision_deck / html_artifact).
+- Workflow-routing point 4 now tells the model to read the user's intent and
+  call `soly_workflow` itself, and drops the "execute the plan in a subagent"
+  lifecycle line.
+
+### Docs
+- README, `soly-framework` SKILL.md: replaced the "Delegation" section with
+  "How work runs (inline — no subagent plugin)"; added `soly_workflow` to the
+  tool list; updated the "Don'ts".
+
+### Tests
+- Removed `tests/subagent-preflight.test.ts` (the behavior it covered is
+  gone). Updated `tests/nudge.test.ts` for the new points 2/3 and added
+  `buildSuggestionSection` coverage. Added `tests/workflow-tool.test.ts` for
+  the `soly_workflow` dispatch + the "never emits a subagent call" guarantee.
+  588 pass, 0 fail; `tsc --noEmit` clean; publish-integrity green.
+
 ## [1.16.4] — 2026-06-30
 
 ### Added

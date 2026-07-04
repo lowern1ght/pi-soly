@@ -10,7 +10,13 @@
 // =============================================================================
 
 import { describe, test, expect } from "bun:test";
-import { classifyTaskHeuristics, buildNudgeSection, confirmLevelOf } from "../nudge.js";
+import {
+	classifyTaskHeuristics,
+	buildNudgeSection,
+	confirmLevelOf,
+	buildSuggestionSection,
+	type WorkflowSituation,
+} from "../nudge.js";
 
 describe("classifyTaskHeuristics", () => {
 	test("trivial single-word prompt is not non-trivial", () => {
@@ -129,8 +135,22 @@ describe("buildNudgeSection", () => {
 			suggestedAngles: [],
 		});
 		expect(section).toContain("1. **Pre-action gate.**");
-		expect(section).toContain("2. **Background subagents by default.**");
-		expect(section).toContain("3. **Subagent tool ergonomics.**");
+		expect(section).toContain("2. **Scout with soly's own read tools.**");
+		expect(section).toContain("3. **Reach for soly's interaction tools.**");
+	});
+
+	test("no longer instructs the model to delegate to an external subagent tool", () => {
+		const section = buildNudgeSection(
+			classifyTaskHeuristics("implement the auth refactor across src/auth/login.ts and src/auth/token.ts"),
+			{ hasProject: true },
+		);
+		// The redesign drops the pi-subagents dependency: none of the old
+		// "delegate to a subagent" imperatives should survive. (The section may
+		// still *mention* subagent to say it's NOT needed.)
+		expect(section).not.toContain("Background subagents by default");
+		expect(section).not.toContain("Launch a single subagent");
+		expect(section).not.toContain('prefer `subagent(...)`');
+		expect(section).not.toContain("Subagent tool ergonomics");
 	});
 
 	test("includes trigger explanation for non-trivial prompt", () => {
@@ -192,9 +212,11 @@ describe("buildNudgeSection — workflow routing (point 4)", () => {
 	test("suggests the soly lifecycle when a project exists and the task is non-trivial", () => {
 		const s = buildNudgeSection(nonTrivial, { hasProject: true });
 		expect(s.includes("Route project work through the soly plan workflow")).toBe(true);
-		expect(s.includes("soly discuss")).toBe(true);
-		expect(s.includes("soly verify")).toBe(true);
-		expect(s.includes("soly new <slug>")).toBe(true);
+		// The lifecycle now routes through the soly_workflow tool, on the user's
+		// natural-language intent — not by making them type verbs.
+		expect(s.includes("soly_workflow")).toBe(true);
+		expect(s.includes("Read the user's intent")).toBe(true);
+		expect(s.includes("soly verify")).toBe(true); // verify stays a text verb
 	});
 
 	test("instructs LLM to study the repo before scaffolding or fleshing out a plan", () => {
@@ -280,5 +302,85 @@ describe("buildNudgeSection — confirm before coding", () => {
 
 	test("not added for trivial tasks even when enabled", () => {
 		expect(buildNudgeSection(trivial, { confirmBeforeCode: "scope" }).includes("Scope it with me")).toBe(false);
+	});
+});
+
+describe("buildSuggestionSection (proactive next step)", () => {
+	const base: WorkflowSituation = {
+		hasProject: true,
+		branch: "master",
+		onPlanBranch: false,
+		planSlug: null,
+		planExists: false,
+		planIsStub: false,
+		dirty: false,
+		readyTaskIds: [],
+	};
+
+	test("empty when there's no project", () => {
+		expect(buildSuggestionSection({ ...base, hasProject: false })).toBe("");
+	});
+
+	test("always teaches the model to call soly_workflow on loose intent", () => {
+		const s = buildSuggestionSection(base);
+		expect(s).toContain("soly_workflow");
+		expect(s).toContain("You propose; the user confirms; you run it.");
+		// No dependency on the external `subagent(...)` tool.
+		expect(s).not.toContain("subagent(");
+	});
+
+	test("stub PLAN on a plan branch → suggests fleshing it out (plan)", () => {
+		const s = buildSuggestionSection({
+			...base,
+			branch: "feature/auth-jwt",
+			onPlanBranch: true,
+			planSlug: "feature/auth-jwt",
+			planExists: true,
+			planIsStub: true,
+		});
+		expect(s).toContain('action: "plan"');
+		expect(s).toContain("feature/auth-jwt");
+	});
+
+	test("ready PLAN on a clean plan branch → suggests execute", () => {
+		const s = buildSuggestionSection({
+			...base,
+			branch: "auth-jwt",
+			onPlanBranch: true,
+			planSlug: "auth-jwt",
+			planExists: true,
+			planIsStub: false,
+		});
+		expect(s).toContain('action: "execute"');
+	});
+
+	test("dirty tree on a ready plan branch → suggests done", () => {
+		const s = buildSuggestionSection({
+			...base,
+			branch: "auth-jwt",
+			onPlanBranch: true,
+			planSlug: "auth-jwt",
+			planExists: true,
+			planIsStub: false,
+			dirty: true,
+		});
+		expect(s).toContain('action: "done"');
+	});
+
+	test("plan branch without a PLAN.md → suggests scaffolding (new)", () => {
+		const s = buildSuggestionSection({
+			...base,
+			branch: "auth-jwt",
+			onPlanBranch: true,
+			planSlug: "auth-jwt",
+			planExists: false,
+		});
+		expect(s).toContain('action: "new"');
+	});
+
+	test("ready tasks off a plan branch → surfaces them for execute", () => {
+		const s = buildSuggestionSection({ ...base, readyTaskIds: ["auth-login-a3f9", "auth-token-b1c2"] });
+		expect(s).toContain('action: "execute"');
+		expect(s).toContain("auth-login-a3f9");
 	});
 });

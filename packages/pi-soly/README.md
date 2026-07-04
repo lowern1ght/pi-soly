@@ -27,7 +27,7 @@ pi install npm:pi-soly
 Restart pi (`/reload`), and you have:
 
 - **Project management** — plans, state, phases, decisions
-- **Workflow engine** — plain-text verbs: `soly discuss` · `plan` · `execute` · `verify` · `pause`/`resume`
+- **Workflow engine** — runs inline (no subagent plugin). The model proposes the next step and drives it via the `soly_workflow` tool on your plain-language intent; the verbs `soly discuss` · `plan` · `execute` · `verify` · `pause`/`resume` still work as text
 - **Self-review loop** — `soly verify` re-reviews the work until "No issues found."
 - **Visual chrome** — native footer, equalizer working spinner with live telemetry, gradient welcome banner
 - **Rules & docs modal** — `/rules` and `/docs` open a fuzzy list + preview panel (no chat dumps)
@@ -37,7 +37,7 @@ Restart pi (`/reload`), and you have:
 - **HTML artifacts** — `html_artifact` tool serves self-contained HTML from a per-session browser gallery (live-updating, one stable URL)
 - **Skill-based execution** — LLM reads the `soly-framework` skill on demand
 
-The LLM drives execution; `plan`/`execute` delegate to a `worker` subagent when one is available (via pi-subagents), with first-party delegation on the roadmap. You focus on the work.
+The LLM drives execution **inline, in the main session** — no external subagent plugin. Say what you want in plain language ("let's plan this", "start executing") and the model calls the first-party `soly_workflow` tool for you; the `soly <verb>` text form still works as a fallback. You focus on the work.
 
 ### Known install issue (upstream `pi install`)
 
@@ -82,7 +82,7 @@ Tracked upstream — fix is expected on the pi side, not here.
 soly new feat/auth-jwt       # create branch + .agents/plans/<name>/ + stub PLAN.md
 soly discuss feat/auth-jwt   # interactive discussion of the plan
 soly plan feat/auth-jwt      # flesh out PLAN.md via ask_pro
-soly execute feat/auth-jwt   # execute the plan in a subagent
+soly execute feat/auth-jwt   # execute the plan inline in this session
 soly done feat/auth-jwt      # commit, push, open draft PR via gh
 soly verify                  # self-review loop until "No issues found." (soly verify stop to exit)
 soly pause                   # save a handoff; soly resume to pick it back up

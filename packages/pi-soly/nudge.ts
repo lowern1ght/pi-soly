@@ -3,7 +3,8 @@
 // =============================================================================
 //
 // Goal: gently push the agent toward "ask before acting on non-trivial
-// tasks" and "use background subagents with fresh context for research".
+// tasks", "scout with soly's own read tools", and "route project work through
+// the soly workflow — proactively, without making the user memorize verbs".
 //
 // Implementation is prompt-only (no UI blocking) — the model reads the nudge
 // in its system prompt and follows it. Heuristics on the user prompt tell the
@@ -12,6 +13,11 @@
 //
 // The input event also surfaces a soft UI notify to the human, so they know
 // the model was told to pause and ask — but it never blocks input.
+//
+// `buildSuggestionSection` is a separate, always-on (when a project exists)
+// block that surfaces soly's computed "suggested next step" so the model can
+// proactively offer it and call the `soly_workflow` tool on the user's
+// confirmation — no external subagent plugin involved.
 // =============================================================================
 
 // Words that suggest the user is asking for non-trivial changes.
@@ -157,17 +163,19 @@ export function buildNudgeSection(
 		opts.hasProject && heuristics.nonTrivial
 			? `\n\n4. **Route project work through the soly plan workflow.** Each plan is a git branch with \`.agents/plans/<slug>/PLAN.md\` on it. Two parallel plans don't collide.
 
-   **Branch naming convention for THIS project:** ${branchLine}
-   \`soly new <slug>\` applies the project prefix automatically. \`soly new <prefix>/<slug>\` overrides it (use this when the work isn't a "feature" — e.g. \`soly new fix/login-redirect-bug\`).
+   **Read the user's intent and act on it — don't make them memorize verbs.** When the user expresses a workflow intent in plain language — even loosely ("давай план", "let's plan this", "go", "start executing", "wrap it up") — call the \`soly_workflow\` tool with the matching action (\`new\` / \`plan\` / \`discuss\` / \`execute\` / \`done\`) instead of asking them to type a command. You propose the next step, they say what they want, you run it. Everything runs INLINE in this session — there is no external worker or subagent.
 
-   Lifecycle (text commands you type — pi routes them through the workflow handlers):
-      - \`soly new <slug-or-prefix>/<slug>\`   — scaffold: branch + plan dir + stub PLAN.md + commit
-      - \`soly discuss <slug>\`                — interactive discussion of the plan (uses ask_pro)
-      - \`soly plan <slug>\`                   — flesh out PLAN.md via ask_pro
-      - \`soly execute <slug>\`                — execute the plan in a subagent
-      - \`soly done <slug>\`                   — commit + push + open draft PR via gh
-      - \`soly verify\`                         — self-review loop until clean
-      - \`soly status\`                         — current position + progress (no LLM round-trip)
+   **Branch naming convention for THIS project:** ${branchLine}
+   \`soly_workflow({action:"new", target:"<slug>"})\` applies the project prefix automatically. A \`<prefix>/<slug>\` target overrides it (use this when the work isn't a "feature" — e.g. \`fix/login-redirect-bug\`).
+
+   Lifecycle — call \`soly_workflow({action, target})\`, or the user can type the equivalent \`soly <verb>\` text:
+      - \`new\`      — scaffold: branch + plan dir + stub PLAN.md + commit
+      - \`discuss\`  — interactive discussion of the plan (uses ask_pro)
+      - \`plan\`     — flesh out PLAN.md via ask_pro
+      - \`execute\`  — execute the plan inline in THIS session
+      - \`done\`     — commit + push + open draft PR via gh
+      - \`soly verify\`  — self-review loop until clean (type this verb; it's a stateful loop)
+      - \`soly status\`  — current position + progress (no LLM round-trip)
 
    **You may scaffold a new plan yourself** when the user asks for a new piece of work and the scope is clear (or the user just confirmed). Propose the slug AND the full branch name first via ask_pro — offer the default \`${prefix ? prefix + "/" : ""}<slug>\` plus the alternatives \`fix/<slug>\`, \`chore/<slug>\`, or just \`<slug>\` (no prefix). Pick whatever fits the work, then type \`soly new …\` in your next output. Don't ask for trivial one-liners or when the user already said "go". Skip only for a genuine one-off that doesn't deserve a plan branch.
 
@@ -214,10 +222,76 @@ The following are user-set defaults, not project rules. They tell you how the us
 1. **Pre-action gate.** Before starting non-trivial work, take a 10-second pause and decide: do I have enough to act, or should I ask? If the prompt has ambiguity, missing scope, or a hidden assumption, surface one short clarifying question (or a small set of multi-choice options) instead of starting to code. Skip the gate for trivial fixes ("rename X", "add log line", "fix typo") and for follow-up turns in an already-clarified task.${confirmBlock}
    ${triggerLine}${anglesBlock}
 
-2. **Background subagents by default.** When you need to read unfamiliar code, scout a directory, gather external evidence, or run a multi-step review, prefer \`subagent(...)\` with \`async: true\` and \`context: "fresh"\` over doing it inline. Reserve your own context for the actual decision the user is paying you to make. If the work needs the parent conversation history, use \`context: "fork"\` instead. Do not silently block on long runs — launch async and continue with independent work.
+2. **Scout with soly's own read tools.** When you need to read unfamiliar code, map a directory, or gather context, use soly's read tools — \`soly_snippet(path, offset, limit)\`, \`soly_doc_search(query)\`, \`soly_read(...)\` — plus \`grep\` / \`find\`. Prefer bounded snippets over reading whole files. soly does the work INLINE in this session; there is no separate worker or \`subagent(...)\` tool to delegate to (and none is required).
 
-3. **Subagent tool ergonomics.** When delegating: give the child a concrete role, scope, success criteria, hard constraints, and expected output. Do not pass vague instructions like "implement this" or "look into that". Async is the default; foreground is the explicit opt-out.${workflowPoint}
+3. **Reach for soly's interaction tools.** For structured questions use \`ask_pro\` (batched, multi-select, ⭐ recommended); for design/architecture forks where the choice hinges on the concrete code shape use \`decision_deck\`; for visual output (galleries, comparisons, diagrams) use \`html_artifact\`. Give each question a concrete recommended default + rationale — don't dump open-ended prompts.${workflowPoint}
 
-Treat (1) and (2) as defaults, not laws. The user can always override per-task ("just do it", "ask me everything", "no subagents"). When overriding, briefly acknowledge it.
+Treat (1) and (2) as defaults, not laws. The user can always override per-task ("just do it", "ask me everything"). When overriding, briefly acknowledge it.
+`;
+}
+
+// ---------------------------------------------------------------------------
+// Proactive "suggested next step" section (pillar C)
+// ---------------------------------------------------------------------------
+//
+// Always-on when a soly project exists (independent of the non-trivial
+// heuristic). soly computes where the user is in the workflow and surfaces the
+// single most useful next action so the model can OFFER it — and, on the
+// user's confirmation, call the `soly_workflow` tool itself. The user never
+// has to remember a verb.
+
+/** Snapshot of where the user is in the plan-branch workflow. Computed by the
+ *  caller (it needs git + fs); kept out of the pure section builder so the
+ *  builder stays trivially testable. */
+export interface WorkflowSituation {
+	/** A soly project (`.agents/`) exists in cwd. */
+	hasProject: boolean;
+	/** Current git branch, or null if not resolvable. */
+	branch: string | null;
+	/** Branch is a plan branch (not master/main, not detached). */
+	onPlanBranch: boolean;
+	/** Plan slug derived from the branch (drops any `<prefix>/`). */
+	planSlug: string | null;
+	/** `.agents/plans/<slug>/PLAN.md` exists on this branch. */
+	planExists: boolean;
+	/** The PLAN.md is still the scaffold stub (not fleshed out). */
+	planIsStub: boolean;
+	/** Working tree has uncommitted changes. */
+	dirty: boolean;
+	/** Task ids that are `status: ready` with all deps satisfied. */
+	readyTaskIds: string[];
+}
+
+/** Build the "suggested next step" system-prompt section. Pure. Returns "" when
+ *  there's no project (nothing to suggest). */
+export function buildSuggestionSection(sit: WorkflowSituation): string {
+	if (!sit.hasProject) return "";
+
+	// Decide the single best next action + how to invoke it.
+	let suggestion: string;
+	const slug = sit.planSlug ?? "<slug>";
+
+	if (sit.onPlanBranch && sit.planExists && sit.planIsStub) {
+		suggestion = `You're on plan branch \`${sit.branch}\` and its PLAN.md is still a scaffold stub. **Next:** flesh it out — \`soly_workflow({ action: "plan", target: "${slug}" })\` (or discuss first with \`action: "discuss"\`).`;
+	} else if (sit.onPlanBranch && sit.planExists && !sit.planIsStub) {
+		suggestion = sit.dirty
+			? `You're on plan branch \`${sit.branch}\` with a fleshed-out PLAN.md and uncommitted changes. **Next:** finish the work, then \`soly_workflow({ action: "done", target: "${slug}" })\` to commit + push + open the PR.`
+			: `You're on plan branch \`${sit.branch}\` with a ready PLAN.md. **Next:** execute it — \`soly_workflow({ action: "execute", target: "${slug}" })\`.`;
+	} else if (sit.onPlanBranch && !sit.planExists) {
+		suggestion = `You're on plan branch \`${sit.branch}\` but there's no \`.agents/plans/${slug}/PLAN.md\`. **Next:** scaffold it — \`soly_workflow({ action: "new", target: "${slug}" })\`.`;
+	} else if (sit.readyTaskIds.length > 0) {
+		const ids = sit.readyTaskIds.slice(0, 5).join(", ");
+		suggestion = `There ${sit.readyTaskIds.length === 1 ? "is 1 ready task" : `are ${sit.readyTaskIds.length} ready tasks`} (${ids}${sit.readyTaskIds.length > 5 ? ", …" : ""}). **Next:** execute one — \`soly_workflow({ action: "execute", target: "<task-id>" })\` — or start fresh work with \`action: "new"\`.`;
+	} else {
+		suggestion = `On \`${sit.branch ?? "the current branch"}\`, no plan in flight. **Next:** when the user describes a piece of work, scaffold a plan — \`soly_workflow({ action: "new", target: "<slug>" })\` — instead of editing files ad-hoc.`;
+	}
+
+	return `
+
+## soly — suggested next step
+
+${suggestion}
+
+**You propose; the user confirms; you run it.** When the user expresses intent in plain language — even loosely ("давай план", "let's build it", "go", "start", "wrap it up") — call the \`soly_workflow\` tool with the matching action yourself. Do NOT make the user type \`soly <verb>\` (that text form still works, but it's a fallback, not a requirement). Everything runs inline in this session — no external subagent.
 `;
 }
