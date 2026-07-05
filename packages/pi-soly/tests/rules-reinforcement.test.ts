@@ -29,9 +29,19 @@ describe("rules reinforcement", () => {
 		expect(section).toContain("⚠️");
 	});
 
-	test("reminds to re-read rules before editing", () => {
+	test("does NOT instruct the model to re-read rules before editing", () => {
+		// The "Before writing or editing ANY code, re-read the rules …" sentence
+		// was removed: it made the LLM echo "Apply rules." in chat on every turn,
+		// which is noise, not signal. Rules stay in the system prompt (mandatory,
+		// rule-wins-over-instinct); the LLM just no longer gets a per-turn script
+		// to narrate. Regression guard.
 		const { section } = buildRulesSection([makeRule()]);
-		expect(section.toLowerCase()).toContain("before writing or editing");
+		expect(section.toLowerCase()).not.toContain("before writing or editing");
+	});
+
+	test("rule-wins-over-instinct is preserved", () => {
+		const { section } = buildRulesSection([makeRule()]);
+		expect(section).toContain("rule wins");
 	});
 
 	test("section works without rules (no crash)", () => {

@@ -4,6 +4,20 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.1.1] — 2026-07-05
+
+### Changed
+- **Drop the "re-read rules before editing" line from the mandatory rules
+  header.** The sentence `Before writing or editing ANY code, re-read the
+  rules above that apply to the file path you are about to modify.` (in
+  `buildRulesSection`, `packages/pi-soly/core.ts`) was the trigger that made
+  the assistant open nearly every reply with an "Apply rules." line — the
+  same flavor of post-edit chat spam that the per-edit reminder block was
+  in 2.1.0. The remaining header keeps `MANDATORY` + `NON-NEGOTIABLE` +
+  `rule wins over instinct`, and the rules themselves still load into the
+  system prompt every turn. Net: rules still bind, narration gone. 577 pass,
+  tsc clean.
+
 ## [2.1.0] — 2026-07-04
 
 ### Removed

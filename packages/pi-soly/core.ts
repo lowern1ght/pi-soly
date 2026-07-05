@@ -561,7 +561,7 @@ export function buildRulesSection(
 
 ## ⚠️ MANDATORY: soly project rules
 
-**These rules are NON-NEGOTIABLE. Before writing or editing ANY code, re-read the rules above that apply to the file path you are about to modify. If a rule contradicts your instinct, the rule wins.**
+**These rules are NON-NEGOTIABLE. If a rule contradicts your instinct, the rule wins.**
 
 ${headerHint}
 
