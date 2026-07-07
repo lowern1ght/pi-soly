@@ -26,6 +26,23 @@ import {
 	renderPlanSummaryInline,
 	writeIterationContext,
 } from "../iteration.js";
+import { buildVerificationPrompt, parseGoalAndAcceptance } from "./goal-verify.ts";
+
+/**
+ * Append the goal-verification step to a worker close-out block, gated on
+ * whether PLAN.md at `planPath` actually has Goal + Acceptance sections.
+ * If parsing fails (empty/missing sections), we skip the block rather than
+ * inject a malformed prompt — the worker has nothing meaningful to verify.
+ */
+function withGoalCheck(planPath: string, suffix: string): string {
+	try {
+		const r = parseGoalAndAcceptance(planPath);
+		if (!r.ok) return suffix;
+		return buildVerificationPrompt(r, planPath) + suffix;
+	} catch {
+		return suffix;
+	}
+}
 
 /** Resolve <extension>/workflows-data/<name>.md regardless of cwd. */
 function loadWorkflowMarkdown(name: string): string | null {
@@ -225,7 +242,10 @@ Hard rules:
   - Interactive-only rules are NOT in scope here: ${interactiveRules.length > 0 ? interactiveRules.join(", ") : "(none)"}.
 
 When done, confirm the SUMMARY.md was written and the task flipped to \`status: done\`. Then suggest \`soly verify\` to self-review the change with fresh eyes before calling it done.`;
-		return { handled: true, transformedText: instruction };
+		return {
+			handled: true,
+			transformedText: withGoalCheck(path.join(task.dir, "PLAN.md"), instruction),
+		};
 	}
 
 	// === ALL / FEATURE (new dual-mode, sequential in v0.1) ===
@@ -348,7 +368,10 @@ Hard rules:
   - Do not commit unless the workflow tells you to; the user reviews and merges.
 
 When done, suggest \`soly verify\` to self-review with fresh eyes, then \`soly done ${target.raw}\` to open the PR.`;
-		return { handled: true, transformedText: instruction };
+		return {
+			handled: true,
+			transformedText: withGoalCheck(planFile, instruction),
+		};
 	}
 
 	// === PHASE MODE ===
@@ -480,5 +503,12 @@ Hard rules:
 
 When done, confirm STATE.md was updated. Then suggest \`soly verify\` to self-review the work with fresh eyes before calling the phase done.`;
 
-	return { handled: true, transformedText: instruction };
+	// Goal verification only makes sense for plan-level phase execution —
+	// wave-based / task-based execution iterates many plans and has no
+	// single PLAN.md to verify against.
+	const phasePlanPath = isPlanLevel && planFileResolved ? planFileResolved : null;
+	return {
+		handled: true,
+		transformedText: phasePlanPath ? withGoalCheck(phasePlanPath, instruction) : instruction,
+	};
 }

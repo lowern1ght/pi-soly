@@ -29,6 +29,7 @@ Restart pi (`/reload`), and you have:
 - **Project management** — plans, state, phases, decisions
 - **Workflow engine** — runs inline (no subagent plugin). The model proposes the next step and drives it via the `soly_workflow` tool on your plain-language intent; the verbs `soly discuss` · `plan` · `execute` · `verify` · `pause`/`resume` still work as text
 - **Self-review loop** — `soly verify` re-reviews the work until "No issues found."
+- **Goal-aware verification** — at the end of every `soly execute` (task / plan / phase plan-level), the worker reads PLAN.md's `## Goal` + `## Acceptance` and judges each item against `git diff`. A `## Status` section is appended to PLAN.md with a PASS / BLOCKED verdict. On `BLOCKED` the worker halts before calling `soly done` — so you can't ship a plan whose goal isn't actually met.
 - **Visual chrome** — native footer, equalizer working spinner with live telemetry, gradient welcome banner
 - **Rules & docs modal** — `/rules` and `/docs` open a fuzzy list + preview panel (no chat dumps)
 - **Mandatory rules** — strict-mode directives injected every turn
