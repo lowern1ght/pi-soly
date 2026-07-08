@@ -15,26 +15,42 @@
 import { matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import type { Component, TUI } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "../mcp/panel-keys.ts";
+import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "./panel-keys.ts";
+// (PanelKeybindings re-exported by re-export side below.)
 
 /** One row in the panel. `body` is shown in the preview pane when selected. */
 export type ListItem = { id: string; marker: string; label: string; meta?: string; body?: string };
 
+/** A logical group within the panel (rendered as a labelled separator). */
+export type ListGroup = {
+	id: string;
+	/** Single glyph + short title shown on the separator row (e.g. "📊 Status"). */
+	title: string;
+	icon: string;
+	items: ListItem[];
+};
+
 /** A key-triggered action over the selected item (e.g. enable/disable/reload). */
 export type ListAction = { key: string; hint: string; run: (item: ListItem) => void };
+
+// Re-export PanelKeybindings so consumers don't need to know about the
+// internal ./panel-keys.ts module.
+export type { PanelKeybindings, PanelKeys };
 
 export type ListPanelProps = {
 	tui: TUI;
 	theme: Theme;
 	keybindings?: PanelKeybindings;
+	// (Above prop is the public re-export anchor.)
 	done: () => void;
 	title: string;
 	/** Right-aligned header text (e.g. counts / token budget). */
 	headerRight?: string;
-	items: ListItem[];
+	/** Items, grouped. A single group is fine. Cursor skips group headers. */
+	groups: ListGroup[];
 	actions?: ListAction[];
 	/** Re-read items after an action mutates state. */
-	refresh?: () => ListItem[];
+	refresh?: () => ListGroup[];
 	/** Fired on Enter for the selected item; the panel then closes. When set,
 	 *  the footer shows an "⏎ open" hint. */
 	onSelect?: (item: ListItem) => void;
@@ -54,17 +70,20 @@ function fuzzyScore(query: string, text: string): number {
 	return qi === q.length ? 1 : 0;
 }
 
+/** Index into `flatRows` (mixed item + group header rows). */
+type RowIndex = number;
+
 export class ListPanel implements Component {
 	private readonly p: ListPanelProps;
 	private readonly keys: PanelKeys;
-	private items: ListItem[];
+	private groups: ListGroup[];
 	private query = "";
 	private searching = false;
-	private selected = 0;
+	private selected: RowIndex = 0;
 
 	constructor(props: ListPanelProps) {
 		this.p = props;
-		this.items = props.items;
+		this.groups = props.groups;
 		this.keys = createPanelKeys(props.keybindings);
 	}
 
@@ -72,22 +91,65 @@ export class ListPanel implements Component {
 		/* stateless cache */
 	}
 
-	private filtered(): ListItem[] {
-		if (!this.query) return this.items;
-		return this.items
-			.map((it) => ({ it, s: fuzzyScore(this.query, `${it.label} ${it.meta ?? ""}`) }))
-			.filter((x) => x.s > 0)
-			.sort((a, b) => b.s - a.s)
-			.map((x) => x.it);
+	/** Flatten groups into rows (items + header separators). Headers carry a
+	 *  `group` reference for rendering; cursor skips them. */
+	private flatRows(): Array<{ kind: "item"; item: ListItem; group: ListGroup } | { kind: "header"; group: ListGroup }> {
+		const out: Array<{ kind: "item"; item: ListItem; group: ListGroup } | { kind: "header"; group: ListGroup }> = [];
+		for (const g of this.groups) {
+			// Skip groups that have no items — no point showing an empty separator.
+			if (g.items.length === 0) continue;
+			out.push({ kind: "header", group: g });
+			for (const item of g.items) out.push({ kind: "item", item, group: g });
+		}
+		return out;
 	}
 
-	private clamp(list: ListItem[]): void {
-		if (this.selected >= list.length) this.selected = Math.max(0, list.length - 1);
+	/** Apply fuzzy filter; when searching, group headers are still shown but
+	 *  only groups that contain at least one matching item survive, and
+	 *  within those groups only matching items are returned. */
+	private filteredRows(): Array<{ kind: "item"; item: ListItem; group: ListGroup } | { kind: "header"; group: ListGroup }> {
+		if (!this.query) return this.flatRows();
+		const q = this.query.toLowerCase();
+		const matchedByGroup = new Map<ListGroup, Set<ListItem>>();
+		for (const g of this.groups) {
+			const matched = new Set<ListItem>();
+			for (const it of g.items) {
+				if (fuzzyScore(q, `${it.label} ${it.meta ?? ""}`) > 0) matched.add(it);
+			}
+			if (matched.size > 0) matchedByGroup.set(g, matched);
+		}
+		const out: Array<{ kind: "item"; item: ListItem; group: ListGroup } | { kind: "header"; group: ListGroup }> = [];
+		for (const g of this.groups) {
+			const matched = matchedByGroup.get(g);
+			if (!matched) continue;
+			out.push({ kind: "header", group: g });
+			for (const it of g.items) if (matched.has(it)) out.push({ kind: "item", item: it, group: g });
+		}
+		return out;
+	}
+
+	private clamp(list: { kind: "item" | "header" }[]): void {
+		if (list.length === 0) {
+			this.selected = 0;
+			return;
+		}
+		// First clamp into valid range.
+		if (this.selected >= list.length) this.selected = list.length - 1;
 		if (this.selected < 0) this.selected = 0;
+		// Then walk to the nearest non-header row — prefer forward (visual
+		// scan direction), fall back to backward.
+		if (list[this.selected]?.kind === "header") {
+			for (let i = this.selected; i < list.length; i++) {
+				if (list[i]?.kind === "item") { this.selected = i; return; }
+			}
+			for (let i = this.selected; i >= 0; i--) {
+				if (list[i]?.kind === "item") { this.selected = i; return; }
+			}
+		}
 	}
 
 	handleInput(data: string): void {
-		const list = this.filtered();
+		const list = this.filteredRows();
 		this.clamp(list);
 
 		if (this.searching) {
@@ -109,23 +171,28 @@ export class ListPanel implements Component {
 		}
 		if (this.keys.selectUp(data)) {
 			this.selected = Math.max(0, this.selected - 1);
+			// Skip group headers when moving up.
+			while (this.selected > 0 && list[this.selected]?.kind === "header") this.selected--;
 		} else if (this.keys.selectDown(data)) {
 			this.selected = Math.min(list.length - 1, this.selected + 1);
+			// Skip group headers when moving down.
+			while (this.selected < list.length - 1 && list[this.selected]?.kind === "header") this.selected++;
 		} else if (data === "/") {
 			this.searching = true;
 		} else if (matchesKey(data, "return")) {
 			const current = list[this.selected];
-			if (this.p.onSelect && current) {
-				this.p.onSelect(current);
+			// Headers are not selectable — ignore Enter on them.
+			if (current && current.kind === "item" && this.p.onSelect) {
+				this.p.onSelect(current.item);
 				this.p.done();
 				return;
 			}
 		} else {
 			const action = this.p.actions?.find((a) => a.key === data);
 			const current = list[this.selected];
-			if (action && current) {
-				action.run(current);
-				if (this.p.refresh) this.items = this.p.refresh();
+			if (action && current && current.kind === "item") {
+				action.run(current.item);
+				if (this.p.refresh) this.groups = this.p.refresh();
 			}
 		}
 		this.p.tui.requestRender();
@@ -136,7 +203,7 @@ export class ListPanel implements Component {
 		const dim = (s: string) => theme.fg("dim", s);
 		const muted = (s: string) => theme.fg("muted", s);
 		const inner = Math.max(20, width - 4);
-		const list = this.filtered();
+		const list = this.filteredRows();
 		this.clamp(list);
 
 		const out: string[] = [];
@@ -144,17 +211,37 @@ export class ListPanel implements Component {
 		out.push(this.searchLine(inner, dim, muted));
 		out.push(this.frame("", inner, dim));
 
-		// Windowed list around the selection.
+		// Windowed view around the selection.
+		const selectedRow = list[this.selected];
 		const start = Math.max(0, Math.min(this.selected - Math.floor(MAX_ROWS / 2), Math.max(0, list.length - MAX_ROWS)));
 		const window = list.slice(start, start + MAX_ROWS);
 		if (window.length === 0) out.push(this.frame(dim("  (no matches)"), inner, dim));
-		for (let i = 0; i < window.length; i++) out.push(this.rowLine(window[i] as ListItem, start + i === this.selected, inner, dim, muted));
+		for (let i = 0; i < window.length; i++) {
+			const r = window[i];
+			if (!r) continue;
+			const absoluteIdx = start + i;
+			if (r.kind === "header") {
+				out.push(this.groupHeaderLine(r.group, inner, dim, muted));
+			} else {
+				const sel = absoluteIdx === this.selected && selectedRow?.kind === "item";
+				out.push(this.rowLine(r.item, sel, inner, dim, muted));
+			}
+		}
 
+		// Preview shows the selected item only — headers have no preview.
 		out.push(this.ruleLine("preview", inner, dim));
-		for (const line of this.previewLines(list[this.selected], inner)) out.push(this.frame("  " + muted(line), inner, dim));
+		const previewItem = selectedRow?.kind === "item" ? selectedRow.item : undefined;
+		for (const line of this.previewLines(previewItem, inner)) out.push(this.frame("  " + muted(line), inner, dim));
 
 		out.push(this.footerLine(inner, dim));
 		return out;
+	}
+
+	/** Full-width separator row: `📊 Status ─────────`. */
+	private groupHeaderLine(g: ListGroup, inner: number, dim: (s: string) => string, muted: (s: string) => string): string {
+		const head = ` ${dim(g.icon)} ${muted(g.title)} `;
+		const dashes = Math.max(0, inner - visibleWidth(head));
+		return dim(`│${head}${"─".repeat(dashes)} │`);
 	}
 
 	private frame(content: string, inner: number, dim: (s: string) => string): string {

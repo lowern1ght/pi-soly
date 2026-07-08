@@ -4,6 +4,44 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.2.0] — 2026-07-05
+
+### Added
+- **`/soly settings` interactive UI.** Toggles, enums, and numbers for the
+  ~17 editable soly config knobs (iteration, agent, display, hot reload,
+  chrome, verify, editor). Replaces the old "dump JSON to chat and edit
+  `.agents/soly.json`" workflow. Cycles enums on Enter, toggles bools on
+  Enter, ±1 numbers via `+` / `-` action keys. Saves diff-vs-defaults to
+  `.agents/soly.json` on Esc; reloads the live config so subsequent
+  turns see the new values. `paths.excludeGlobs`, `chrome.spinnerFrames`,
+  `chrome.bannerColors`, `verify.prompt`, and the regex arrays stay file-only.
+- **`/sly` and `/s` aliases** for the `/soly` picker. Same body, three
+  command names. `/sly` is the typing-friendly form, `/s` is the
+  speed-freak form. The `/soly` modal header shows `· /sly · /s` as a
+  reminder.
+- **Grouped `/soly` modal.** Top-to-bottom groups render as labelled
+  separators: `▰ Status` (where, progress) · `▤ Inspect` (plan, state,
+  roadmap, context, phases, tasks, milestone) · `⚙ Manage` (settings,
+  reload, config). Cursor skips group headers; fuzzy search filters to
+  matching groups, hiding non-matching items within.
+
+### Changed
+- **`mcp/panel-keys.ts` → `visual/panel-keys.ts`.** The keybindings
+  primitive used by `ListPanel`, `McpPanel`, and `McpSetupPanel`
+  (formerly borrowed across layers) is now its own visual-UI module.
+  Three importers updated.
+- **`ListPanel` accepts `groups: ListGroup[]` (was `items: ListItem[]`).**
+  Existing single-group callers wrap their items in a single
+  `{id, title, icon, items}` group. Old `items` field is gone.
+- **Defaulted `ctx` for `interactiveOnly: false` on the `soly settings`
+  picker.** Items are toggled not selected. Group headers in the settings
+  modal title the `Iteration`, `Agent`, `Display`, etc. sections.
+
+### Removed
+- **`soly:` prefix** from all remaining info/warning notifications (last
+  batch after 2.1.2's cleanup — caught the ones emitted via
+  `ui.notify(..., "info")` from `loadNew` / `loadDone` paths).
+
 ## [2.1.5] — 2026-07-05
 
 ### Changed

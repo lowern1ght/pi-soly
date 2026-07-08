@@ -1,5 +1,5 @@
 import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
-import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "./panel-keys.ts";
+import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "../visual/panel-keys.ts";
 import { isToolExcluded } from "./types.ts";
 import type { McpConfig, McpPanelCallbacks, McpPanelResult, ServerProvenance } from "./types.ts";
 import { resourceNameToToolName } from "./resource-tools.ts";

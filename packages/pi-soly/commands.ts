@@ -44,7 +44,8 @@ import {
 } from "./intent.ts";
 import type { SolyConfig } from "./config.ts";
 import { initSolyProject } from "./init.js";
-import { ListPanel, type ListItem, type ListAction } from "./visual/list-panel.ts";
+import { ListPanel, type ListItem, type ListAction, type ListGroup } from "./visual/list-panel.ts";
+import { openSettingsUI } from "./workflows/settings-ui.ts";
 import { getArtifactServer, ensureArtifactServer, artifactDir } from "./artifact/session.ts";
 import { parseSolyCommand, type SolyCommand, type WorkflowVerb } from "./workflows/parser.ts";
 import { buildNewTransform } from "./workflows/new.ts";
@@ -69,16 +70,17 @@ export interface CommandsDeps {
 	refreshState: () => void;
 	updateStatus: (ui: CommandUI) => void;
 	getConfig: () => SolyConfig;
+	reloadConfig: () => void;
 	getIntentDocs: () => IntentDoc[];
 }
 
-/** Open a focused list modal (overlay) for the given items + actions. */
+/** Open a focused list modal (overlay) for the given grouped items. */
 async function openListPanel(
 	ctx: ExtensionCommandContext,
 	spec: {
 		title: string;
 		headerRight?: string;
-		build: () => ListItem[];
+		build: () => ListGroup[];
 		actions?: ListAction[];
 		onSelect?: (item: ListItem) => void;
 	},
@@ -92,7 +94,7 @@ async function openListPanel(
 				done: () => done(),
 				title: spec.title,
 				headerRight: spec.headerRight,
-				items: spec.build(),
+				groups: spec.build(),
 				actions: spec.actions,
 				refresh: spec.build,
 				onSelect: spec.onSelect,
@@ -180,7 +182,9 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 					await openListPanel(ctx, {
 						title: "soly · rules",
 						headerRight: `${getRules().length} rules · ${formatTok(analytics.totalTokens)} · ${analytics.contextBudgetPct.toFixed(1)}%`,
-						build: () => getRules().map(ruleItem),
+						build: () => [
+							{ id: "rules", title: "Rules", icon: "▤", items: getRules().map(ruleItem) },
+						],
 						actions: [
 							{ key: "e", hint: "enable", run: (it) => { const r = getRules().find((x) => x.relPath === it.id); if (r) r.enabled = true; } },
 							{ key: "d", hint: "disable", run: (it) => { const r = getRules().find((x) => x.relPath === it.id); if (r) r.enabled = false; } },
@@ -458,14 +462,20 @@ What must the LLM do?
 					await openListPanel(ctx, {
 						title: "soly · docs",
 						headerRight: `${docs.length} docs · ${formatTok(total)}`,
-						build: () =>
-							getIntentDocs().map((d) => ({
-								id: d.relPath,
-								marker: "○",
-								label: d.title || d.relPath,
-								meta: `${d.kind} · ${formatTok(d.tokens)} tok${d.oversized ? " · oversized" : ""}`,
-								body: d.preview,
-							})),
+						build: () => [
+							{
+								id: "docs",
+								title: "Docs",
+								icon: "☖",
+								items: getIntentDocs().map((d) => ({
+									id: d.relPath,
+									marker: "○",
+									label: d.title || d.relPath,
+									meta: `${d.kind} · ${formatTok(d.tokens)} tok${d.oversized ? " · oversized" : ""}`,
+									body: d.preview,
+								})),
+							},
+						],
 					});
 					return;
 				}
@@ -488,10 +498,7 @@ What must the LLM do?
 	// /soly  (also hosts `/soly init` — see the early dispatch in the handler)
 	// ============================================================================
 
-	pi.registerCommand("soly", {
-		description:
-			"soly: project state inspection (position, plan, state, phases, etc.) — type 'help' for subcommand picker",
-		handler: async (args, ctx) => {
+	const solyBody = async (args: string, ctx: ExtensionCommandContext): Promise<void> => {
 			const ui: CommandUI = {
 				notify: (t, k) => ctx.ui.notify(t, k ?? "info"),
 				select: async (label, options) => {
@@ -860,6 +867,25 @@ What must the LLM do?
 					description: "one-shot: import .agents/phases/<NN>-<slug>/plans/PLAN.md as plan branches",
 					run: () => runWorkflow("migrate", [], ctx, ui),
 				},
+				where: {
+					description: "alias for `position` — current position + progress",
+					run: (parts) => {
+						const p = subcommands.position;
+						if (p) void p.run(parts);
+					},
+				},
+				settings: {
+					description: "interactive config editor (toggles, enums, numbers)",
+					run: () => {
+						openSettingsUI({
+							ctx,
+							ui,
+							solyDir: state.solyDir,
+							getConfig,
+							reloadConfig: deps.reloadConfig,
+						});
+					},
+				},
 			};
 
 			// Single-width BMP glyphs only — astral/VS16 emoji are mis-measured by
@@ -869,6 +895,7 @@ What must the LLM do?
 				research: "⊙", roadmap: "≣", progress: "▰",
 				phases: "▭", tasks: "✓", task: "◍",
 				features: "★", milestone: "◈", reload: "↻", config: "▣",
+				settings: "⚙", where: "◎",
 			};
 
 			// Short live preview shown in the modal's preview pane per subcommand.
@@ -878,6 +905,7 @@ What must the LLM do?
 				const phaseFile = (suffix: string) =>
 					s.currentPhase ? readIfExists(path.join(s.currentPhase.dir, `${s.currentPhase.slug}-${suffix}.md`)) : null;
 				switch (name) {
+					case "where": return s.position ? `${s.position.phase} · ${s.position.plan} · ${s.position.status} · ${s.progress.percent}%` : `${s.milestone} — no position set`;
 					case "position": return s.position ? `${s.position.phase} · ${s.position.plan} · ${s.position.status} · ${s.progress.percent}%` : `${s.milestone} — no position set`;
 					case "progress": return `${s.progress.percent}% · ${s.progress.completedPhases}/${s.progress.totalPhases} phases · ${s.progress.completedPlans}/${s.progress.totalPlans} plans`;
 					case "phases": return s.phases.length ? s.phases.map((p) => `${p.number}.${p.name}`).join(" · ") : "no phases";
@@ -889,20 +917,55 @@ What must the LLM do?
 					case "plan": return s.currentPlanPath ? teaser(readIfExists(s.currentPlanPath)) : "no current plan";
 					case "context": return s.currentPhase ? teaser(phaseFile("CONTEXT")) || "CONTEXT.md not found" : "no current phase";
 					case "research": return s.currentPhase ? teaser(phaseFile("RESEARCH")) || "RESEARCH.md not found" : "no current phase";
-					case "config": return "merged config — press ⏎ to view the JSON";
+					case "settings": return "interactive config editor — toggles, enums, numbers";
+					case "config": return "merged config JSON (read-only view)";
 					case "reload": return "re-read project state from disk";
 					default: return subcommands[name]?.description ?? "";
 				}
 			};
 
-			const solyItems = (): ListItem[] =>
-				Object.keys(subcommands).map((name) => ({
-					id: name,
-					marker: ICONS[name] ?? "▸",
-					label: name,
-					meta: subcommands[name]!.description,
-					body: previewFor(name),
-				}));
+			// Top-to-bottom group order in the /soly modal. Items in
+			// `items[]` show in declaration order; subcommands not listed here
+			// still work via `/soly <name>` directly but don't appear in the picker.
+			const SOLY_GROUP_ORDER = ["status", "inspect", "manage"] as const;
+			const SOLY_GROUPS: Record<string, { id: string; title: string; icon: string; items: string[] }> = {
+				status: {
+					id: "status",
+					title: "Status",
+					icon: "▰",
+					items: ["where", "progress"],
+				},
+				inspect: {
+					id: "inspect",
+					title: "Inspect",
+					icon: "▤",
+					items: ["plan", "state", "roadmap", "context", "phases", "tasks", "milestone"],
+				},
+				manage: {
+					id: "manage",
+					title: "Manage",
+					icon: "⚙",
+					items: ["settings", "reload", "config"],
+				},
+			};
+
+			const solyGroups = (): ListGroup[] =>
+				SOLY_GROUP_ORDER.map((gid) => {
+					const def = SOLY_GROUPS[gid]!;
+					const items: ListItem[] = [];
+					for (const name of def.items) {
+						const spec = subcommands[name];
+						if (!spec) continue;
+						items.push({
+							id: name,
+							marker: ICONS[name] ?? "▸",
+							label: name,
+							meta: spec.description,
+							body: previewFor(name),
+						});
+					}
+					return { id: def.id, title: def.title, icon: def.icon, items };
+				}).filter((g) => g.items.length > 0);
 
 			// Plain-select fallback for non-TUI (RPC/print) modes.
 			const picker = async (label: string) => {
@@ -920,8 +983,8 @@ What must the LLM do?
 				const s = getState();
 				await openListPanel(ctx, {
 					title: "soly · state",
-					headerRight: `${s.phases.length} phases · ${s.progress.percent}%`,
-					build: solyItems,
+					headerRight: `${s.phases.length} phases · ${s.progress.percent}% · /sly /s`,
+					build: solyGroups,
 					onSelect: (it) => {
 						void subcommands[it.id]?.run([it.id]);
 					},
@@ -942,7 +1005,21 @@ What must the LLM do?
 			}
 
 			await subcommands[sub].run(parts);
-		},
+	};
+	pi.registerCommand("soly", {
+		description:
+			"soly: project state inspection (position, plan, state, phases, etc.) — type 'help' for subcommand picker",
+		handler: solyBody,
+	});
+	// Short aliases — same body, three names. /sly is the typing-friendly form;
+	// /s is the speed-freak form.
+	pi.registerCommand("sly", {
+		description: "alias for /soly",
+		handler: solyBody,
+	});
+	pi.registerCommand("s", {
+		description: "alias for /soly",
+		handler: solyBody,
 	});
 	// ============================================================================
 	// /artifacts — browse this session's html_artifact gallery
@@ -990,14 +1067,20 @@ What must the LLM do?
 					title: "soly · artifacts",
 					// BMP-only header (no long URL — it overflowed the bar). Count only.
 					headerRight: `${server.count} artifact${server.count === 1 ? "" : "s"}`,
-					build: () =>
-						(getArtifactServer()?.list() ?? []).map((a) => ({
-							id: a.id,
-							marker: "▦", // BMP glyph — an astral emoji (🖼) breaks ListPanel width
-							label: a.title,
-							meta: new Date(a.createdAt).toLocaleTimeString(),
-							body: a.url,
-						})),
+					build: () => [
+						{
+							id: "artifacts",
+							title: "Artifacts",
+							icon: "▦",
+							items: (getArtifactServer()?.list() ?? []).map((a) => ({
+								id: a.id,
+								marker: "▦", // BMP glyph — an astral emoji (🖼) breaks ListPanel width
+								label: a.title,
+								meta: new Date(a.createdAt).toLocaleTimeString(),
+								body: a.url,
+							})),
+						},
+					],
 					onSelect: (it) => {
 						const a = getArtifactServer()?.list().find((x) => x.id === it.id);
 						if (a) void openExternally(pi, a.url);

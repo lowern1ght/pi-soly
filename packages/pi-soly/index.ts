@@ -375,6 +375,15 @@ export default function solyExtension(pi: ExtensionAPI) {
 		refreshState: () => refreshState(),
 		updateStatus: (ui) => updateStatus(ui),
 		getConfig: getActiveConfig,
+		reloadConfig: () => {
+			if (!sessionCwd) return;
+			const cfgResult = loadConfig(sessionCwd);
+			activeConfig = cfgResult.config;
+			// Re-warn about config drift (mirrors the warnings at session_start).
+			for (const w of cfgResult.warnings) {
+				pi.sendUserMessage?.(`soly: ${w}`, { deliverAs: "followUp" });
+			}
+		},
 		getIntentDocs: () => intentDocs,
 	});
 

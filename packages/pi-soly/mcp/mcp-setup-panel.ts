@@ -1,5 +1,5 @@
 import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
-import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "./panel-keys.ts";
+import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "../visual/panel-keys.ts";
 import type { ImportKind } from "./types.ts";
 import type { ConfigWritePreview, McpDiscoverySummary } from "./config.ts";
 import type { McpOnboardingState } from "./onboarding-state.ts";
