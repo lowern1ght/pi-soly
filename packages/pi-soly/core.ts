@@ -573,17 +573,26 @@ export function buildRulesSection(
     if (r.interactiveOnly) interactive.push(r.relPath);
   }
 
+  // Split into built-in (shipped with soly) vs project/user rules. The two
+  // groups render in two distinct sections so the LLM can see the priority
+  // structure at a glance: vendor rules at the top (cannot be overridden),
+  // user rules below (can be edited locally).
+  const builtInRules = applicable.filter((r) => r.source === "built-in");
+  const userRules = applicable.filter((r) => r.source !== "built-in");
+
   // Optional grouping: phase rules in their own group, then everything else.
-  let blocks: string[];
+  // Phase grouping only applies to user rules — built-in rules are always
+  // always-on and don't move with phases.
+  let userBlocks: string[];
   let headerHint: string;
   if (options?.groupByPhase) {
     const phase = options.phaseNumber;
-    const phaseRules = applicable.filter((r) => r.phaseNumber === phase);
-    const otherRules = applicable.filter((r) => r.phaseNumber !== phase);
-    blocks = [...phaseRules.map(render), ...otherRules.map(render)];
+    const phaseRules = userRules.filter((r) => r.phaseNumber === phase);
+    const otherRules = userRules.filter((r) => r.phaseNumber !== phase);
+    userBlocks = [...phaseRules.map(render), ...otherRules.map(render)];
     headerHint = `Phase ${phase} rules are loaded for the currently active phase; all other rules are always-on. Inline @see references are resolved recursively.`;
   } else {
-    blocks = applicable.map(render);
+    userBlocks = userRules.map(render);
     headerHint = `The following rules are loaded from \`.agents/rules/\` and \`~/.agents/rules/\` and are mandatory. Follow them strictly. Inline @see references are resolved recursively.`;
   }
 
@@ -593,7 +602,26 @@ export function buildRulesSection(
         .join(", ")}_`
     : "";
 
-  const section = `
+  // Built-in section (shipped with soly, cannot be overridden).
+  // Renders ABOVE the MANDATORY project-rules section so the LLM sees the
+  // vendor content first, with a stronger "this is system-managed" framing.
+  const builtInSection = builtInRules.length
+    ? `
+
+## 🔒 Built-in rules (shipped with soly)
+
+**The following rules ship with the soly extension and apply to every
+session.** They are the highest-priority rules and cannot be overridden
+by user rules in \`.agents/rules/\` or \`~/.agents/rules/\` (a user rule
+at the same relPath is dropped silently). Follow them strictly.
+
+${builtInRules.map(render).join("\n\n---\n\n")}
+`
+    : "";
+
+  // Project/user rules section (the existing MANDATORY contract).
+  const projectSection = userBlocks.length
+    ? `
 
 ## ⚠️ MANDATORY: soly project rules
 
@@ -601,8 +629,11 @@ export function buildRulesSection(
 
 ${headerHint}
 
-${blocks.join("\n\n---\n\n")}${skippedNote}
-`;
+${userBlocks.join("\n\n---\n\n")}${skippedNote}
+`
+    : "";
+
+  const section = builtInSection + projectSection;
 
   return { section, loaded: applicable.map(ruleKey), interactive };
 }

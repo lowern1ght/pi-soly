@@ -122,17 +122,53 @@ describe("built-in rules — system prompt integration", () => {
 	// prompt. The built-in rule should appear there with its MANDATORY
 	// header. (This is the same test the rules-reinforcement suite uses,
 	// but it now implicitly includes built-ins.)
-	test("buildRulesSection includes the built-in temp-files rule", async () => {
+	test("buildRulesSection puts built-in rules in a dedicated section above the MANDATORY block", async () => {
 		const { buildRulesSection } = await import("../core.ts");
 		const sources: SourceSpec[] = [
 			{ dir: builtInRulesDir(), source: "built-in", sourceLabel: "soly", priority: 10 },
 		];
 		const result = loadAllRules(sources);
 		const { section } = buildRulesSection(result.rules);
-		expect(section).toContain("MANDATORY");
+		// The new built-in section header is present.
+		expect(section).toContain("🔒 Built-in rules (shipped with soly)");
 		expect(section).toContain("temp-files");
-		// The rule's body should be in the section (the OS-aware content).
+		// The rule's body is in the section (the OS-aware content).
 		expect(section).toContain("os.tmpdir()");
 		expect(section).toContain("$TMPDIR");
+		// The MANDATORY contract is preserved on the existing project-rules
+		// section header (now only present when there are project rules).
+		// With only built-in rules, the MANDATORY header should NOT appear.
+		expect(section).not.toContain("MANDATORY: soly project rules");
+	});
+
+	test("with both built-in and project rules, the section has both headers in the right order", async () => {
+		const { buildRulesSection } = await import("../core.ts");
+		// Use a temp project dir with a simple user rule.
+		const tmpUser = fs.mkdtempSync(path.join(os.tmpdir(), "soly-builtin-coexist-"));
+		try {
+			fs.writeFileSync(
+				path.join(tmpUser, "user-rule.md"),
+				"---\nalways: true\ndescription: User rule\n---\nA user-written rule.\n",
+			);
+			const sources: SourceSpec[] = [
+				{ dir: builtInRulesDir(), source: "built-in", sourceLabel: "soly", priority: 10 },
+				{ dir: tmpUser, source: "project-agents", sourceLabel: "agents", priority: 3 },
+			];
+			const result = loadAllRules(sources);
+			const { section } = buildRulesSection(result.rules);
+			// Both sections present.
+			expect(section).toContain("🔒 Built-in rules (shipped with soly)");
+			expect(section).toContain("MANDATORY: soly project rules");
+			// Built-in section comes FIRST.
+			const builtInIdx = section.indexOf("🔒 Built-in rules (shipped with soly)");
+			const mandatoryIdx = section.indexOf("MANDATORY: soly project rules");
+			expect(builtInIdx).toBeGreaterThanOrEqual(0);
+			expect(mandatoryIdx).toBeGreaterThan(builtInIdx);
+			// Both rules' content present.
+			expect(section).toContain("temp-files");
+			expect(section).toContain("A user-written rule.");
+		} finally {
+			fs.rmSync(tmpUser, { recursive: true, force: true });
+		}
 	});
 });

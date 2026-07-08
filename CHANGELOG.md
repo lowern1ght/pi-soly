@@ -4,6 +4,22 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.1.5] — 2026-07-05
+
+### Changed
+- **Built-in rules now render in a dedicated `## 🔒 Built-in rules
+  (shipped with soly)` section** above the existing `## ⚠️ MANDATORY:
+  soly project rules` block. The LLM can now see the priority structure
+  at a glance: vendor rules first (cannot be overridden, framed with a
+  lock icon), user rules below (editable, framed with the warning icon).
+  Previously both were mixed in the same MANDATORY block, distinguished
+  only by `[soly] {10}` vs `[agents] {3}` labels.
+- **Fixed npm package**: `built-in-rules/` was missing from the
+  `files` allowlist in `package.json`, so the directory wouldn't ship
+  in the published tarball. Added to the allowlist; `npm pack` now
+  includes `built-in-rules/temp-files.md` (6.1 kB). Every install +
+  every update now carries the built-in rules.
+
 ## [2.1.4] — 2026-07-05
 
 ### Added
