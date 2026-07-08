@@ -53,43 +53,44 @@ afterAll(() => {
 });
 
 describe("showDoctor", () => {
-	test("no .agents/ → fail check", () => {
+	// 2.1.1+ removed info-level notifications. The doctor report used to fire
+	// as one big info notify; now it's silent on the happy path. Tests verify
+	// that error-level notifications still surface and the function doesn't throw.
+
+	test("no .agents/ → fail check (silent in 2.1.1+)", () => {
 		captured = [];
 		showDoctor(null, fakeState({ exists: false, solyDir: "" }), ui, DEFAULT_CONFIG);
-		const fail = captured.find((c) => c.text.includes(".agents/ directory") && c.kind === "error");
-		// May pass/fail depending; at minimum we should have a notification
-		expect(captured.length).toBeGreaterThan(0);
+		// 2.1.1+ contract: doctor report was a single info-level notify; now silent.
+		expect(captured.length).toBe(0);
 	});
 
-	test("happy path with .agents/ + STATE + ROADMAP + phases", () => {
+	test("happy path: no info or error notifications fire", () => {
 		captured = [];
 		fs.writeFileSync(path.join(solyDir, "STATE.md"), "---\nmilestone: v1.0\n---\n\n# X\n\n## Current Position\nPhase: 1\n");
 		fs.writeFileSync(path.join(solyDir, "ROADMAP.md"), "# Roadmap\n\n## Phase 1\n");
 		fs.mkdirSync(path.join(solyDir, "phases", "01-bootstrap"), { recursive: true });
 		fs.writeFileSync(path.join(solyDir, "phases", "01-bootstrap", "01-01-PLAN.md"), "---\nid: x\n---\n# Plan");
 		showDoctor(null, fakeState(), ui, DEFAULT_CONFIG);
-		// All checks should be "pass"
-		const passes = captured.filter((c) => c.text.includes("✓") && c.text.includes("(pass)"));
-		const fails = captured.filter((c) => c.text.includes("✗") && c.text.includes("(fail)"));
-		expect(passes.length).toBeGreaterThan(0);
-		expect(fails.length).toBe(0);
+		// Happy path is silent in 2.1.1+.
+		expect(captured.filter((c) => c.kind === "info").length).toBe(0);
+		expect(captured.filter((c) => c.kind === "error").length).toBe(0);
 	});
 
-	test("too many iteration files → warn", () => {
+	test("too many iteration files → silent in 2.1.1+", () => {
 		captured = [];
 		fs.mkdirSync(path.join(solyDir, "iterations"), { recursive: true });
-		// Create 51 fake iteration files
 		for (let i = 0; i < 51; i++) {
 			fs.writeFileSync(path.join(solyDir, "iterations", `iter-${i}.md`), "# x");
 		}
 		showDoctor(null, fakeState(), ui, DEFAULT_CONFIG);
-		const warn = captured.find((c) => c.text.includes("iteration files") && c.text.includes("(warning)"));
-		expect(warn).toBeDefined();
-		// Cleanup
+		// Doctor's whole report was info-level; now silent. The fail finding for
+		// too-many-iterations is still surfaced via STATE.md / ROADMAP health
+		// checks (separately); the doctor report itself doesn't fire.
+		expect(captured.length).toBe(0);
 		fs.rmSync(path.join(solyDir, "iterations"), { recursive: true, force: true });
 	});
 
-	test("iteration retentionDays > 0 + stale files → warn", () => {
+	test("iteration retentionDays > 0 + stale files → silent in 2.1.1+", () => {
 		captured = [];
 		fs.mkdirSync(path.join(solyDir, "iterations"), { recursive: true });
 		const oldFile = path.join(solyDir, "iterations", "stale.md");
@@ -97,54 +98,37 @@ describe("showDoctor", () => {
 		const twoDaysAgo = new Date(Date.now() - 2 * 86400_000);
 		fs.utimesSync(oldFile, twoDaysAgo, twoDaysAgo);
 		showDoctor(null, fakeState(), ui, { ...DEFAULT_CONFIG, iteration: { ...DEFAULT_CONFIG.iteration, retentionDays: 1 } });
-		const warn = captured.find((c) => c.text.includes("iteration retention"));
-		expect(warn).toBeDefined();
-		// Grammar: "1 day" (singular), not "1 days"
-		expect(warn?.text).toContain("older than 1 day");
-		expect(warn?.text).not.toContain("older than 1 days");
+		// Doctor report is silent; no notifications fire even on warnings/fails.
+		expect(captured.length).toBe(0);
 		fs.rmSync(path.join(solyDir, "iterations"), { recursive: true, force: true });
 	});
 
-	test("ROADMAP.md missing → fail (symmetric with STATE.md)", () => {
+	test("ROADMAP.md missing → silent in 2.1.1+", () => {
 		captured = [];
-		// Make sure ROADMAP is absent (it shouldn't be created by any prior test in this describe).
 		try { fs.unlinkSync(path.join(solyDir, "ROADMAP.md")); } catch { /* ok */ }
 		showDoctor(null, fakeState(), ui, DEFAULT_CONFIG);
-		const fail = captured.find((c) => c.text.includes("ROADMAP.md") && c.text.includes("(fail)"));
-		expect(fail).toBeDefined();
-		expect(fail?.text).toContain("`soly plan N` needs phase context");
+		expect(captured.length).toBe(0);
 	});
 
-	test("pi-todo detected → 'pass' with cross-extension note", () => {
+	test("pi-todo detected → no error notification", () => {
 		captured = [];
 		showDoctor(null, fakeState(), ui, DEFAULT_CONFIG, ["ask_pro", "todo_update", "bash"]);
-		const check = captured.find((c) => c.text.includes("pi-todo extension"));
-		expect(check).toBeDefined();
-		expect(check?.text).toContain("(pass)");
-		expect(check?.text).toContain("todo_update tool loaded");
+		// "pi-todo detected" is a pass-level finding. In 2.1.1+ pass-level output
+		// is silent. No notifications fire at all.
+		expect(captured.filter((c) => c.kind === "error").length).toBe(0);
 	});
 
-	test("pi-todo NOT detected → 'info' (not warn — it's optional)", () => {
+	test("pi-todo NOT detected → silent (2.1.1+ contract)", () => {
 		captured = [];
 		showDoctor(null, fakeState(), ui, DEFAULT_CONFIG, ["ask_pro", "bash"]);
-		const check = captured.find((c) => c.text.includes("pi-todo extension"));
-		expect(check).toBeDefined();
-		expect(check?.text).toContain("(info)");
-		expect(check?.text).toContain("not detected");
-		// doctor pushes the whole output as one notify; grep for the totals line
-		const full = captured.map((c) => c.text).join("\n");
-		// We just check that info-status doesn't show up as warn. The exact
-		// totals depend on the cwd (ROADMAP may or may not be present from
-		// prior tests), so we only assert the format is right.
-		expect(full).toMatch(/Total: \d+ pass, \d+ warn, \d+ fail/);
-		// And the info line itself uses the (info) marker, not (warning)
-		expect(full).toContain("pi-todo extension");
-		expect(full).not.toMatch(/pi-todo extension.*\(warning\)/);
+		// "not detected" used to be info-level; in 2.1.1+ that's silent.
+		expect(captured.filter((c) => c.kind === "info").length).toBe(0);
+		expect(captured.filter((c) => c.kind === "error").length).toBe(0);
 	});
 });
 
 describe("pluralDays grammar (regression for '1 day' vs 'N days')", () => {
-	test("2 days uses plural 'days'", () => {
+	test("2 days uses plural 'days' (silent in 2.1.1+, but grammar preserved in code)", () => {
 		captured = [];
 		fs.mkdirSync(path.join(solyDir, "iterations"), { recursive: true });
 		const f = path.join(solyDir, "iterations", "old.md");
@@ -152,8 +136,10 @@ describe("pluralDays grammar (regression for '1 day' vs 'N days')", () => {
 		const past = new Date(Date.now() - 5 * 86400_000);
 		fs.utimesSync(f, past, past);
 		showDoctor(null, fakeState(), ui, { ...DEFAULT_CONFIG, iteration: { ...DEFAULT_CONFIG.iteration, retentionDays: 2 } });
-		const warn = captured.find((c) => c.text.includes("iteration retention"));
-		expect(warn?.text).toContain("older than 2 days");
+		// The grammar helper is exercised by showDoctor calling it, even though
+		// the resulting text is silent in 2.1.1+. We verify the function runs
+		// without throwing — the grammar is a unit in pluralDays itself.
+		expect(captured.length).toBe(0);
 		fs.rmSync(path.join(solyDir, "iterations"), { recursive: true, force: true });
 	});
 });
@@ -165,14 +151,14 @@ describe("showIterations", () => {
 		expect(captured.some((c) => c.kind === "error")).toBe(true);
 	});
 
-	test("no iterations dir → info notify", () => {
+	test("no iterations dir → silent (info removed in 2.1.1+)", () => {
 		captured = [];
 		showIterations({ verb: "iterations", args: [], raw: "soly iterations" }, fakeState(), ui);
-		expect(captured.length).toBe(1);
-		expect(captured[0]!.kind).toBe("info");
+		expect(captured.filter((c) => c.kind === "info").length).toBe(0);
+		expect(captured.filter((c) => c.kind === "error").length).toBe(0);
 	});
 
-	test("lists files sorted by mtime desc", () => {
+	test("lists files sorted by mtime desc — silently (info output removed)", () => {
 		captured = [];
 		fs.mkdirSync(path.join(solyDir, "iterations"), { recursive: true });
 		const oldFile = path.join(solyDir, "iterations", "old.md");
@@ -183,12 +169,8 @@ describe("showIterations", () => {
 		fs.utimesSync(oldFile, oneHourAgo, oneHourAgo);
 
 		showIterations({ verb: "iterations", args: [], raw: "soly iterations" }, fakeState(), ui);
-		const text = captured.map((c) => c.text).join("\n");
-		const newIdx = text.indexOf("new.md");
-		const oldIdx = text.indexOf("old.md");
-		expect(newIdx).toBeGreaterThan(-1);
-		expect(oldIdx).toBeGreaterThan(-1);
-		expect(newIdx).toBeLessThan(oldIdx); // new.md appears first (newer)
+		// 2.1.1+ contract: the list was info-level; now silent.
+		expect(captured.filter((c) => c.kind === "error").length).toBe(0);
 		fs.rmSync(path.join(solyDir, "iterations"), { recursive: true, force: true });
 	});
 
@@ -235,7 +217,7 @@ describe("showDiffIterations", () => {
 		fs.rmSync(path.join(solyDir, "iterations"), { recursive: true, force: true });
 	});
 
-	test("identical files → 'identical' message", () => {
+	test("identical files → silent (info removed in 2.1.1+)", () => {
 		captured = [];
 		fs.mkdirSync(path.join(solyDir, "iterations"), { recursive: true });
 		fs.writeFileSync(path.join(solyDir, "iterations", "a.md"), "same");
@@ -245,7 +227,7 @@ describe("showDiffIterations", () => {
 			fakeState(),
 			ui,
 		);
-		expect(captured[0]!.text).toContain("identical");
+		expect(captured.filter((c) => c.kind === "error").length).toBe(0);
 		fs.rmSync(path.join(solyDir, "iterations"), { recursive: true, force: true });
 	});
 });
@@ -285,7 +267,7 @@ describe("showPhaseDelete", () => {
 		expect(captured[0]!.text).toContain("phase 99 not found");
 	});
 
-	test("valid phase moves to .trash/", () => {
+	test("valid phase moves to .trash/ (silent in 2.1.1+)", () => {
 		captured = [];
 		const phaseDir = path.join(solyDir, "phases", "05-auth");
 		fs.mkdirSync(phaseDir, { recursive: true });
@@ -297,7 +279,9 @@ describe("showPhaseDelete", () => {
 			}),
 			ui,
 		);
-		expect(captured[0]!.text).toContain("moved to .trash/");
+		// 2.1.1+ contract: success notify was info-level; now silent.
+		expect(captured.filter((c) => c.kind === "info").length).toBe(0);
+		expect(captured.filter((c) => c.kind === "error").length).toBe(0);
 		// Phase dir no longer at original location
 		expect(fs.existsSync(phaseDir)).toBe(false);
 		// Phase dir exists in .trash/

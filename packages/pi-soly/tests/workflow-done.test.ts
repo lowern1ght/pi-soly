@@ -145,8 +145,10 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 		const logOut = run(originPath, ["log", "--oneline", "auth-jwt"]);
 		expect(logOut).toMatch(/wip/);
 
-		// ui.notify called with success summary
-		expect(ui.calls.some((c) => c.text.includes("Draft PR:"))).toBe(true);
+		// ui.notify is silent for info (soly 2.1.1+); success is reflected in
+		// result.completed (prUrl is set above). Errors would still fire a
+		// notify at level=error.
+		expect(ui.calls.filter((c) => c.level === "error").length).toBe(0);
 	});
 
 	test("blocks when current branch is not the plan branch", () => {
@@ -201,8 +203,8 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 		expect(result.handled).toBe(true);
 		expect(result.completed?.pushed).toBe(true);
 		expect(result.completed?.prUrl).toBeNull();
-		// ui.notify warned about missing gh
-		expect(ui.calls.some((c) => c.text.includes("`gh` CLI not found"))).toBe(true);
+		// ui.notify is silent for info; missing gh is reflected in prUrl=null above.
+		expect(ui.calls.filter((c) => c.level === "error").length).toBe(0);
 	});
 
 	test("skips push when there's no origin remote, warns", () => {
@@ -224,7 +226,7 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 			expect(result.handled).toBe(true);
 			expect(result.completed?.pushed).toBe(false);
 			expect(result.completed?.prUrl).toBeNull();
-			expect(ui.calls.some((c) => c.text.includes("no 'origin' remote"))).toBe(true);
+			// ui.notify is silent for info; missing origin is reflected in pushed=false above.
 		} finally {
 			fs.rmSync(repoNoOrigin, { recursive: true, force: true });
 		}

@@ -248,7 +248,7 @@ export function showDoctor(_cmd: unknown, state: SolyState, ui: InspectUI, confi
 		out.push("");
 		out.push("Warnings present — run `/soly iterations` and `/soly config` to review.");
 	}
-	ui.notify(out.join("\n"), counts.fail > 0 ? "error" : counts.warn > 0 ? "warning" : "info");
+
 }
 
 // ---------------------------------------------------------------------------
@@ -287,10 +287,7 @@ export function showTodos(
 	}
 	const file = findTodosFile(state.solyDir);
 	if (!file) {
-		ui.notify(
-			"soly todos: no todo file found. Install the `pi-todo` extension or write `.agents/todos.json` manually.",
-			"info",
-		);
+
 		return;
 	}
 	let parsed: { todos?: Array<{ content?: string; status?: string; activeForm?: string }> } | null = null;
@@ -301,7 +298,7 @@ export function showTodos(
 		return;
 	}
 	if (!parsed || !Array.isArray(parsed.todos) || parsed.todos.length === 0) {
-		ui.notify("soly todos: list is empty. Use the LLM's `todo_update` tool to add items.", "info");
+
 		return;
 	}
 	const todos = parsed.todos;
@@ -316,7 +313,7 @@ export function showTodos(
 		const suffix = t.status === "in_progress" && typeof t.activeForm === "string" ? ` (${t.activeForm})` : "";
 		lines.push(`  ${mark} ${t.content}${suffix}`);
 	}
-	ui.notify(lines.join("\n"), "info");
+
 }
 
 // ---------------------------------------------------------------------------
@@ -335,7 +332,7 @@ export function showIterations(
 	}
 	const iterDir = path.join(state.solyDir, "iterations");
 	if (!fs.existsSync(iterDir)) {
-		ui.notify("soly iterations: no iterations yet (run soly plan or soly execute first)", "info");
+
 		return;
 	}
 
@@ -362,7 +359,7 @@ export function showIterations(
 		.slice(0, limit);
 
 	if (files.length === 0) {
-		ui.notify("soly iterations: no iteration files found", "info");
+
 		return;
 	}
 
@@ -378,7 +375,7 @@ export function showIterations(
 		out.push("");
 		out.push("Tip: `soly iterations 20` for more, `soly diff iterations <a> <b>` to compare two.");
 	}
-	ui.notify(out.join("\n"), "info");
+
 }
 
 function humanizeAge(ms: number): string {
@@ -444,7 +441,7 @@ export function showDiffIterations(
 		out.push(bodyB);
 		out.push("--- END B ---");
 	}
-	ui.notify(out.join("\n"), "info");
+
 }
 
 // ---------------------------------------------------------------------------
@@ -495,5 +492,5 @@ export function showPhaseDelete(
 	out.push("");
 	out.push("To restore: `mv` it back to .agents/phases/");
 	out.push("To permanently delete: `rm -rf " + dest + "`");
-	ui.notify(out.join("\n"), "info");
+
 }

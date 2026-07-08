@@ -187,10 +187,9 @@ describe("buildNewTransform (real git)", () => {
 		const lastMsg = run(repo, ["log", "-1", "--format=%s"]);
 		expect(lastMsg).toMatch(/plan: scaffold auth-jwt/);
 
-		// ui.notify was called
-		expect(ui.calls.length).toBe(1);
-		expect(ui.calls[0].text).toMatch(/auth-jwt/);
-		expect(ui.calls[0].text).toMatch(/PLAN\.md/);
+		// 2.1.1+ contract: info-level notifications removed; scaffold success is silent.
+		// The durable signal is the filesystem + commit (verified above).
+		expect(ui.calls.filter((c) => c.level === "error").length).toBe(0);
 	});
 
 	test("reuses existing branch if it exists", () => {
@@ -209,8 +208,9 @@ describe("buildNewTransform (real git)", () => {
 		const result = buildNewTransform(cmd(["auth-jwt"]), state, ui, repo);
 
 		expect(result.handled).toBe(true);
-		// Notice should mention "reused"
-		expect(ui.calls[0]?.text).toMatch(/reused/);
+		// Result must include the "reused" signal in scaffolded or transformedText.
+		const text = (result.transformedText ?? "") + JSON.stringify(result.scaffolded ?? {});
+		expect(text).toMatch(/reused/);
 		// We should be on the existing branch now
 		expect(run(repo, ["branch", "--show-current"])).toBe("auth-jwt");
 	});

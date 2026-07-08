@@ -167,6 +167,6 @@ export function buildMigrateTransform(
 			? skipped.map((s) => `  ! ${s.phase}: ${s.reason}`).join("\n") + "\n"
 			: "") +
 		`\nPush and PR the migration branches manually: \`git push origin <branch>\`.`;
-	ui.notify(`soly migrate: ${migrated.length} migrated, ${skipped.length} skipped`, "info");
+
 	return { handled: true, transformedText: notice, migrated, skipped };
 }
