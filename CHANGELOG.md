@@ -4,6 +4,45 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.2.1] — 2026-07-05
+
+### Added
+- **Built-in rule `release-discipline.md`.** Ships with the extension.
+  Tells the LLM: every version bump in `package.json` must be accompanied
+  by a CHANGELOG.md entry in the same commit — describe the user-visible
+  change under `Added`/`Changed`/`Deprecated`/`Removed`/`Fixed`/`Security`,
+  pick the right SemVer bump (PATCH / MINOR / MAJOR), and don't ship
+  empty version blocks. Project-local rules (`.agents/rules/`) can
+  override or extend.
+
+### Changed
+- **Split `commands.ts` (1239 lines) into per-command modules** under
+  `commands/`:
+    - `commands/_helpers.ts` (87) — `CommandUI`, `CommandsDeps`,
+      `openListPanel`, `openExternally`
+    - `commands/rules.ts` (187) — `/rules`
+    - `commands/docs.ts` (74) — `/docs`
+    - `commands/artifacts.ts` (86) — `/artifacts`
+    - `commands/rulewizard.ts` (43) — `/rulewizard`
+    - `commands/why.ts` (106) — `/why`
+    - `commands/soly.ts` (560) — `/soly`, `/sly`, `/s` (the big one)
+  `commands.ts` itself shrank to 44 lines — just the public
+  `registerCommands(pi, deps)` orchestrator that calls the per-command
+  `register*Command(pi, deps)` functions. Each per-command module takes
+  a `Pick<CommandsDeps, …>` of just the deps it needs. Public type
+  re-exports preserved (`CommandUI`, `CommandsDeps`).
+- **`package.json#files` allowlist** now includes the new `commands/`
+  directory (alongside the existing `commands.ts` thin orchestrator).
+- **Fixed misleading v2.2.0 CHANGELOG entry.** The `### Removed`
+  block claimed `soly:` prefix cleanup from 2.1.2 batch — that was
+  inaccurate (no `soly:` removals happened in 2.2.0). Replaced with
+  `(none)`.
+
+### Test coverage
+- 622/622 unit + e2e tests pass (no behavioral changes, just structure).
+- E2E `npm install --omit=dev` re-verified that the published tarball
+  includes the new `commands/` directory.
+
 ## [2.2.0] — 2026-07-05
 
 ### Added
@@ -38,9 +77,7 @@ All notable changes to the monorepo are documented here.
   modal title the `Iteration`, `Agent`, `Display`, etc. sections.
 
 ### Removed
-- **`soly:` prefix** from all remaining info/warning notifications (last
-  batch after 2.1.2's cleanup — caught the ones emitted via
-  `ui.notify(..., "info")` from `loadNew` / `loadDone` paths).
+- (none)
 
 ## [2.1.5] — 2026-07-05
 
