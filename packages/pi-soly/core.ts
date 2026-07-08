@@ -16,6 +16,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Shared leaf utilities now live in util.ts; re-exported here so existing
 // `import { ... } from "./core.ts"` call sites keep working unchanged.
@@ -58,7 +59,8 @@ export type RuleSource =
   | "phase-soly"
   | "project-agents"
   | "global-agents"
-  | "phase-agents";
+  | "phase-agents"
+  | "built-in";
 
 export interface RuleFrontmatter {
   description?: string;
@@ -257,6 +259,40 @@ function loadRulesFromSource(spec: SourceSpec): RuleFile[] {
   }
 
   return rules;
+}
+
+/**
+ * Resolve the path to the extension's `built-in-rules/` directory. Lives
+ * at `<package>/built-in-rules/` relative to the compiled module. We use
+ * `fileURLToPath(import.meta.url)` so this works whether the package is
+ * loaded directly from source (Bun, tsx) or from compiled output.
+ *
+ * `here` is the directory containing this core.ts file (i.e. the package
+ * root for source, the package root for compiled output too — both files
+ * live alongside package.json), so we don't need to traverse up.
+ */
+export function builtInRulesDir(): string {
+	const here = path.dirname(fileURLToPath(import.meta.url));
+	return path.resolve(here, "built-in-rules");
+}
+
+/**
+ * Load every markdown rule from the extension's `built-in-rules/` directory.
+ * These rules ship with the soly extension and are always present in the
+ * system prompt. Source spec uses priority=10 (highest), so a user rule at
+ * the same relPath is silently dropped into `overridden[]` — built-in
+ * rules win by design. `sourceLabel: "soly"` makes them visible in
+ * `/rules list` so users know which rules come from the package itself.
+ */
+export function loadBuiltInRules(): RuleFile[] {
+	const dir = builtInRulesDir();
+	if (!fs.existsSync(dir)) return [];
+	return loadRulesFromSource({
+		dir,
+		source: "built-in",
+		sourceLabel: "soly",
+		priority: 10,
+	});
 }
 
 export function loadAllRules(sources: SourceSpec[]): {

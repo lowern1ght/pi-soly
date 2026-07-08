@@ -4,6 +4,33 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.1.4] — 2026-07-05
+
+### Added
+- **Built-in rules system.** Soly now ships markdown rules from
+  `packages/pi-soly/built-in-rules/` and injects them into every
+  session's system prompt. The first built-in rule is **`temp-files.md`**:
+  bans hardcoded `/tmp` paths in favor of OS-correct temp-dir APIs
+  (`os.tmpdir()` for Node, `$TMPDIR` for POSIX shells, `%TEMP%` for
+  Windows, `Path.GetTempPath()` for .NET, etc.). Covers atomic-write
+  patterns and cleanup discipline. Reasoning: hardcoded `/tmp` is wrong
+  on Windows, breaks macOS sandboxing, and is fragile in CI.
+
+  Built-in rules have priority 10 (highest) and cannot be overridden
+  by user rules — a user rule at the same `relPath` is silently
+  dropped into `loadAllRules().overridden[]`. To express a different
+  convention, name your rule with a non-colliding relPath
+  (e.g. `temp-files-windows-only.md`).
+
+  Visibility: `/rules list` shows built-in rules tagged `[soly]`
+  (same `sourceLabel` as before, just now backed by an actual rule
+  file shipped inside the package). Users can always see what's loaded.
+
+  Type changes:
+  - `RuleSource` gained `"built-in"`.
+  - New exports `builtInRulesDir()` and `loadBuiltInRules()` from
+    `core.ts`.
+
 ## [2.1.3] — 2026-07-05
 
 ### Changed

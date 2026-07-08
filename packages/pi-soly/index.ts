@@ -34,6 +34,8 @@ import {
 	extractFilePathsFromPrompt,
 	formatTok,
 	loadAllRules,
+	builtInRulesDir,
+	loadBuiltInRules,
 	loadPhaseRules,
 	loadProjectState,
 	matchesGlob,
@@ -441,10 +443,14 @@ export default function solyExtension(pi: ExtensionAPI) {
 		// Project rules always beat global rules. `.agents/rules.local/` is
 		// gitignored — for personal overrides on top of the project's rules.
 		// `.agents/rules/` is the vendor-neutral project-level convention.
+		// Built-in rules ship with the extension (priority=10 — highest) and
+		// can't be overridden: a user rule at the same relPath is dropped
+		// silently into the `overridden[]` list (see loadAllRules).
 		ruleSources = [
-			{ dir: path.join(ctx.cwd, ".agents", "rules.local"), source: "project-agents", sourceLabel: "local", priority: 5 },
-			{ dir: path.join(ctx.cwd, ".agents", "rules"), source: "project-agents", sourceLabel: "agents", priority: 3 },
+			{ dir: builtInRulesDir(), source: "built-in", sourceLabel: "soly", priority: 10 },
 			{ dir: path.join(os.homedir(), ".agents", "rules"), source: "global-agents", sourceLabel: "agents", priority: 1 },
+			{ dir: path.join(ctx.cwd, ".agents", "rules"), source: "project-agents", sourceLabel: "agents", priority: 3 },
+			{ dir: path.join(ctx.cwd, ".agents", "rules.local"), source: "project-agents", sourceLabel: "local", priority: 5 },
 		];
 		refreshRules();
 
