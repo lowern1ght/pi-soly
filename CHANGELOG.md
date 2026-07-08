@@ -4,6 +4,61 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.1.5] — 2026-07-05
+
+### Changed
+- **Built-in rules now render in a dedicated `## 🔒 Built-in rules
+  (shipped with soly)` section** above the existing `## ⚠️ MANDATORY:
+  soly project rules` block. The LLM can now see the priority structure
+  at a glance: vendor rules first (cannot be overridden, framed with a
+  lock icon), user rules below (editable, framed with the warning icon).
+  Previously both were mixed in the same MANDATORY block, distinguished
+  only by `[soly] {10}` vs `[agents] {3}` labels.
+- **Fixed npm package**: `built-in-rules/` was missing from the
+  `files` allowlist in `package.json`, so the directory wouldn't ship
+  in the published tarball. Added to the allowlist; `npm pack` now
+  includes `built-in-rules/temp-files.md` (6.1 kB). Every install +
+  every update now carries the built-in rules.
+
+## [2.1.4] — 2026-07-05
+
+### Added
+- **Built-in rules system.** Soly now ships markdown rules from
+  `packages/pi-soly/built-in-rules/` and injects them into every
+  session's system prompt. The first built-in rule is **`temp-files.md`**:
+  bans hardcoded `/tmp` paths in favor of OS-correct temp-dir APIs
+  (`os.tmpdir()` for Node, `$TMPDIR` for POSIX shells, `%TEMP%` for
+  Windows, `Path.GetTempPath()` for .NET, etc.). Covers atomic-write
+  patterns and cleanup discipline. Reasoning: hardcoded `/tmp` is wrong
+  on Windows, breaks macOS sandboxing, and is fragile in CI.
+
+  Built-in rules have priority 10 (highest) and cannot be overridden
+  by user rules — a user rule at the same `relPath` is silently
+  dropped into `loadAllRules().overridden[]`. To express a different
+  convention, name your rule with a non-colliding relPath
+  (e.g. `temp-files-windows-only.md`).
+
+  Visibility: `/rules list` shows built-in rules tagged `[soly]`
+  (same `sourceLabel` as before, just now backed by an actual rule
+  file shipped inside the package). Users can always see what's loaded.
+
+  Type changes:
+  - `RuleSource` gained `"built-in"`.
+  - New exports `builtInRulesDir()` and `loadBuiltInRules()` from
+    `core.ts`.
+
+## [2.1.3] — 2026-07-05
+
+### Changed
+- **`ask_pro` now shows a read-only recap of all answers before submitting.**
+  After the last question is answered, the picker transitions to a summary
+  view listing every question and its answer (`Q1: Header → Label`,
+  with notes indented below). Enter confirms; Esc cancels. Other keys
+  are ignored. This replaces the old "Enter on the last question
+  submits immediately" behavior — the LLM sees the same `done()` result
+  shape, just gated behind one extra confirm. Tool signature and return
+  contract are unchanged.
+
 ## [2.1.2] — 2026-07-05
 
 ### Changed

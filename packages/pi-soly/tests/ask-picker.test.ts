@@ -78,7 +78,9 @@ describe("ask_pro picker — C: multi-select min/max", () => {
 		c.handleInput(SPACE); // attempt option 2
 		expect(c.getAnswers().get(0)).toEqual([0, 1]);
 
-		// Now within bounds → Enter submits.
+		// Now within bounds → Enter transitions to summary (Enter there actually submits).
+		c.handleInput(ENTER);
+		expect(result()).toBeNull();
 		c.handleInput(ENTER);
 		expect(result()?.answers?.[0]).toEqual([0, 1]);
 	});
@@ -94,7 +96,9 @@ describe("ask_pro picker — D: skip", () => {
 		c.handleInput("s"); // skip Q1 → advances to Q2
 		expect(c.getCurrentIndex()).toBe(1);
 
-		c.handleInput("1"); // pick option 0 on Q2 (last) → submit
+		c.handleInput("1"); // pick option 0 on Q2 (last) → summary view
+		expect(result()).toBeNull();
+		c.handleInput(ENTER); // confirm summary
 		const r = result();
 		expect(r?.skipped).toEqual([0]);
 		expect(r?.answers?.[0]).toBeUndefined();
@@ -123,7 +127,9 @@ describe("ask_pro picker — A: free-text", () => {
 		]);
 		for (const ch of "hello") c.handleInput(ch);
 		expect(c.getAnswers().get(0)).toBe("hello");
-		c.handleInput(ENTER); // last → submit
+		c.handleInput(ENTER); // last → summary view
+		expect(result()).toBeNull();
+		c.handleInput(ENTER); // confirm summary
 		expect(result()?.answers?.[0]).toBe("hello");
 	});
 
@@ -131,7 +137,9 @@ describe("ask_pro picker — A: free-text", () => {
 		const { c, result } = mk([
 			{ header: "Name", question: "Project name?", options: [], freeText: true },
 		]);
-		c.handleInput(ENTER); // nothing typed → submit
+		c.handleInput(ENTER); // nothing typed → summary view
+		expect(result()).toBeNull();
+		c.handleInput(ENTER); // confirm summary
 		const r = result();
 		expect(r?.answers?.[0]).toBeUndefined();
 		expect(r?.skipped).toEqual([0]);
