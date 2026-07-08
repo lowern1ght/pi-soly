@@ -107,10 +107,13 @@ describe("AskProComponent — single-select (number keys)", () => {
 		expect(picker.getCurrentIndex()).toBe(1);
 	});
 
-	test("on last question, '1' picks AND submits", () => {
+	test("on last question, '1' picks AND transitions to summary view (Enter there submits)", () => {
 		const { picker, getDone } = setup();
 		picker.handleInput("1"); // Q1 → JWT cookie (recommended), advance
-		picker.handleInput("2"); // Q2 → Bearer header, submit (last)
+		picker.handleInput("2"); // Q2 → Bearer header, transitions to summary
+		// Now in summary view — Enter actually submits.
+		expect(getDone()).toBeNull();
+		picker.handleInput("\n"); // confirm summary
 		expect(getDone()).toEqual({ answers: { 0: 0, 1: 1 } });
 	});
 });
@@ -146,14 +149,16 @@ describe("AskProComponent — single-select (arrows + enter)", () => {
 		expect(picker.getSelectedIndex()).toBe(2);
 	});
 
-	test("Enter confirms current selection, advances or submits", () => {
+	test("Enter confirms current selection, advances or transitions to summary", () => {
 		const { picker, getDone } = setup();
 		picker.handleInput("j"); // selectedIndex = 1 (JWT localStorage)
 		picker.handleInput("\n"); // confirm
 		expect(picker.getAnswers().get(0)).toBe(1);
 		expect(picker.getCurrentIndex()).toBe(1); // advanced
 		expect(getDone()).toBeNull();
-		picker.handleInput("\n"); // confirm Q2 default (index 0)
+		picker.handleInput("\n"); // confirm Q2 default (index 0) → summary
+		expect(getDone()).toBeNull();
+		picker.handleInput("\n"); // confirm summary
 		expect(getDone()).toEqual({ answers: { 0: 1, 1: 0 } });
 	});
 });
@@ -275,17 +280,19 @@ describe("AskProComponent — multi-select", () => {
 		expect(picker.getAnswers().size).toBe(0); // nothing toggled
 	});
 
-	test("Submit only when all questions answered (multi on last)", () => {
+	test("Submit only when all questions answered (multi on last) — Enter there confirms summary", () => {
 		const { picker, getDone } = setup(multiQuestions);
 		picker.handleInput("1"); // Q1 multi: pick Auth
 		picker.handleInput("\t"); // → Q2
-		picker.handleInput("\n"); // Q2 single: confirm default (High)
+		picker.handleInput("\n"); // Q2 single: confirm default (High) → summary
+		expect(getDone()).toBeNull();
+		picker.handleInput("\n"); // confirm summary
 		expect(getDone()).toEqual({ answers: { 0: [0], 1: 0 } });
 	});
 
-	test("Enter on LAST multi question + all answered → submit (universal confirm)", () => {
+	test("Enter on LAST multi question + all answered → summary view (Enter there confirms)", () => {
 		// Multi-select LAST question: Enter is the universal confirm gesture.
-		// If all questions are answered, Enter submits.
+		// It transitions to the summary view; another Enter actually submits.
 		const TWO_MULTI: AskQuestion[] = [
 			{ header: "Tasks", question: "?", options: [{ label: "A" }, { label: "B" }], multiSelect: true },
 			{ header: "Priority", question: "?", options: [{ label: "H" }, { label: "L" }], multiSelect: true },
@@ -294,7 +301,10 @@ describe("AskProComponent — multi-select", () => {
 		picker.handleInput(" "); // Q1 multi: Space → toggle A
 		picker.handleInput("\t"); // → Q2
 		picker.handleInput(" "); // Q2 multi: Space → toggle H
-		// Now all answered, on last question, Enter should submit
+		// Now all answered, on last question, Enter transitions to summary.
+		picker.handleInput("\n");
+		expect(getDone()).toBeNull();
+		// Enter in summary view actually submits.
 		picker.handleInput("\n");
 		expect(getDone()).toEqual({ answers: { 0: [0], 1: [0] } });
 	});
@@ -662,8 +672,11 @@ describe("AskProComponent — notes (n key)", () => {
 		picker.handleInput("n");
 		for (const ch of "rotate keys monthly") picker.handleInput(ch);
 		picker.handleInput("\n"); // commit
-		// Submit Q2 (last question, all answered)
+		// Pick Q2 (last question, all answered) → summary view
 		picker.handleInput("1");
+		expect(doneResult).toBeNull();
+		// Enter in summary view actually submits.
+		picker.handleInput("\n");
 		expect(doneResult).not.toBeNull();
 		const result = doneResult as AskProResult | null;
 		expect(result?.notes).toBeDefined();
@@ -697,9 +710,12 @@ describe("AskProComponent — notes (n key)", () => {
 		picker.handleInput("n");
 		picker.handleInput("\x15"); // ^U — delete to line start
 		picker.handleInput("\n"); // commit empty → note cleared
-		// Pick Q1 → Q2 → submit; result must NOT carry notes
+		// Pick Q1 → Q2 → summary; Enter there actually submits. Result must
+		// NOT carry notes.
 		picker.handleInput("1");
 		picker.handleInput("1");
+		expect(doneResult).toBeNull();
+		picker.handleInput("\n");
 		expect(doneResult as AskProResult | null).toEqual({ answers: { 0: 0, 1: 0 } });
 	});
 
@@ -707,6 +723,97 @@ describe("AskProComponent — notes (n key)", () => {
 		const { picker } = setup();
 		picker.handleInput("n");
 		expect(() => picker.render(80)).not.toThrow();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Summary view: read-only recap shown after the last question is answered.
+// Enter there commits the answers; Esc cancels. Other keys are ignored.
+// ---------------------------------------------------------------------------
+
+describe("AskProComponent — summary view (post-last-question recap)", () => {
+	test("single-select last question transitions to summary (Enter submits)", () => {
+		const { picker, getDone } = setup();
+		picker.handleInput("1"); // Q1 → advance
+		picker.handleInput("2"); // Q2 → summary view
+		expect(getDone()).toBeNull();
+		picker.handleInput("\n"); // confirm summary
+		expect(getDone()).toEqual({ answers: { 0: 0, 1: 1 } });
+	});
+
+	test("Esc in summary view cancels the whole picker", () => {
+		const { picker, getDone } = setup();
+		picker.handleInput("1");
+		picker.handleInput("2"); // → summary
+		picker.handleInput("\x1b"); // Esc
+		expect(getDone()).toEqual({ cancelled: true });
+	});
+
+	test("multi-select last question transitions to summary", () => {
+		const TWO_MULTI: AskQuestion[] = [
+			{ header: "Tasks", question: "?", options: [{ label: "A" }, { label: "B" }], multiSelect: true },
+			{ header: "Priority", question: "?", options: [{ label: "H" }, { label: "L" }], multiSelect: true },
+		];
+		const { picker, getDone } = setup(TWO_MULTI);
+		picker.handleInput(" "); // Q1: toggle A
+		picker.handleInput("\t"); // → Q2
+		picker.handleInput(" "); // Q2: toggle H
+		picker.handleInput("\n"); // Enter on last multi → summary
+		expect(getDone()).toBeNull();
+		picker.handleInput("\n"); // confirm
+		expect(getDone()).toEqual({ answers: { 0: [0], 1: [0] } });
+	});
+
+	test("summary view ignores non-Enter/non-Esc keys", () => {
+		const { picker, getDone } = setup();
+		picker.handleInput("1");
+		picker.handleInput("2"); // → summary
+		// Junk keys: should NOT submit or cancel.
+		picker.handleInput("a");
+		picker.handleInput("\t");
+		picker.handleInput(" ");
+		expect(getDone()).toBeNull();
+		// Enter still works.
+		picker.handleInput("\n");
+		expect(getDone()).toEqual({ answers: { 0: 0, 1: 1 } });
+	});
+
+	test("summary view shows all answers in render()", () => {
+		const { picker } = setup();
+		picker.handleInput("1"); // Q1: JWT cookie (label index 0)
+		picker.handleInput("2"); // Q2: Bearer header (label index 1) → summary
+		const out = picker.render(80).join("\n");
+		// Recap shows both questions with their labels.
+		expect(out).toContain("JWT cookie");
+		expect(out).toContain("Bearer header");
+		// Header hint for the recap itself.
+		expect(out).toContain("Review your answers");
+	});
+
+	test("skipped questions render as '— skipped —' in summary", () => {
+		const { picker } = setup();
+		picker.handleInput("1"); // Q1 → advance
+		picker.handleInput("s"); // Q2: skip → advance (but already last; → summary)
+		// Q1 answered, Q2 skipped → allAnswered() returns true (skipped counts as answered).
+		const { getDone } = setup(); // re-setup for clarity
+		void getDone; // silence unused
+		// The above setup didn't help; let me assert against the original flow:
+		expect(picker.render(80).join("\n")).toContain("skipped");
+	});
+
+	test("free-text typed answer renders verbatim in summary", () => {
+		const FT: AskQuestion[] = [
+			{ header: "Title", question: "?", options: [{ label: "A" }] },
+			{ header: "Note", question: "?", options: [], freeText: true },
+		];
+		const { picker, getDone } = setup(FT);
+		picker.handleInput("1"); // Q1 → advance
+		picker.handleInput("hello world"); // free-text typing
+		picker.handleInput("\n"); // commit
+		// Q1 answered, Q2 answered → summary
+		expect(getDone()).toBeNull();
+		const out = picker.render(80).join("\n");
+		expect(out).toContain("hello world");
 	});
 });
 

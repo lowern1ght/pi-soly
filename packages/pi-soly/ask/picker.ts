@@ -141,6 +141,11 @@ export class AskProComponent extends Container {
 	private selectedIndex = 0;
 	/** answers[questionIdx] = AskAnswer (single) or AskMultiAnswer (multi). */
 	private answers = new Map<number, AskAnswer | AskMultiAnswer>();
+	/** "questions" = tabbed flow; "summary" = read-only recap before submit.
+	 *  After the last question is answered, the picker transitions to "summary"
+	 *  so the user can review all answers before committing. Enter submits,
+	 *  Esc cancels. */
+	private viewMode: "questions" | "summary" = "questions";
 	/** notes[questionIdx] = free-text note added by user (via `n` key). */
 	private notes = new Map<number, string>();
 	/** Set true once `done` is called — further input is ignored. */
@@ -251,8 +256,21 @@ export class AskProComponent extends Container {
 
 	private repaint(): void {
 		this.tabsText.setText(this.renderTabs());
-		this.renderQuestionBody();
-		this.footerText.setText(this.renderFooter());
+		if (this.viewMode === "summary") {
+			this.renderSummaryBody();
+			this.footerText.setText(this.renderSummaryFooter());
+		} else {
+			this.renderQuestionBody();
+			this.footerText.setText(this.renderFooter());
+		}
+	}
+
+	/** Switch to the read-only recap view. Triggered when the user completes
+	 *  the last question and all answers are present. The actual submit() only
+	 *  fires when Enter is pressed in summary mode. */
+	private showSummary(): void {
+		this.viewMode = "summary";
+		this.repaint();
 	}
 
 	private renderTabs(): string {
@@ -602,6 +620,85 @@ export class AskProComponent extends Container {
 		return parts.join("   ");
 	}
 
+	// -------------------------------------------------------------------------
+	// Summary view rendering — read-only recap shown after the last question.
+	// One line per question: "<header>: <answer>". Skipped questions show a
+	// strike-through-like marker. Notes are shown indented below.
+	// -------------------------------------------------------------------------
+
+	/** Render the recap body into bodyContainer. Replaces renderQuestionBody
+	 *  while in summary mode. */
+	private renderSummaryBody(): void {
+		this.bodyContainer.clear();
+		this.bodyContainer.addChild(
+			new Text(
+				this.theme.bold("Review your answers") +
+					this.theme.fg("dim", " — press Enter to submit, Esc to cancel"),
+				1,
+				0,
+			),
+		);
+		this.bodyContainer.addChild(new Spacer(1));
+		for (let i = 0; i < this.questions.length; i++) {
+			const q = this.questions[i]!;
+			const answerText = this.formatAnswerForSummary(i);
+			const header = this.theme.bold(q.header);
+			const marker = this.theme.fg("accent", `Q${i + 1}:`);
+			this.bodyContainer.addChild(
+				new Text(`  ${marker} ${header}  →  ${answerText}`, 1, 0),
+			);
+			const note = this.notes.get(i);
+			if (note) {
+				this.bodyContainer.addChild(
+					new Text(this.theme.fg("dim", `      note: ${note}`), 1, 0),
+				);
+			}
+		}
+	}
+
+	/** Format a single question's answer for the recap line. Skipped
+	 *  questions show a strikethrough-style marker; free-text shows the
+	 *  typed string (or "—" if blank); option picks show the label. */
+	private formatAnswerForSummary(qIdx: number): string {
+		if (this.skipped.has(qIdx)) {
+			return this.theme.fg("dim", "— skipped —");
+		}
+		const q = this.questions[qIdx]!;
+		if (q.freeText) {
+			const v = this.answers.get(qIdx);
+			const text = typeof v === "string" && v.length > 0 ? v : "—";
+			return this.theme.fg("text", text);
+		}
+		const ans = this.answers.get(qIdx);
+		if (ans === undefined) {
+			return this.theme.fg("dim", "— no answer —");
+		}
+		if (q.multiSelect) {
+			const arr = ans as AskMultiAnswer;
+			if (arr.length === 0) return this.theme.fg("dim", "— none —");
+			const labels = arr.map((a) => this.formatOptionLabel(q, a));
+			return this.theme.fg("text", labels.join(", "));
+		}
+		return this.theme.fg("text", this.formatOptionLabel(q, ans as AskAnswer));
+	}
+
+	/** Resolve a single answer value (index or custom string) to a label. */
+	private formatOptionLabel(q: AskQuestion, ans: AskAnswer): string {
+		if (typeof ans === "string") {
+			return `Other: ${ans}`;
+		}
+		const opt = q.options[ans];
+		return opt ? opt.label : `option ${ans}`;
+	}
+
+	/** Footer for the summary view. */
+	private renderSummaryFooter(): string {
+		return [
+			this.theme.fg("accent", "⏎ submit"),
+			this.theme.fg("dim", "esc cancel"),
+		].join("   ");
+	}
+
 	private isAnswered(qIdx: number): boolean {
 		// Explicitly skipped questions never block submission.
 		if (this.skipped.has(qIdx)) return true;
@@ -632,6 +729,27 @@ export class AskProComponent extends Container {
 
 	handleInput(keyData: string): void {
 		if (this.completed) return;
+
+		// --- Summary view (read-only recap before submit) ------------------
+		// After the last question is answered, the picker shows a recap of
+		// all answers. Enter commits, Esc cancels. All other keys are
+		// ignored (no per-question editing in summary mode).
+		if (this.viewMode === "summary") {
+			if (keyData === KEY_ESC) {
+				this.completed = true;
+				this.done({ cancelled: true });
+				return;
+			}
+			if (
+				this.keybindings.matches(keyData, "tui.select.confirm") ||
+				keyData === KEY_ENTER ||
+				keyData === KEY_ENTER_CR
+			) {
+				this.submit();
+				return;
+			}
+			return;
+		}
 
 		// --- Inline text-input mode (note / Other…) --------------------------
 		// When active, all keys route to the embedded Input except the
@@ -775,13 +893,14 @@ export class AskProComponent extends Container {
 
 			if (isMulti) {
 				// On the LAST question, if all questions are answered, Enter
-				// submits. Otherwise it advances (if not last) or stays put
+				// transitions to the summary view (where another Enter actually
+				// submits). Otherwise it advances (if not last) or stays put
 				// (on last + not all answered — user must finish first).
 				if (
 					this.currentIndex === this.questions.length - 1 &&
 					this.allAnswered()
 				) {
-					this.submit();
+					this.showSummary();
 					return;
 				}
 				if (this.currentIndex < this.questions.length - 1) {
@@ -790,14 +909,15 @@ export class AskProComponent extends Container {
 				}
 				this.repaint();
 			} else {
-				// Single-select: set current as answer, then advance or submit
+				// Single-select: set current as answer, then advance or transition
+				// to summary. The final submit happens after Enter in summary mode.
 				this.answers.set(this.currentIndex, this.selectedIndex);
 				if (this.currentIndex < this.questions.length - 1) {
 					this.currentIndex++;
 					this.selectedIndex = this.defaultIndexFor(this.currentIndex);
 					this.repaint();
 				} else if (this.allAnswered()) {
-					this.submit();
+					this.showSummary();
 				} else {
 					this.repaint();
 				}
@@ -846,8 +966,8 @@ export class AskProComponent extends Container {
 				this.selectedIndex = this.defaultIndexFor(this.currentIndex);
 				this.repaint();
 			} else if (this.allAnswered()) {
-				// Last question + all answered → submit
-				this.submit();
+				// Last question + all answered → summary view (Enter there submits)
+				this.showSummary();
 			} else {
 				this.repaint();
 			}
@@ -876,7 +996,7 @@ export class AskProComponent extends Container {
 			this.selectedIndex = this.defaultIndexFor(this.currentIndex);
 			this.repaint();
 		} else if (this.allAnswered()) {
-			this.submit();
+			this.showSummary();
 		} else {
 			this.repaint();
 		}

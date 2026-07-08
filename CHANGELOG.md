@@ -4,6 +4,18 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.1.3] — 2026-07-05
+
+### Changed
+- **`ask_pro` now shows a read-only recap of all answers before submitting.**
+  After the last question is answered, the picker transitions to a summary
+  view listing every question and its answer (`Q1: Header → Label`,
+  with notes indented below). Enter confirms; Esc cancels. Other keys
+  are ignored. This replaces the old "Enter on the last question
+  submits immediately" behavior — the LLM sees the same `done()` result
+  shape, just gated behind one extra confirm. Tool signature and return
+  contract are unchanged.
+
 ## [2.1.2] — 2026-07-05
 
 ### Changed
