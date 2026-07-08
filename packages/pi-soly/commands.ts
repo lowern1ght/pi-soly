@@ -171,7 +171,7 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 				const rules = getRules();
 				const overridden = getOverridden();
 				if (rules.length === 0 && overridden.length === 0) {
-					ui.notify("no rules loaded from any source", "info");
+
 					return;
 				}
 				// Rich modal in the TUI; plain select elsewhere (RPC/print).
@@ -205,17 +205,11 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 					if (choice < rules.length) {
 						const rel = rules[choice];
 						if (rel) {
-							ui.notify(
-								`[${rel.sourceLabel}] ${rel.relPath}\n\n${rel.body}`,
-								"info",
-							);
+
 						}
 					} else {
 						const idx = choice - rules.length;
-						ui.notify(
-							`overridden: ${overridden[idx]} (skipped — a higher-priority source defines this rule)`,
-							"info",
-						);
+
 					}
 				}
 				return;
@@ -224,7 +218,7 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 			if (sub === "analytics") {
 				const rules = getRules();
 				const analytics = analyzeRules(rules, CONTEXT_WINDOW_TOKENS);
-				ui.notify(formatAnalyticsFull(analytics), "info");
+
 				return;
 			}
 
@@ -234,7 +228,7 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 				// Surfaces context bloat and verifies rules will actually fire.
 				const rules = getRules();
 				const stats = buildRulesContextStats(rules, CONTEXT_WINDOW_TOKENS);
-				ui.notify(formatRulesContextStats(stats), "info");
+
 				return;
 			}
 
@@ -250,13 +244,13 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 					ui.notify(`Rule not found: ${target}`, "error");
 					return;
 				}
-				ui.notify(`[${rule.sourceLabel}] ${rule.relPath}\n\n${rule.body}`, "info");
+
 				return;
 			}
 
 			if (sub === "reload") {
 				refreshRules();
-				ui.notify(`Reloaded ${getRules().length} rules`, "info");
+
 				updateStatus(ui);
 				return;
 			}
@@ -274,7 +268,7 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 					return;
 				}
 				rule.enabled = sub === "enable";
-				ui.notify(`${rule.relPath} ${sub}d`, "info");
+
 				updateStatus(ui);
 				return;
 			}
@@ -289,10 +283,7 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 						count++;
 					}
 				}
-				ui.notify(
-					`${count} rule(s) ${enable ? "enabled" : "disabled"} (${rules.length} total)`,
-					enable ? "info" : "warning",
-				);
+
 				updateStatus(ui);
 				return;
 			}
@@ -313,7 +304,7 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 				categories.map((c) => `${c.name} — ${c.description}`),
 			);
 			if (choice == null) {
-				ui.notify("cancelled", "info");
+
 				return;
 			}
 			const cat = categories[choice];
@@ -359,11 +350,7 @@ What must the LLM do?
 `;
 			try {
 				fs.writeFileSync(filePath, template, "utf-8");
-				ui.notify(
-					`soly: created ${path.relative(cwd, filePath)}\n\n` +
-						`Next: edit the file (description, globs, body), then \`/rules reload\` to load it.`,
-					"info",
-				);
+
 				refreshRules();
 				updateStatus(ui);
 			} catch (e) {
@@ -385,7 +372,7 @@ What must the LLM do?
 					ui.notify(`soly: only http(s) URLs are supported (got ${parsed.protocol})`, "error");
 					return;
 				}
-				ui.notify(`soly: downloading ${url}…`, "info");
+
 				const res = await fetch(url, {
 					signal: AbortSignal.timeout(10_000),
 					headers: { "user-agent": "soly-extension/1.0" },
@@ -420,16 +407,13 @@ What must the LLM do?
 						`${fileName} already exists. Overwrite?`,
 					);
 					if (!overwrite) {
-						ui.notify("soly: add cancelled", "info");
+
 						return;
 					}
 				}
 				fs.writeFileSync(targetFile, text, "utf-8");
 				refreshRules();
-				ui.notify(
-					`soly: installed ${path.relative(process.cwd(), targetFile)} (${(text.length / 1024).toFixed(1)}KB)`,
-					"info",
-				);
+
 				updateStatus(ui);
 			} catch (e) {
 				ui.notify(`soly: download failed: ${(e as Error).message}`, "error");
@@ -466,7 +450,7 @@ What must the LLM do?
 			if (sub === "list") {
 				const docs = getIntentDocs();
 				if (docs.length === 0) {
-					ui.notify("no intent docs found in .agents/docs/ — drop your vision/domain docs there", "info");
+
 					return;
 				}
 				if (ctx.mode === "tui") {
@@ -493,15 +477,11 @@ What must the LLM do?
 				const docs = getIntentDocs();
 				const inlineBodies: IntentInlineDoc[] = loadInlineIntentBodies(docs);
 				const stats = buildIntentStats(docs, inlineBodies);
-				ui.notify(formatIntentStats(stats), "info");
+
 				return;
 			}
 
-			ui.notify(
-				`Usage: /docs [list|stats] — open the docs panel, or show the context breakdown\n` +
-				`Found ${getIntentDocs().length} doc(s) loaded.`,
-				"info",
-			);
+
 		},
 	});
 
@@ -543,7 +523,7 @@ What must the LLM do?
 
 			const state = getState();
 			if (!state.exists) {
-				ui.notify("soly: no .agents/ project here — run `/soly init` to scaffold one", "info");
+
 				return;
 			}
 
@@ -557,7 +537,7 @@ What must the LLM do?
 					content.length > MAX
 						? `${content.slice(0, MAX)}\n\n[...truncated, file is ${content.length} chars]`
 						: content;
-				ui.notify(`${label}\n\n${truncated}`, "info");
+
 			};
 
 			type SolySub = {
@@ -584,7 +564,7 @@ What must the LLM do?
 				};
 				const state = getState();
 				if (!state.exists) {
-					ui.notify("soly: no .agents/ project here — run `/soly init` to scaffold one", "info");
+
 					return;
 				}
 				switch (verb) {
@@ -624,7 +604,7 @@ What must the LLM do?
 						return;
 					}
 					default:
-						ui.notify(`soly: workflow '${verb}' not yet wired into slash command`, "info");
+
 						return;
 				}
 			};
@@ -651,7 +631,7 @@ What must the LLM do?
 						out.push(`  - project: edit \`${state.solyDir}/soly.json\` directly`);
 						out.push(`  - global:  edit \`~/.agents/soly.json\``);
 						out.push("After editing, run /soly reload to re-pick up changes.");
-						ui.notify(out.join("\n"), "info");
+
 					},
 				},
 				position: {
@@ -659,21 +639,9 @@ What must the LLM do?
 					run: () => {
 						const s = getState();
 						if (s.position) {
-							ui.notify(
-								[
-									`milestone: ${s.milestone}${s.milestoneName ? ` — ${s.milestoneName}` : ""}`,
-									`phase:     ${s.position.phase}`,
-									`plan:      ${s.position.plan}`,
-									`status:    ${s.position.status}`,
-									`progress:  ${buildProgressBar(s.progress.percent, 20)} ${s.progress.percent}% (${s.progress.completedPhases}/${s.progress.totalPhases} phases, ${s.progress.completedPlans}/${s.progress.totalPlans} plans)`,
-								].join("\n"),
-								"info",
-							);
+
 						} else {
-							ui.notify(
-								`milestone: ${s.milestone} — no position set in STATE.md`,
-								"info",
-							);
+
 						}
 					},
 				},
@@ -735,16 +703,7 @@ What must the LLM do?
 					description: "progress bar + counts",
 					run: () => {
 						const s = getState();
-						ui.notify(
-							[
-								`milestone: ${s.milestone}${s.milestoneName ? ` — ${s.milestoneName}` : ""}`,
-								`status:    ${s.status}`,
-								`progress:  ${buildProgressBar(s.progress.percent, 30)} ${s.progress.percent}%`,
-								`phases:    ${s.progress.completedPhases}/${s.progress.totalPhases}`,
-								`plans:     ${s.progress.completedPlans}/${s.progress.totalPlans}`,
-							].join("\n"),
-							"info",
-						);
+
 					},
 				},
 				phases: {
@@ -752,7 +711,7 @@ What must the LLM do?
 					run: () => {
 						const phases = getState().phases;
 						if (phases.length === 0) {
-							ui.notify("soly: no phases found", "info");
+
 							return;
 						}
 						const current = getState().currentPhase?.number;
@@ -761,7 +720,7 @@ What must the LLM do?
 							const cr = (p.contextExists ? "C" : "·") + (p.researchExists ? "R" : "·");
 							return `${marker} ${String(p.number).padStart(2, "0")}. ${p.name}  [${cr}]  plans=${p.planCount}`;
 						});
-						ui.notify(`phases:\n\n${lines.join("\n")}`, "info");
+
 					},
 				},
 				tasks: {
@@ -769,7 +728,7 @@ What must the LLM do?
 					run: () => {
 						const s = getState();
 						if (s.tasks.length === 0) {
-							ui.notify("soly: no tasks found in .agents/features/*/tasks/", "info");
+
 							return;
 						}
 						const byFeature = new Map<string, typeof s.tasks>();
@@ -788,7 +747,7 @@ What must the LLM do?
 							}
 							out.push("");
 						}
-						ui.notify(out.join("\n"), "info");
+
 					},
 				},
 				task: {
@@ -819,7 +778,7 @@ What must the LLM do?
 						if (summaryBody) {
 							showFile("SUMMARY.md", summaryBody);
 						} else {
-							ui.notify("SUMMARY.md: not found (task not yet executed)", "info");
+
 						}
 					},
 				},
@@ -828,14 +787,14 @@ What must the LLM do?
 					run: () => {
 						const features = getState().features;
 						if (features.length === 0) {
-							ui.notify("soly: no features found in .agents/features/", "info");
+
 							return;
 						}
 						const lines = features.map((f) => {
 							const rm = f.readmeExists ? "R" : "·";
 							return `  ${f.name.padEnd(28)} tasks=${f.taskCount}  [${rm}]`;
 						});
-						ui.notify(`features (${features.length}):\n\n${lines.join("\n")}`, "info");
+
 					},
 				},
 				milestone: {
@@ -843,7 +802,7 @@ What must the LLM do?
 					run: () => {
 						const s = getState();
 						if (!s.milestone || s.milestone === "—") {
-							ui.notify("soly: no milestone set in STATE.md frontmatter", "info");
+
 							return;
 						}
 						const candidates = [
@@ -869,10 +828,7 @@ What must the LLM do?
 						refreshState();
 						updateStatus(ui);
 						const s = getState();
-						ui.notify(
-							`soly: reloaded — ${s.milestone} · ${s.phases.length} phases`,
-							"info",
-						);
+
 					},
 				},
 				// ------------------------------------------------------------------

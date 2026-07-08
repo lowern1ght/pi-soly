@@ -144,7 +144,7 @@ export function buildDoneTransform(
 			pushed = true;
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
-			ui.notify(`soly done: push failed — ${msg}\nPlan was committed but not pushed. Push manually with \`git push -u origin ${branchName}\`.`, "warning");
+
 			return {
 				handled: true,
 				transformedText: `Plan ${branchName} committed locally (${commitHash.slice(0, 7)}), but push failed.\n${msg}`,
@@ -152,7 +152,7 @@ export function buildDoneTransform(
 			};
 		}
 	} else {
-		ui.notify(`soly done: no 'origin' remote — committed locally only. Add a remote and \`git push\` when ready.`, "warning");
+
 	}
 
 	// 4. Draft PR via gh
@@ -174,18 +174,10 @@ export function buildDoneTransform(
 			// gh failed (maybe not authenticated, or PR already exists, etc.)
 			// Don't fail the whole workflow — just report.
 			const msg = err instanceof Error ? err.message : String(err);
-			ui.notify(
-				`soly done: pushed OK, but draft PR creation failed — ${msg}\n` +
-					`Run \`gh pr create --draft --fill\` manually.`,
-				"warning",
-			);
+
 		}
 	} else if (pushed) {
-		ui.notify(
-			`soly done: pushed OK, but \`gh\` CLI not found — draft PR not created.\n` +
-				`Install \`gh\` (https://cli.github.com) and run \`gh pr create --draft --fill\` manually.`,
-			"info",
-		);
+
 	}
 
 	// 5. Done — summarize
@@ -198,7 +190,7 @@ export function buildDoneTransform(
 
 	// (No registry file to update — the plan's git branch IS the source of
 	// truth for "active plans". See PLAN.md / "Out of scope" for the trade-off.)
-	ui.notify(notice, "info");
+
 	return {
 		handled: true,
 		transformedText: notice,

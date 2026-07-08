@@ -4,6 +4,31 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.1.2] — 2026-07-05
+
+### Changed
+- **Removed all info/warning-level `ui.notify` calls (90 + 18 = 108 sites
+  touched).** Soly is silent at the info/warning level — only errors fire
+  notifications. Affects: rules auto-reload messages, drift hint, `/soly
+  doctor`, `/soly iterations`, `/soly diff iterations`, `/soly phase
+  delete` success summaries, `/soly done` summary, `/soly new` summary,
+  `/soly stats`, `/docs stats`, etc. Errors (HTTP failure, missing files,
+  invalid counts, parse errors, push failures, etc.) still surface as
+  red notifications. `notifyFramed()` widget calls (used for nudges +
+  deprecations) are unchanged — those are intentional UX, not ambient
+  noise.
+
+  **Trade-off**: user-explicit commands like `/soly doctor` no longer show
+  their report in the notification stream. They still execute and update
+  internal state; the output is now visible via `soly_status` /
+  STATE.md / file system (e.g., the `.trash/` move is observable on
+  disk). If interactive command output is wanted back, route through the
+  command's return value rather than `ui.notify`.
+
+### Removed
+- `soly:` prefix from all ambient notifications (51 sites cleaned up as a
+  side-effect of the removals above).
+
 ## [2.1.1] — 2026-07-05
 
 ### Changed

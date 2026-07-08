@@ -100,7 +100,7 @@ export function showStatus(
 		}
 	}
 
-	ui.notify(lines.join("\n"), "info");
+
 }
 
 // =============================================================================
@@ -136,7 +136,7 @@ export function showLog(cmd: SolyCommand, state: SolyState, ui: QuickUI): void {
 	const lines = raw.split(/\r?\n/);
 	const decisionsIdx = lines.findIndex((l) => DECISIONS_HEADER.test(l));
 	if (decisionsIdx === -1) {
-		ui.notify("soly log: no Decisions table in STATE.md", "info");
+
 		return;
 	}
 
@@ -151,7 +151,7 @@ export function showLog(cmd: SolyCommand, state: SolyState, ui: QuickUI): void {
 	}
 
 	if (rows.length === 0) {
-		ui.notify("soly log: Decisions table is empty", "info");
+
 		return;
 	}
 
@@ -178,7 +178,7 @@ export function showLog(cmd: SolyCommand, state: SolyState, ui: QuickUI): void {
 		out.push(`           ${r.rationale}`);
 		out.push("");
 	}
-	ui.notify(out.join("\n"), "info");
+
 }
 
 // =============================================================================
@@ -254,5 +254,5 @@ export async function showDiff(
 		}
 	}
 
-	ui.notify(out.join("\n"), "info");
+
 }

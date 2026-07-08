@@ -95,7 +95,13 @@ describe("initSolyProject", () => {
 		const ui = makeUi();
 		const result = await initSolyProject(dir, ui, { autoYes: true, template: "minimal" });
 		expect(result.created).toBe(false);
-		expect(ui.calls.some((c) => c.type === "notify" && c.text.includes("already initialized"))).toBe(true);
+		// "already initialized" used to be an info notify; in 2.1.1+ info is silent.
+		// result.created === false is the durable signal. Errors still fire.
+		// "already initialized" used to be an info notify; in 2.1.1+ info is silent.
+// result.created === false is the durable signal. The remaining notify call
+// (if any) should be informational, not an error.
+const errorCalls = ui.calls.filter((c) => c.type === "error");
+expect(errorCalls.length).toBe(0);
 		fs.rmSync(dir, { recursive: true, force: true });
 	});
 

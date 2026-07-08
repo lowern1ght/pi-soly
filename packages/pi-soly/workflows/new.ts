@@ -164,7 +164,7 @@ export function buildNewTransform(
 	const notice = branchExisted
 		? `Plan '${name}' reused on existing branch ${branchName}.\nPLAN.md was ${planFile}.\nNext: \`soly plan ${branchName}\``
 		: `Plan '${name}' scaffolded on new branch ${branchName}.\nPLAN.md: ${planFile}\nNext: \`soly plan ${branchName}\``;
-	ui.notify(notice, "info");
+
 	return {
 		handled: true,
 		transformedText: notice,

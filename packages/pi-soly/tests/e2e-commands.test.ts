@@ -158,8 +158,9 @@ describe("E2E: /soly command", () => {
 
 		const handler = mockPi._commands.get("soly")!.handler;
 		await handler("position", ctx as never);
-		// Should have called notify at least once
-		expect(notifs.length).toBeGreaterThan(0);
+		// 2.1.1+ contract: info-level notifications removed; position is silent on
+		// the happy path. Errors would still surface.
+		expect(notifs.filter((n) => n.level === "error")).toEqual([]);
 	});
 
 	test("state subcommand does not throw", async () => {
@@ -198,15 +199,16 @@ describe("E2E: /rules command", () => {
 		await expect(handler("help", ctx as never)).resolves.toBeUndefined();
 	});
 
-	test("stats subcommand does not throw and produces output", async () => {
+	test("stats subcommand does not throw and is silent at info level", async () => {
 		const notifs: Array<{ text: string; level?: string }> = [];
 		const ctx = makeMockCtx(projectDir);
 		ctx.ui.notify = (text: string, level?: string) => { notifs.push({ text, level }); };
 
 		const handler = mockPi._commands.get("rules")!.handler;
 		await handler("stats", ctx as never);
-		// Should show the 📊 header
-		expect(notifs.some((n) => n.text.includes("📊"))).toBe(true);
+		// 2.1.1+ removed info-level notifications. Rules/stats used to fire a
+		// notify with 📊 header; now silent. Errors would still surface.
+		expect(notifs.filter((n) => n.level === "error")).toEqual([]);
 	});
 });
 
@@ -227,24 +229,25 @@ describe("E2E: /docs command", () => {
 		await expect(handler("stats", ctx as never)).resolves.toBeUndefined();
 	});
 
-	test("stats subcommand produces 📚 header", async () => {
+	test("stats subcommand is silent at info level", async () => {
 		const notifs: Array<{ text: string; level?: string }> = [];
 		const ctx = makeMockCtx(projectDir);
 		ctx.ui.notify = (text: string, level?: string) => { notifs.push({ text, level }); };
 
 		const handler = mockPi._commands.get("docs")!.handler;
 		await handler("stats", ctx as never);
-		expect(notifs.some((n) => n.text.includes("📚"))).toBe(true);
+		// 2.1.1+ removed info-level notifications. Docs/stats output is silent.
+		expect(notifs.filter((n) => n.level === "error")).toEqual([]);
 	});
 
-	test("empty docs shows 'No intent docs found' message", async () => {
+	test("empty docs handler does not throw and emits no errors", async () => {
 		const notifs: Array<{ text: string; level?: string }> = [];
 		const ctx = makeMockCtx(projectDir);
 		ctx.ui.notify = (text: string, level?: string) => { notifs.push({ text, level }); };
 
 		const handler = mockPi._commands.get("docs")!.handler;
-		await handler("stats", ctx as never);
-		expect(notifs.some((n) => n.text.includes("No intent docs found"))).toBe(true);
+		await expect(handler("stats", ctx as never)).resolves.toBeUndefined();
+		expect(notifs.filter((n) => n.level === "error")).toEqual([]);
 	});
 });
 
