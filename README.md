@@ -2,8 +2,6 @@
 
 # ⚡ pi-soly
 
-### Project management + workflow engine for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent)
-
 [![npm version](https://img.shields.io/npm/v/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
 [![npm downloads](https://img.shields.io/npm/dm/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
 [![CI](https://img.shields.io/github/actions/workflow/status/lowern1ght/pi-soly/ci.yml)](https://github.com/lowern1ght/pi-soly/actions)
@@ -16,38 +14,22 @@
 
 ![banner](packages/pi-soly/.assets/banner.png)
 
-> Plans · State · MANDATORY rules · Self-review · Multi-question picker.
-> One `npm install`. Zero config. LLM drives the workflow inline.
-
----
-
-## What it is
-
-pi-soly turns a plain pi-coding-agent session into a structured project:
-**plans** become git branches, **state** lives in `.agents/STATE.md` (visible
-to the LLM every turn), and **rules** load automatically into a
-`## ⚠️ MANDATORY` block in the system prompt. Workflows (plan / execute /
-verify / pause / resume) are first-class slash commands — no LLM round-trip
-needed, no external subagent plugin.
-
-The LLM doesn't drive the workflow — *you* do, via `/sly` /
-`soly new` / `soly execute`. The LLM is the executor inside that frame,
-following the rules and writing to the agreed paths.
-
 ## Install
 
 ```bash
 pi install npm:pi-soly
 ```
 
-That's it. Restart the pi session, then:
+Then in pi:
 
 ```text
-/sly                # open the project picker (aliases: /soly, /s)
 /sly init           # scaffold a new project (.agents/, docs/, rules/)
+soly new feat/foo   # create a plan branch
+soly execute feat/foo
+soly done feat/foo  # commit + push + open draft PR
 ```
 
-**Full documentation** (commands, rules engine, architecture, compatibility,
+Full documentation (commands, rules engine, architecture, compatibility,
 development) lives in [packages/pi-soly/README.md](packages/pi-soly/README.md).
 
 ## Layout
@@ -69,7 +51,8 @@ pi-soly.framework/                 monorepo root
 
 | Version | Highlights |
 |---|---|
-| **2.2.4** | Hero banner.png in `.assets/` (root README + per-package) |
+| **2.2.5** | Root README is a clean landing page (banner visible) |
+| **2.2.4** | Hero `banner.png` in `.assets/` |
 | **2.2.3** | README reworked (engineer tone); npm description tightened |
 | **2.2.2** | `.soly/` legacy removed; `.agents/` is the only path |
 | **2.2.1** | `commands.ts` split into per-command modules; `release-discipline.md` rule |

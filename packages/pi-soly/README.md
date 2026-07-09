@@ -2,8 +2,6 @@
 
 # ⚡ pi-soly
 
-### Project management + workflow engine for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent)
-
 [![npm version](https://img.shields.io/npm/v/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
 [![npm downloads](https://img.shields.io/npm/dm/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
 [![CI](https://img.shields.io/github/actions/workflow/status/lowern1ght/pi-soly/ci.yml)](https://github.com/lowern1ght/pi-soly/actions)
@@ -14,11 +12,6 @@
 </div>
 
 ![banner](./packages/pi-soly/.assets/banner.png)
-
-> Plans · State · MANDATORY rules · Self-review · Multi-question picker.
-> One `npm install`. Zero config. LLM drives the workflow inline.
-
----
 
 ## What it is
 

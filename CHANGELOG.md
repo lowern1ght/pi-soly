@@ -4,6 +4,15 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.2.6] — 2026-07-05
+
+### Changed
+- **Tightened README intros** (root and per-package). Removed the
+  redundant `### Project management + workflow engine for pi-coding-agent`
+  subtitle and the `> Plans · State · MANDATORY rules · Self-review · …`
+  blockquote that duplicated the next paragraph. Now: title → badges
+  → banner → install / what-it-is. Less noise at the top.
+
 ## [2.2.5] — 2026-07-05
 
 ### Fixed
