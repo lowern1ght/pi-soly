@@ -384,6 +384,10 @@ export default function solyExtension(pi: ExtensionAPI) {
 			}
 		},
 		getIntentDocs: () => intentDocs,
+		// Non-error soly events land in the Working sub-line (└─ prefixed).
+		// The route goes through the chrome so the sub-line auto-clears on
+		// the next agent_start.
+		recordEvent: (text, level) => chrome.recordEvent(text, level),
 	});
 
 	registerTools(pi, {

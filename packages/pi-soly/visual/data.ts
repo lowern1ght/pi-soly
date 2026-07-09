@@ -39,6 +39,12 @@ export type ChromeData = {
 	verbLabel: string | null;
 	/** html_artifacts created this session (0 = no segment). */
 	artifactCount: number;
+	/** Most recent non-error soly event (e.g. "reloaded 47 rules"). Rendered
+	 *  as a sub-line under the Working indicator; auto-cleared by the next
+	 *  agent_start. null = no recent event. */
+	recentEvent: string | null;
+	/** Level of the recent event (used for glyph/color). */
+	recentEventLevel: "info" | "warning" | "error" | null;
 };
 
 /** A fresh ChromeData with everything empty/idle. */
@@ -58,5 +64,7 @@ export function emptyChromeData(): ChromeData {
 		phaseLabel: null,
 		verbLabel: null,
 		artifactCount: 0,
+		recentEvent: null,
+		recentEventLevel: null,
 	};
 }

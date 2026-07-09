@@ -25,10 +25,10 @@ import { initSolyProject } from "../init.js";
 import { parseSolyCommand, type SolyCommand, type WorkflowVerb } from "../workflows/parser.ts";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
-type SolyDeps = Pick<CommandsDeps, "getState" | "getConfig" | "reloadConfig" | "updateStatus" | "refreshState">;
+type SolyDeps = Pick<CommandsDeps, "getState" | "getConfig" | "reloadConfig" | "updateStatus" | "refreshState" | "recordEvent">;
 
 export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
-	const { getState, getConfig, reloadConfig, updateStatus, refreshState } = deps;
+	const { getState, getConfig, reloadConfig, updateStatus, refreshState, recordEvent } = deps;
 
 	const solyBody = async (args: string, ctx: ExtensionCommandContext): Promise<void> => {
 			const ui: CommandUI = {
@@ -105,22 +105,22 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 				switch (verb) {
 					case "new": {
 						const r = buildNewTransform(cmd, state, ui, ctx.cwd, getConfig().plan.defaultBranchPrefix);
-						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
+						if (r.handled && r.transformedText) recordEvent(r.transformedText);
 						return;
 					}
 					case "done": {
 						const r = buildDoneTransform(cmd, state, ui, ctx.cwd, { defaultBranchPrefix: getConfig().plan.defaultBranchPrefix });
-						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
+						if (r.handled && r.transformedText) recordEvent(r.transformedText);
 						return;
 					}
 					case "migrate": {
 						const r = buildMigrateTransform(state, ui, ctx.cwd);
-						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
+						if (r.handled && r.transformedText) recordEvent(r.transformedText);
 						return;
 					}
 					case "plan": {
 						const r = buildPlanTransform(cmd, state);
-						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
+						if (r.handled && r.transformedText) recordEvent(r.transformedText);
 						return;
 					}
 					case "discuss": {
@@ -129,13 +129,13 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 						// plain-text discussion format; the LLM-driven path still
 						// gets the richer ask_pro flow.
 						const r = buildDiscussTransform(cmd, state, { hasAskPro: false });
-						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
+						if (r.handled && r.transformedText) recordEvent(r.transformedText);
 						return;
 					}
 					case "execute": {
 						// Slash-command path doesn't have live interactive rules.
 						const r = buildExecuteTransform(cmd, state, []);
-						if (r.handled && r.transformedText) ui.notify(r.transformedText, "info");
+						if (r.handled && r.transformedText) recordEvent(r.transformedText);
 						return;
 					}
 					default:
@@ -181,7 +181,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 								"info",
 							);
 						} else {
-							ui.notify(`${s.milestone} — no position set`, "info");
+							recordEvent(`${s.milestone} — no position set`);
 						}
 					},
 				},
@@ -244,7 +244,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 					run: () => {
 						const s = getState();
 						const line = `${s.progress.percent}% · ${s.progress.completedPhases}/${s.progress.totalPhases} phases · ${s.progress.completedPlans}/${s.progress.totalPlans} plans`;
-						ui.notify(line, "info");
+						recordEvent(line);
 					},
 				},
 				phases: {
@@ -252,7 +252,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 					run: () => {
 						const phases = getState().phases;
 						if (phases.length === 0) {
-							ui.notify("no phases", "info");
+							recordEvent("no phases");
 							return;
 						}
 						const current = getState().currentPhase?.number;
@@ -261,7 +261,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 							const cr = (p.contextExists ? "C" : "·") + (p.researchExists ? "R" : "·");
 							return `${marker} ${String(p.number).padStart(2, "0")}. ${p.name}  [${cr}]  plans=${p.planCount}`;
 						});
-						ui.notify(lines.join("\n"), "info");
+						recordEvent(lines.join("\n"));
 					},
 				},
 				tasks: {
@@ -269,7 +269,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 					run: () => {
 						const s = getState();
 						if (s.tasks.length === 0) {
-							ui.notify("no tasks", "info");
+							recordEvent("no tasks");
 							return;
 						}
 						const byFeature = new Map<string, typeof s.tasks>();
@@ -288,7 +288,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 							}
 							out.push("");
 						}
-						ui.notify(out.join("\n"), "info");
+						recordEvent(out.join("\n"));
 					},
 				},
 				task: {
@@ -319,7 +319,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 						if (summaryBody) {
 							showFile("SUMMARY.md", summaryBody);
 						} else {
-							ui.notify("no SUMMARY.md yet", "info");
+							recordEvent("no SUMMARY.md yet");
 						}
 					},
 				},
@@ -328,14 +328,14 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 					run: () => {
 						const features = getState().features;
 						if (features.length === 0) {
-							ui.notify("no features", "info");
+							recordEvent("no features");
 							return;
 						}
 						const lines = features.map((f) => {
 							const rm = f.readmeExists ? "R" : "·";
 							return `  ${f.name.padEnd(28)} tasks=${f.taskCount}  [${rm}]`;
 						});
-						ui.notify(lines.join("\n"), "info");
+						recordEvent(lines.join("\n"));
 					},
 				},
 				milestone: {
@@ -343,7 +343,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 					run: () => {
 						const s = getState();
 						if (!s.milestone || s.milestone === "—") {
-							ui.notify("soly: no milestone set", "info");
+							recordEvent("no milestone set");
 							return;
 						}
 						const candidates = [
@@ -369,7 +369,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 						refreshState();
 						updateStatus(ui);
 						const s = getState();
-						ui.notify(`re-read state: ${s.phases.length} phases · ${s.tasks.length} tasks`, "info");
+						recordEvent(`re-read state: ${s.phases.length} phases · ${s.tasks.length} tasks`);
 					},
 				},
 				// ------------------------------------------------------------------

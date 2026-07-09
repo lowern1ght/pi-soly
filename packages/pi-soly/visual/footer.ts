@@ -124,6 +124,15 @@ export class SolyFooter implements Component {
 	}
 
 	render(width: number): string[] {
-		return [buildFooterLine(this.data, this.fd, width, { ascii: this.getAscii(), styler: themeStyler(this.theme) })];
+		const out: string[] = [buildFooterLine(this.data, this.fd, width, { ascii: this.getAscii(), styler: themeStyler(this.theme) })];
+		const event = this.data.recentEvent;
+		if (event) {
+			const glyph = this.data.recentEventLevel === "warning" ? "└─ ⚠" : "└─";
+			const styled = this.data.recentEventLevel === "warning"
+				? themeStyler(this.theme).fg("warning", `${glyph} ${event}`)
+				: themeStyler(this.theme).dim(`${glyph} ${event}`);
+			out.push("    " + styled);
+		}
+		return out;
 	}
 }

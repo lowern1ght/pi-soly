@@ -39,6 +39,6 @@ export function registerCommands(pi: ExtensionAPI, deps: CommandsDeps): void {
 	registerDocsCommand(pi, deps);
 	registerSolyCommand(pi, deps); // also registers /sly and /s
 	registerArtifactsCommand(pi, deps);
-	registerRulewizardCommand(pi);
+	registerRulewizardCommand(pi, deps);
 	registerWhyCommand(pi, deps);
 }

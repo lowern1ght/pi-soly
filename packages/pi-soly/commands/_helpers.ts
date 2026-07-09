@@ -40,6 +40,12 @@ export interface CommandsDeps {
 	getConfig: () => SolyConfig;
 	reloadConfig: () => void;
 	getIntentDocs: () => IntentDoc[];
+	/** Record a non-error soly event. Rendered as a sub-line under the
+	 *  Working indicator (└─ prefixed, dim/yellow by level). Use this for
+	 *  informational events (e.g. "reloaded 47 rules") — they shouldn't be
+	 *  popups. Errors must still go through `ui.notify(text, "error")` for
+	 *  the popup surface. */
+	recordEvent: (text: string, level?: "info" | "warning") => void;
 }
 
 /** Open a focused list modal (overlay) for the given grouped items. */

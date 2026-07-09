@@ -61,6 +61,11 @@ export type Chrome = {
 	updateWorking(ui: ExtensionUIContext, outputTokens: number): void;
 	/** Stop the telemetry line and restore the default message (agent_end). */
 	stopWorking(ui: ExtensionUIContext): void;
+	/** Record a non-error soly event. Rendered as a sub-line under the
+	 *  Working indicator (└─ prefixed, level-marker glyph). Auto-cleared on
+	 *  the next `startWorking`. Errors are still surfaced via
+	 *  `ui.notify(text, "error")` — call that directly for the popup. */
+	recordEvent(text: string, level?: "info" | "warning"): void;
 	/** Restore pi's native footer/widgets/indicator (session_shutdown / disable). */
 	dispose(ui?: ExtensionUIContext): void;
 };
@@ -98,9 +103,15 @@ export function createChrome(getConfig: () => ChromeConfig): Chrome {
 	};
 
 	return {
+		recordEvent(text: string, level: "info" | "warning" = "info"): void {
+			data.recentEvent = text;
+			data.recentEventLevel = level;
+			try { tui?.requestRender(); } catch { /* not mounted yet */ }
+		},
+
 		data,
 
-		install(ui): void {
+		install(ui: ExtensionUIContext): void {
 			if (!getConfig().enabled) return;
 			ui.setWorkingIndicator({ frames: getConfig().spinnerFrames, intervalMs: getConfig().spinnerIntervalMs });
 			ui.setFooter((t, theme, footerData) => {
@@ -133,6 +144,10 @@ export function createChrome(getConfig: () => ChromeConfig): Chrome {
 		startWorking(ui): void {
 			if (!getConfig().enabled || !getConfig().telemetry) return;
 			clearWorking();
+			// Each new turn starts with a clean sub-line — old events were
+			// from the previous turn, not relevant to the current one.
+			data.recentEvent = null;
+			data.recentEventLevel = null;
 			working = { ui, startMs: Date.now(), inputTokens: data.ctxTokens ?? 0, outputTokens: 0, timer: null };
 			renderWorking();
 			working.timer = setInterval(renderWorking, 1000);

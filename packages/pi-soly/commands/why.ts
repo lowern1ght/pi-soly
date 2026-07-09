@@ -5,10 +5,10 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import type { CommandsDeps } from "./_helpers.ts";
 
-type WhyDeps = Pick<CommandsDeps, "getState" | "getRules">;
+type WhyDeps = Pick<CommandsDeps, "getState" | "getRules" | "recordEvent">;
 
 export function registerWhyCommand(pi: ExtensionAPI, deps: WhyDeps): void {
-	const { getState, getRules } = deps;
+	const { getState, getRules, recordEvent } = deps;
 
 	pi.registerCommand("why", {
 		description:

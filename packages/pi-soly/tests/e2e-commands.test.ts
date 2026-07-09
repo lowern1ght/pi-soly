@@ -118,6 +118,7 @@ function makeMockDeps(cwd: string) {
 			codeMap: { maxFiles: 200, maxDepth: 5 },
 		}),
 		getIntentDocs: () => [],
+		recordEvent: () => {},
 	};
 }
 

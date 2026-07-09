@@ -7,10 +7,10 @@ import { formatTok, solyDirFor } from "../core.ts";
 import { buildIntentStats, formatIntentStats, loadInlineIntentBodies, type IntentInlineDoc } from "../intent.ts";
 import { openListPanel, type CommandUI, type CommandsDeps } from "./_helpers.ts";
 
-type DocsDeps = Pick<CommandsDeps, "getIntentDocs">;
+type DocsDeps = Pick<CommandsDeps, "getIntentDocs" | "recordEvent">;
 
 export function registerDocsCommand(pi: ExtensionAPI, deps: DocsDeps): void {
-	const { getIntentDocs } = deps;
+	const { getIntentDocs, recordEvent } = deps;
 
 	pi.registerCommand("docs", {
 		description: "manage soly intent docs (stats — show context breakdown)",
@@ -30,7 +30,7 @@ export function registerDocsCommand(pi: ExtensionAPI, deps: DocsDeps): void {
 			if (sub === "list") {
 				const docs = getIntentDocs();
 				if (docs.length === 0) {
-					ui.notify("no intent docs found in .agents/docs/ — drop your vision/domain docs there", "info");
+					recordEvent("no intent docs found in .agents/docs/ — drop your vision/domain docs there");
 					return;
 				}
 				if (ctx.mode === "tui") {
@@ -55,7 +55,7 @@ export function registerDocsCommand(pi: ExtensionAPI, deps: DocsDeps): void {
 					});
 					return;
 				}
-				ui.notify(docs.map((d) => `○ ${d.title || d.relPath} (${formatTok(d.tokens)} tok)`).join("\n"), "info");
+				recordEvent(docs.map((d) => `○ ${d.title || d.relPath} (${formatTok(d.tokens)} tok)`).join("\n"));
 				return;
 			}
 
@@ -63,7 +63,7 @@ export function registerDocsCommand(pi: ExtensionAPI, deps: DocsDeps): void {
 				const docs = getIntentDocs();
 				const inlineBodies: IntentInlineDoc[] = loadInlineIntentBodies(docs);
 				const stats = buildIntentStats(docs, inlineBodies);
-				ui.notify(formatIntentStats(stats), "info");
+				recordEvent(formatIntentStats(stats));
 				return;
 			}
 

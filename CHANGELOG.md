@@ -4,6 +4,44 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.3.0] — 2026-07-05
+
+### Changed
+- **Non-error soly notifications moved to a sub-line under the Working
+  indicator.** Previously every command emit (reload, cleared, opened,
+  no-X-found, etc.) fired a popup-style `ui.notify(text, "info")` or
+  `ui.notify(text, "warning")`. Now they go through a new
+  `chrome.recordEvent(text, level)` which renders as:
+
+  ```
+  ⠙ Working · 8s · ↑12.4k ↓1.2k · 148 tok/s
+      └─ reloaded 47 rules
+  ```
+
+  Format picked by the user: `└─` (U+2514 box-drawing corner)
+  continuation glyph with 4-space indent, in the dim footer colour.
+  Warnings add a `⚠` prefix and render in the `warning` colour. The
+  sub-line auto-clears on the next `agent_start` (`startWorking`
+  resets `data.recentEvent = null`).
+
+### Added
+- **`chrome.recordEvent(text, level?)`** — public API on the chrome
+  controller. Records a non-error soly event; rendered as the sub-line
+  in the footer.
+- **`data.recentEvent: string | null`** and **`data.recentEventLevel`**
+  on `ChromeData` — live snapshot read by the footer each render.
+- **`CommandsDeps.recordEvent`** — each per-command module takes a
+  `Pick<CommandsDeps, …>` that now includes `recordEvent` so commands
+  can route events through the chrome instead of the popup surface.
+
+### Migration
+- 56 call sites across `commands/{artifacts,docs,rules,soly}.ts`
+  migrated from `ui.notify(text, "info")` / `ui.notify(text, "warning")`
+  to `recordEvent(text[, level])`. The `soly:` prefix is also stripped
+  — the chrome `└─` glyph already brands the sub-line.
+- `ui.notify(text, "error")` is unchanged — errors still pop up
+  (intentionally, so the user notices them).
+
 ## [2.2.7] — 2026-07-05
 
 ### Changed

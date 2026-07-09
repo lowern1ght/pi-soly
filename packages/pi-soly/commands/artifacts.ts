@@ -6,16 +6,16 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-c
 import { getArtifactServer, ensureArtifactServer, artifactDir } from "../artifact/session.ts";
 import { openListPanel, openExternally, type CommandsDeps } from "./_helpers.ts";
 
-type ArtifactsDeps = Pick<CommandsDeps, "getConfig">;
+type ArtifactsDeps = Pick<CommandsDeps, "getConfig" | "recordEvent">;
 
 export function registerArtifactsCommand(pi: ExtensionAPI, deps: ArtifactsDeps): void {
-	const { getConfig } = deps;
+	const { getConfig, recordEvent } = deps;
 
 	pi.registerCommand("artifacts", {
 		description: "browse this project's html_artifact gallery (list, open, clear)",
 		handler: async (args, ctx) => {
 			if (!getConfig().artifacts.server) {
-				ctx.ui.notify("soly: artifact server is disabled (artifacts.server=false)", "info");
+				recordEvent("artifact server is disabled (artifacts.server=false)");
 				return;
 			}
 			// Always re-resolve: reuse another window's server or start ours, and
@@ -27,7 +27,7 @@ export function registerArtifactsCommand(pi: ExtensionAPI, deps: ArtifactsDeps):
 				// ignore — handled by the count check below
 			}
 			if (!server || server.count === 0) {
-				ctx.ui.notify("soly: no artifacts for this project yet (use the html_artifact tool)", "info");
+				recordEvent("no artifacts for this project yet (use the html_artifact tool)");
 				return;
 			}
 			const gallery = server.galleryUrl();
@@ -35,15 +35,15 @@ export function registerArtifactsCommand(pi: ExtensionAPI, deps: ArtifactsDeps):
 
 			if (sub === "clear") {
 				const n = server.clear();
-				ctx.ui.notify(`soly: cleared ${n} artifact(s)`, "info");
+				recordEvent(`cleared ${n} artifact(s)`);
 				return;
 			}
 			if (sub === "open" || sub === "gallery") {
 				try {
 					await openExternally(pi, gallery);
-					ctx.ui.notify(`soly: opened ${gallery}`, "info");
+					recordEvent(`opened ${gallery}`);
 				} catch {
-					ctx.ui.notify(`soly artifacts gallery: ${gallery}`, "info");
+					recordEvent(`soly artifacts gallery: ${gallery}`);
 				}
 				return;
 			}
@@ -80,7 +80,7 @@ export function registerArtifactsCommand(pi: ExtensionAPI, deps: ArtifactsDeps):
 
 			// Non-TUI: print the list + gallery URL.
 			const lines = server.list().map((a) => `🖼 ${a.title} — ${a.url}`);
-			ctx.ui.notify([`soly artifacts gallery: ${gallery}`, "", ...lines].join("\n"), "info");
+			recordEvent([`soly artifacts gallery: ${gallery}`, "", ...lines].join("\n"));
 		},
 	});
 }

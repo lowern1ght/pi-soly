@@ -30,10 +30,10 @@ function ruleItem(r: RuleFile): ListItem {
 	};
 }
 
-type RulesDeps = Pick<CommandsDeps, "getRules" | "getOverridden" | "refreshRules" | "updateStatus">;
+type RulesDeps = Pick<CommandsDeps, "getRules" | "getOverridden" | "refreshRules" | "updateStatus" | "recordEvent">;
 
 export function registerRulesCommand(pi: ExtensionAPI, deps: RulesDeps): void {
-	const { getRules, getOverridden, refreshRules, updateStatus } = deps;
+	const { getRules, getOverridden, refreshRules, updateStatus, recordEvent } = deps;
 
 	pi.registerCommand("rules", {
 		description: "manage soly rules (list, show, stats, analytics, reload, enable, disable)",
@@ -55,7 +55,7 @@ export function registerRulesCommand(pi: ExtensionAPI, deps: RulesDeps): void {
 				const rules = getRules();
 				const overridden = getOverridden();
 				if (rules.length === 0 && overridden.length === 0) {
-					ui.notify("soly: no rules loaded — check `.agents/rules/` or `~/.agents/rules/`", "warning");
+					recordEvent("no rules loaded — check `.agents/rules/` or `~/.agents/rules/`", "warning");
 					return;
 				}
 				// Rich modal in the TUI; plain select elsewhere (RPC/print).
@@ -85,7 +85,7 @@ export function registerRulesCommand(pi: ExtensionAPI, deps: RulesDeps): void {
 				for (const p of overridden) {
 					lines.push(`⊘ [overridden] ${p}`);
 				}
-				ui.notify(lines.join("\n"), "info");
+				recordEvent(lines.join("\n"));
 				return;
 			}
 
@@ -100,20 +100,20 @@ export function registerRulesCommand(pi: ExtensionAPI, deps: RulesDeps): void {
 					return;
 				}
 				const text = `---\n${r.meta.description ? `description: ${r.meta.description}\n` : ""}source: ${r.sourceLabel}\nenabled: ${r.enabled}\n---\n\n${r.body}`;
-				ui.notify(text, "info");
+				recordEvent(text);
 				return;
 			}
 
 			if (sub === "stats") {
 				const analytics = analyzeRules(getRules(), CONTEXT_WINDOW_TOKENS);
-				ui.notify(formatAnalyticsFull(analytics), "info");
+				recordEvent(formatAnalyticsFull(analytics));
 				return;
 			}
 
 			if (sub === "analytics") {
 				const rules = getRules();
 				const stats = buildRulesContextStats(rules, CONTEXT_WINDOW_TOKENS);
-				ui.notify(formatRulesContextStats(stats), "info");
+				recordEvent(formatRulesContextStats(stats));
 				return;
 			}
 
@@ -129,14 +129,14 @@ export function registerRulesCommand(pi: ExtensionAPI, deps: RulesDeps): void {
 				}
 				r.enabled = sub === "enable";
 				updateStatus(ui);
-				ui.notify(`Rule ${target}: ${sub}d`, "info");
+				recordEvent(`Rule ${target}: ${sub}d`);
 				return;
 			}
 
 			if (sub === "reload") {
 				refreshRules();
 				updateStatus(ui);
-				ui.notify(`Reloaded ${getRules().length} rules`, "info");
+				recordEvent(`Reloaded ${getRules().length} rules`);
 				return;
 			}
 

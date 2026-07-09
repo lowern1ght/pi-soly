@@ -3,8 +3,10 @@
 // =============================================================================
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import type { CommandsDeps } from "./_helpers.ts";
 
-export function registerRulewizardCommand(pi: ExtensionAPI): void {
+export function registerRulewizardCommand(pi: ExtensionAPI, deps: CommandsDeps): void {
+	void deps; // rulewizard doesn't currently emit non-error events
 	pi.registerCommand("rulewizard", {
 		description:
 			"interactive guide: decide whether a constraint should be a soly rule, an .editorconfig entry, or a linter config (eslint/biome/prettier). Use this BEFORE writing a new rule to avoid duplicating what linters already enforce.",
