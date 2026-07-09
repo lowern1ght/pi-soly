@@ -4,6 +4,16 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.2.4] — 2026-07-05
+
+### Added
+- **`packages/pi-soly/.assets/banner.png`** (1280×400) — the README
+  hero now renders an actual image instead of a broken link. The
+  remaining 4 modal screenshots referenced from README
+  (`soly-picker.png`, `ask-pro.png`, `decision-deck.png`,
+  `soly-settings.png`) are still TODO — the references in README are
+  wired so they light up when the PNGs land in `.assets/`.
+
 ## [2.2.3] — 2026-07-05
 
 ### Changed
