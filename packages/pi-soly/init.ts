@@ -206,9 +206,9 @@ export async function initSolyProject(
 	const agentsDir = path.join(cwd, SOLY_DIRNAME);
 
 	// Preconditions
-	if (fs.existsSync(agentsDir) || fs.existsSync(path.join(cwd, ".soly"))) {
+	if (fs.existsSync(agentsDir)) {
 		ui.notify(
-			`soly init: project already initialized (found ${SOLY_DIRNAME}/ or .soly/). ` +
+			`soly init: project already initialized (found ${SOLY_DIRNAME}/). ` +
 				`Aborting to avoid overwriting.`,
 			"error",
 		);

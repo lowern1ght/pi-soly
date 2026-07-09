@@ -89,28 +89,16 @@ describe("initSolyProject", () => {
 		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
-	test("aborts when .agents/ or .soly/ already exists", async () => {
+	test("aborts when .agents/ already exists", async () => {
 		const dir = makeEmptyProject();
 		fs.mkdirSync(path.join(dir, ".agents"), { recursive: true });
 		const ui = makeUi();
 		const result = await initSolyProject(dir, ui, { autoYes: true, template: "minimal" });
 		expect(result.created).toBe(false);
-		// "already initialized" used to be an info notify; in 2.1.1+ info is silent.
-		// result.created === false is the durable signal. Errors still fire.
-		// "already initialized" used to be an info notify; in 2.1.1+ info is silent.
-// result.created === false is the durable signal. The remaining notify call
-// (if any) should be informational, not an error.
-const errorCalls = ui.calls.filter((c) => c.type === "error");
-expect(errorCalls.length).toBe(0);
-		fs.rmSync(dir, { recursive: true, force: true });
-	});
-
-	test("aborts when .soly/ exists (legacy project)", async () => {
-		const dir = makeEmptyProject();
-		fs.mkdirSync(path.join(dir, ".soly"), { recursive: true });
-		const ui = makeUi();
-		const result = await initSolyProject(dir, ui, { autoYes: true, template: "minimal" });
-		expect(result.created).toBe(false);
+		// 2.1.1+ contract: info-level notifies are silent; result.created === false
+		// is the durable signal. Errors still fire.
+		const errorCalls = ui.calls.filter((c) => c.type === "error");
+		expect(errorCalls.length).toBe(0);
 		fs.rmSync(dir, { recursive: true, force: true });
 	});
 

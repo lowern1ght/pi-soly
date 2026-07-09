@@ -4,6 +4,37 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.2.2] — 2026-07-05
+
+### Removed
+- **`.soly/` legacy support is gone.** Five code sites removed:
+    - `core.ts:1533-1547` — dropped `LEGACY_SOLY_DIRNAME` constant and
+      `isLegacySolyDir()` function
+    - `index.ts:438-449` — removed the `session_start` deprecation
+      banner that fired when a project had only `.soly/` (no `.agents/`)
+    - `init.ts:209-215` — removed the `.soly/` branch of the
+      "project already initialized" precondition (init now only checks
+      `.agents/`)
+    - `README.md:306` and `SKILL.md:109` — removed the parenthetical
+      "(Projects from before the rename used .soly/; soly no longer
+      reads it — run `mv .soly .agents`.)" mentions
+  Users with a pre-rename project lose the one-time migration banner,
+  but soly already didn't read their `.soly/` data — their state was
+  invisible before, and is now invisible without the deprecation toast.
+  This was the source of an LLM-confusion bug: the LLM was reaching
+  for plans in `.soly/` because the docs still mentioned it. Removing
+  the references entirely makes `.agents/` the only option the LLM
+  sees.
+
+### Changed
+- **`tests/init.test.ts:108` (`aborts when .soly/ exists`) removed.**
+  The companion test at line 92 is now `aborts when .agents/ already
+  exists` — matches the new init precondition.
+- **`tests/notification.test.ts:181` no longer uses `.soly/` strings.**
+  Switched to a neutral `old-thing` / `new-thing` example so the test
+  still exercises `notifyDeprecation` without bringing back the
+  removed directory name.
+
 ## [2.2.1] — 2026-07-05
 
 ### Added

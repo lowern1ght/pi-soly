@@ -178,7 +178,7 @@ describe("notifyNudge", () => {
 describe("notifyDeprecation", () => {
 	test("uses 'soly-deprecation' key + toolPendingBg", () => {
 		const { ui, widgets } = makeUi();
-		notifyDeprecation(ui, ".soly/", ".agents/", "run mv .soly .agents");
+		notifyDeprecation(ui, "old-thing/", "new-thing/", "run migration command");
 		expect(widgets.size).toBe(1);
 		const w = [...widgets.values()][0]!;
 		expect(w.key).toBe("soly-deprecation");

@@ -303,7 +303,7 @@ Use it when a visual, rendered result beats terminal text (example galleries, co
                 └──────────────────┘
 ```
 
-State lives in `.agents/` — portable, git-friendly, human-readable. (Projects from before the rename used `.soly/`; soly no longer reads it — run `mv .soly .agents`.)
+State lives in `.agents/` — portable, git-friendly, human-readable.
 
 ```
 .agents/

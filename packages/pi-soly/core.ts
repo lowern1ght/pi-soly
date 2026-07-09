@@ -1526,25 +1526,12 @@ export function buildStatusLine(
 // Soly dir helper
 // ============================================================================
 
-/** Preferred soly dir name (vendor-neutral). */
+/** The only soly project dir name. Vendor-neutral. */
 export const SOLY_DIRNAME = ".agents";
 
-/** Legacy soly dir name. Detection-only — soly no longer reads or writes it.
- *  Used to warn users with an old `.soly/` project to rename it to `.agents/`. */
-export const LEGACY_SOLY_DIRNAME = ".soly";
-
-/** The soly project dir for a given cwd. Always `<cwd>/.agents/` — the legacy
- *  `.soly/` location is no longer read (rename it; `isLegacySolyDir` warns). */
+/** The soly project dir for a given cwd. Always `<cwd>/.agents/`. */
 export function solyDirFor(cwd: string): string {
 	return path.join(cwd, SOLY_DIRNAME);
-}
-
-/** True if a legacy `.soly/` dir exists but `.agents/` doesn't — i.e. the
- *  project predates the rename and is now invisible to soly. Warn the user. */
-export function isLegacySolyDir(cwd: string): boolean {
-	const newPath = path.join(cwd, SOLY_DIRNAME);
-	const oldPath = path.join(cwd, LEGACY_SOLY_DIRNAME);
-	return !fs.existsSync(newPath) && fs.existsSync(oldPath);
 }
 
 // ============================================================================

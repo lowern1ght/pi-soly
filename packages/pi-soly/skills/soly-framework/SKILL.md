@@ -106,7 +106,7 @@ stateful self-review loop you start by typing `soly verify` (it's not a
 │   └── .continue-here.md          # pause resume marker
 ```
 
-**One home:** everything lives under `.agents/` — soly's workflow artifacts (PLAN.md, SUMMARY.md, phases, STATE), project rules/docs, and the vendor-neutral config (skills, agents) other AI tools also read. Global rules/config live under `~/.agents/`. `AGENTS.md` at the project root carries top-level agent conventions. (Projects from before the rename used `.soly/`; soly no longer reads it — run `mv .soly .agents`.)
+**One home:** everything lives under `.agents/` — soly's workflow artifacts (PLAN.md, SUMMARY.md, phases, STATE), project rules/docs, and the vendor-neutral config (skills, agents) other AI tools also read. Global rules/config live under `~/.agents/`. `AGENTS.md` at the project root carries top-level agent conventions.
 
 ## Frontmatter conventions
 

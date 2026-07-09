@@ -43,7 +43,6 @@ import {
 	STATUS_ID,
 	solyDirFor,
 	SOLY_DIRNAME,
-	isLegacySolyDir,
 	buildNextHint,
 	buildDriftReminder,
 	type RuleFile,
@@ -436,18 +435,6 @@ export default function solyExtension(pi: ExtensionAPI) {
 	// ============================================================================
 
 	pi.on("session_start", async (event, ctx) => {
-		// Legacy detection: a project with only a `.soly/` dir (no `.agents/`)
-		// is now invisible to soly — warn the user to rename it. soly no longer
-		// reads `.soly/`. One-time per session.
-		if (isLegacySolyDir(ctx.cwd)) {
-			notifyDeprecation(
-				ctx.ui,
-				`.soly/ (legacy, no longer read)`,
-				`.agents/`,
-				`Run \`mv .soly .agents\` — soly now reads only \`.agents/\`.`,
-			);
-		}
-
 		// Rules sources (priority order, higher wins on relPath collision).
 		// Project rules always beat global rules. `.agents/rules.local/` is
 		// gitignored — for personal overrides on top of the project's rules.
