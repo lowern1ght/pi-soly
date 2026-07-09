@@ -4,6 +4,14 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.2.7] — 2026-07-05
+
+### Changed
+- **Banner now renders before everything else** in both `README.md` files.
+  Previously the order was: title → badges → nav → banner → content.
+  Now: banner → title → badges → nav → content. The hero image is the
+  first thing the eye lands on.
+
 ## [2.2.6] — 2026-07-05
 
 ### Changed

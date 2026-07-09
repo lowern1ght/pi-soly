@@ -1,3 +1,5 @@
+![banner](packages/pi-soly/.assets/banner.png)
+
 <div align="center">
 
 # ⚡ pi-soly
@@ -11,8 +13,6 @@
 [Install](#install) · [Commands](packages/pi-soly/README.md#commands) · [Architecture](packages/pi-soly/README.md#architecture) · [Releases](packages/pi-soly/README.md#releases)
 
 </div>
-
-![banner](packages/pi-soly/.assets/banner.png)
 
 ## Install
 
