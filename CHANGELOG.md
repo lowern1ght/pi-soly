@@ -4,6 +4,32 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.2.3] — 2026-07-05
+
+### Changed
+- **README reworked** (engineer tone, for pi-coding-agent users).
+  Structure: hero → install → quick start → commands → rules/docs →
+  mandatory block → architecture → releases → compatibility. Trimmed
+  redundant sections, added `## Compatibility` and `## Releases` tables.
+  Lead with the `/sly` picker screenshot in the Quick start section.
+- **npm description tightened** for search: "Workflow + project
+  management for pi-coding-agent. Plans, state, MANDATORY rules,
+  self-review, multi-question picker. One npm install, zero config.
+  LLM drives the workflow inline via the soly_workflow tool."
+
+### Added
+- **`packages/pi-soly/.assets/` directory** with a README spec sheet
+  for the visual assets the README references:
+    - `banner.png` — hero (1280×400)
+    - `soly-picker.png` — `/sly` modal with Status/Inspect/Manage
+    - `ask-pro.png` — multi-question picker
+    - `decision-deck.png` — full-screen comparison cards
+    - `soly-settings.png` — interactive config editor
+  Brand invariants: dark palette `#1a1a1a`/`#e0e0e0`/`#fbbf24`,
+  monospace, BMP glyphs only, no OS-specific paths in screenshots.
+  The `package.json#files` allowlist now includes `.assets/` so the
+  assets ship with the published tarball.
+
 ## [2.2.2] — 2026-07-05
 
 ### Removed

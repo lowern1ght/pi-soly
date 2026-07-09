@@ -2,414 +2,228 @@
 
 # ⚡ pi-soly
 
-**The project management + workflow engine for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent).**
-
-Plans · State · Rules · Multi-question picker. One `npm install`. Zero config.
+### Project management + workflow engine for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent)
 
 [![npm version](https://img.shields.io/npm/v/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
 [![npm downloads](https://img.shields.io/npm/dm/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
 [![CI](https://img.shields.io/github/actions/workflow/status/lowern1ght/pi-soly/ci.yml)](https://github.com/lowern1ght/pi-soly/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/lowern1ght/pi-soly/blob/master/LICENSE)
-[![Built with Bun](https://img.shields.io/badge/Built_with-Bun-f9f1e1?logo=bun)](https://bun.sh)
 
-[Install](#-install) · [Commands](#-commands) · [Rules & Docs](#-rules--docs) · [Architecture](#-architecture) · [Releases](#-releases)
+[Install](#install) · [Commands](#commands) · [Rules & Docs](#rules--docs) · [Architecture](#architecture) · [Releases](#releases)
 
 </div>
 
+![banner](./packages/pi-soly/.assets/banner.png)
+
+> Plans · State · MANDATORY rules · Self-review · Multi-question picker.
+> One `npm install`. Zero config. LLM drives the workflow inline.
+
 ---
 
-## ⚡ Install
+## What it is
+
+pi-soly turns a plain pi-coding-agent session into a structured project:
+**plans** become git branches, **state** lives in `.agents/STATE.md` (visible
+to the LLM every turn), and **rules** load automatically into a
+`## ⚠️ MANDATORY` block in the system prompt. Workflows (plan / execute /
+verify / pause / resume) are first-class slash commands — no LLM round-trip
+needed, no external subagent plugin.
+
+The LLM doesn't drive the workflow — *you* do, via `/sly` /
+`soly new` / `soly execute`. The LLM is the executor inside that frame,
+following the rules and writing to the agreed paths.
+
+## Install
 
 ```bash
 pi install npm:pi-soly
 ```
 
-Restart pi (`/reload`), and you have:
-
-- **Project management** — plans, state, phases, decisions
-- **Workflow engine** — runs inline (no subagent plugin). The model proposes the next step and drives it via the `soly_workflow` tool on your plain-language intent; the verbs `soly discuss` · `plan` · `execute` · `verify` · `pause`/`resume` still work as text
-- **Self-review loop** — `soly verify` re-reviews the work until "No issues found."
-- **Goal-aware verification** — at the end of every `soly execute` (task / plan / phase plan-level), the worker reads PLAN.md's `## Goal` + `## Acceptance` and judges each item against `git diff`. A `## Status` section is appended to PLAN.md with a PASS / BLOCKED verdict. On `BLOCKED` the worker halts before calling `soly done` — so you can't ship a plan whose goal isn't actually met.
-- **Visual chrome** — native footer, equalizer working spinner with live telemetry, gradient welcome banner
-- **Rules & docs modal** — `/rules` and `/docs` open a fuzzy list + preview panel (no chat dumps)
-- **Mandatory rules** — strict-mode directives injected every turn
-- **Multi-question picker** — `ask_pro` tool for the LLM (single/multi-select, free-text, skip)
-- **Decision deck** — `decision_deck` tool: full-screen TUI cards for comparing design options by code shape
-- **HTML artifacts** — `html_artifact` tool serves self-contained HTML from a per-session browser gallery (live-updating, one stable URL)
-- **Skill-based execution** — LLM reads the `soly-framework` skill on demand
-
-The LLM drives execution **inline, in the main session** — no external subagent plugin. Say what you want in plain language ("let's plan this", "start executing") and the model calls the first-party `soly_workflow` tool for you; the `soly <verb>` text form still works as a fallback. You focus on the work.
-
-### Known install issue (upstream `pi install`)
-
-`pi install` currently does **not** install transitive `peerDependencies` (it skips them the way `--omit=optional` would). pi-soly's MCP stack depends on `@modelcontextprotocol/ext-apps`, which in turn peer-requires `@modelcontextprotocol/sdk` (declared non-optional upstream). After `pi install npm:pi-soly` you may see:
-
-```
-Error: Cannot find module '@modelcontextprotocol/sdk/types.js'
-Require stack:
-- ~/.pi/agent/npm/node_modules/@modelcontextprotocol/ext-apps/dist/src/app-bridge.js
-```
-
-**Workaround** (one-time, after each `pi install` of pi-soly or any pi-soly-related upgrade):
+That registers the extension in your current pi session. Restart pi
+(`/reload` won't work for a fresh install — you need a session restart
+to pick up the new package's `session_start` event), then:
 
 ```bash
-cd ~/.pi/agent/npm && npm install
+# inside a pi session:
+/sly                # open the project picker (aliases: /soly, /s)
+/sly init           # scaffold a new project (.agents/, docs/, rules/)
 ```
 
-This makes plain npm resolve the transitive peer deps that `pi install` skipped. After this, restart pi (`/reload`) and the MCP features work.
+### Manual install (no `pi`)
 
-Tracked upstream — fix is expected on the pi side, not here.
+```bash
+cd ~/.pi/agent/npm
+npm install pi-soly
+```
 
----
+Then add `"pi-soly"` to your project's `~/.pi/agent/extensions.json` (or
+just to `.pi/extensions.json` for project-local).
 
-## 🎯 Why pi-soly?
+## Quick start
 
-| Without pi-soly | With pi-soly |
+```text
+# 1. Start a project
+/sly init
+# 2. Scaffold a plan
+soly new feat/auth-jwt
+# 3. Discuss / flesh out the plan (interactive)
+/sly
+→ click "plan" → /sly fills out PLAN.md via ask_pro
+# 4. Execute (the LLM runs the plan, follows rules, writes SUMMARY.md)
+soly execute feat/auth-jwt
+# 5. Self-review until clean
+soly verify
+# 6. Commit + push + open draft PR
+soly done feat/auth-jwt
+```
+
+![sly picker](./packages/pi-soly/.assets/soly-picker.png)
+
+## Commands
+
+| Slash command | Plain-text verb | What it does |
+|---|---|---|
+| `/sly` · `/soly` · `/s` | `soly <sub>` | Project state inspection + picker (Status / Inspect / Manage groups) |
+| `/rules` | — | Toggle / disable / reload rules; show token breakdown |
+| `/docs` | — | Toggle / show intent docs |
+| `/why` | — | What rules + state grounded the LLM's last turn |
+| `/artifacts` | — | Browse this session's `html_artifact` gallery |
+| `/rulewizard` | — | Decide whether a constraint should be a rule, .editorconfig, or linter |
+| `/sly settings` | — | Interactive config editor (toggles, enums, numbers) |
+
+| Text verb | What it does |
 |---|---|
-| Re-invent plan/state/resume from scratch | `/plan`, `/execute`, `/resume`, `/inspect` ready |
-| Forget rules mid-session | `## ⚠️ MANDATORY` header in every system prompt |
-| Wonder which rules eat context | `/rules stats` — Claude-memory-style breakdown |
-| Wonder which docs eat context | `/docs stats` — same for intent docs |
-| Ask the LLM the same clarifying question 5 times | `ask_pro` multi-question picker |
+| `soly init` | Scaffold `.agents/` (templates: minimal / web-app / library / cli) |
+| `soly new <slug>` | Create branch + `.agents/plans/<slug>/PLAN.md` |
+| `soly discuss <slug>` | Interactive discussion of a plan (uses `ask_pro`) |
+| `soly plan <slug>` | Fill out `PLAN.md` via `ask_pro` |
+| `soly execute <slug>` | Run the plan (production commits → SUMMARY.md → `status: done`) |
+| `soly verify [N]` | Self-review loop until "No issues found" (max N; `soly verify stop`) |
+| `soly pause` · `soly resume` | Save / restore a HANDOFF.json snapshot |
+| `soly status` · `soly log` | Read-only, no LLM round-trip |
+| `soly done <slug>` | Commit + push + open draft PR via `gh` |
 
----
+## Rules & Docs
 
-## 📋 Commands
+**Rules** are markdown files with optional frontmatter. Two locations,
+project wins over global:
 
-### Workflow — plain-text verbs (type `soly <verb>`, not slash)
-
-```bash
-# === Plan mode (recommended for new work — each plan is a git branch) ===
-soly new feat/auth-jwt       # create branch + .agents/plans/<name>/ + stub PLAN.md
-soly discuss feat/auth-jwt   # interactive discussion of the plan
-soly plan feat/auth-jwt      # flesh out PLAN.md via ask_pro
-soly execute feat/auth-jwt   # execute the plan inline in this session
-soly done feat/auth-jwt      # commit, push, open draft PR via gh
-soly verify                  # self-review loop until "No issues found." (soly verify stop to exit)
-soly pause                   # save a handoff; soly resume to pick it back up
-soly status                  # current position + progress (no LLM round-trip)
-
-# === Phase mode (legacy — still works for existing projects) ===
-soly plan 3                  # generate PLAN.md for phase 3 (numeric form)
-soly execute 3               # execute phase 3 (or `soly execute 3.02` for one plan)
-soly migrate phases-to-plans # one-shot: import each .agents/phases/<NN>-slug/plans/PLAN.md
-                             #   as a `migrate/legacy-<NN>-slug` branch with .agents/plans/legacy-<NN>-slug/PLAN.md
+```text
+.agents/rules/             # project — version-controlled
+~/.agents/rules/            # global — per-user
+.agents/rules.local/        # project-local — gitignored
 ```
 
-> **Why plans instead of phases?** A global phase counter (1, 2, 3, ...) means two
-> developers each starting a "phase 11" write to the same path. With plans, each
-> is a git branch (`feat/auth-jwt`, `fix/login-redirect`, …) with its own
-> `.agents/plans/<name>/PLAN.md` — no collisions, clean isolation, and the branch
-> list itself is the registry of what's in flight.
+Glob-scoped rules load conditionally (only when the prompt mentions
+matching file paths). `always: true` rules load every turn. See the
+`.agents/rules/` directory in your soly project for live examples.
 
-### State inspection (`/soly`)
+![ask_pro picker](./packages/pi-soly/.assets/ask-pro.png)
 
-```bash
-/soly              # interactive modal picker (live preview per item, ⏎ to open)
-/soly position     # where am I in the plan
-/soly state        # current STATE.md content
-/soly roadmap      # all phases
-/soly progress     # phases/plans/tasks done vs total
-/soly phases       # list phases
-/soly plan [N]     # show plan for phase N
-```
+The `ask_pro` multi-question picker is built into the extension — the
+LLM uses it (not the LLM-driven `soly_ask_user`) for `discuss` flow
+when the config flag `agent.preferAskPro: true` is set. Single-pick
+options get a ⭐ recommended default, multi-select supports
+`min/max` bounds, every options question has a free-text "Other…"
+escape hatch.
 
-### Rules & Docs
+![decision deck](./packages/pi-soly/.assets/decision-deck.png)
 
-```bash
-/rules             # interactive list
-/rules stats       # context breakdown (always-on vs glob-matched)
-/rules analytics   # token analytics + warnings + duplicates
-/rules show <name> # show rule body
-/rules reload      # re-read all rules
-/rules enable <name> / disable <name>
+The `decision_deck` is for architectural forks — when the LLM needs
+to compare global-shape options by code, not by paragraph. Full-screen
+cards, side-by-side previews, ⭐ marks the recommended.
 
-/docs stats        # context breakdown (inline vs preview vs phase-specific)
-```
+## The mandatory block
 
-### Setup
+Every system prompt gets a `## ⚠️ MANDATORY: soly project rules`
+section injected after the user's prompt. The LLM is told, in plain
+text: these rules are non-negotiable; if a rule contradicts the
+LLM's instinct, the rule wins.
 
-```bash
-/soly init                # scaffold .agents/ (templates: minimal|web-app|library|cli)
-/soly-status              # one-screen health report
-/soly-log                 # recent notifications
-```
-
-### Debug
-
-```bash
-/why              # rules + project state that grounded the last turn
-/rulewizard       # interactive guide: rule vs .editorconfig vs linter
-```
-
----
-
-## 🧠 Rules & Docs
-
-Two system-prompt injections, both **opt-in** and **fully observable**.
-
-### Rules — `.agents/rules/` or `~/.agents/rules/`
-
-Markdown files with frontmatter. Three modes:
-
-```markdown
----
-description: TypeScript code style
-always: true            # loaded every turn
----
-
-Always use `strict` mode. Never use `any`...
-```
-
-```markdown
----
-description: React component rules
-globs: ["**/*.tsx", "**/*.jsx"]   # loaded only when prompt mentions matching file
----
-
-Hooks only at top level. Use memo only for expensive renders...
-```
-
-System prompt injection (every turn, after `before_agent_start`):
-
-```markdown
+```text
 ## ⚠️ MANDATORY: soly project rules
 
-**These rules are NON-NEGOTIABLE. Before writing or editing ANY code,
-re-read the rules above that apply to the file path you are about to
-modify. If a rule contradicts your instinct, the rule wins.**
+**These rules are NON-NEGOTIABLE. If a rule contradicts
+your instinct, the rule wins.**
+
+### [soly] {10} temp-files.md
+# Temporary Files Rule
+> **OS-aware temp paths.** Never hardcode `/tmp` — use `os.tmpdir()` …
 ```
 
-See context breakdown anytime: `/rules stats`.
+Built-in rules (the `soly` sourceLabel) ship with the extension and have
+highest priority — user rules can't override them. `/sly settings` is
+the interactive config editor that drives everything else.
 
-### Docs — `.agents/docs/` or `~/.agents/docs/`
+![settings panel](./packages/pi-soly/.assets/soly-settings.png)
 
-Zero-point intent docs (your vision, business context). Loaded as **preview only** (180 chars per doc) — cheap. Add `inline: true` to opt-in to full body injection.
+## Architecture
 
-```markdown
----
-title: Core principles
-inline: true     # full body loaded every turn (expensive!)
----
-
-Our core principles are...
+```text
+                      ┌─────────────────────────────────────────┐
+                      │            pi-coding-agent               │
+                      │  ┌────────────────────────────────────┐  │
+   user input  ─────► │  │  soly extension                     │  │ ───► LLM
+                      │  │  • session_start  → load state       │  │
+                      │  │  • agent_start   → inject rules      │  │
+   /sly  ────────────►│  │  • slash commands /sly, /rules, ... │  │
+   soly new ────────► │  │  • soly_workflow tool  (LLM-side)   │  │
+                      │  │  • built-in rules  (soly/*)          │  │
+                      │  │  • visual chrome (top bar, footer)   │  │
+                      │  └────────────────────────────────────┘  │
+                      │  ┌────────────────────────────────────┐  │
+                      │  │  .agents/  (project state)          │  │
+                      │  │  STATE.md  ROADMAP.md  plans/         │  │
+                      │  │  rules/    docs/    iterations/     │  │
+                      │  └────────────────────────────────────┘  │
+                      └─────────────────────────────────────────┘
 ```
 
-See context breakdown: `/docs stats`.
+State lives in `.agents/`. Files are plain markdown, git-friendly,
+human-readable. The LLM reads them, the extension writes them, the
+chrome shows them. No external DB, no migrations, no lock file.
 
----
+For event names and the full dependency list, see
+[Architecture](packages/pi-soly/.docs/architecture.md).
 
-## 🎤 Multi-Question Picker
+## Releases
 
-`ask_pro` tool for the LLM. Tabbed UI: single-select, multi-select, recommended ⭐, free-text Other.
+| Version | Highlights |
+|---|---|
+| **2.2.2** | `.soly/` legacy removed; `.agents/` is the only path |
+| **2.2.1** | `commands.ts` split into per-command modules; `release-discipline.md` built-in rule |
+| **2.2.0** | Grouped `/sly` picker (Status / Inspect / Manage); interactive `/sly settings`; aliases `/sly` / `/s` |
+| **2.1.5** | Dedicated `## 🔒 Built-in rules (shipped with soly)` system-prompt block |
+| **2.1.4** | Built-in rules system (first rule: `temp-files.md` — never hardcode `/tmp`) |
+| **2.1.3** | `ask_pro` read-only summary view before submit |
+| **2.1.2** | Info / warning notifications silenced — only errors fire |
+| **2.1.1** | Goal-aware verification at end of execute |
+| **2.0.x → 2.1.0** | `soly_workflow` first-party tool; `soly migrate` verb; `~/.agents/` global config |
 
-```ts
-ask_pro({
-  questions: [{
-    header: "Auth",
-    question: "How should we store the OAuth refresh token?",
-    options: [
-      { label: "Encrypted in SQLite",  description: "Survives restart, single-device.", recommended: true },
-      { label: "OS keychain",          description: "Native, multi-device via iCloud." },
-      { label: "Plain env var",         description: "Simplest, dev only." }
-    ]
-  }]
-})
-```
+Full history: [CHANGELOG.md](./CHANGELOG.md).
 
-The LLM calls `ask_pro` when it needs structured input. Tab through questions, pick ⭐ options, confirm.
-Per-option `preview` shows a side panel (fenced code is syntax-highlighted); `freeText: true` makes a typed-answer question; multi-select takes `minSelect`/`maxSelect`; press `s` to skip a question.
+## Compatibility
 
----
+- **pi-coding-agent** `>= 0.78`
+- **Node** `>= 20` (we test on 24)
+- **Bun** `>= 1.3` for dev — `bun test`, `bun run typecheck`
+- **npm** `>= 8` for the published package
+- **No OS-specific code** — works on macOS / Linux / Windows (uses
+  `os.tmpdir()` etc., never hardcodes `/tmp`)
 
-## 🃏 Decision Deck
-
-`decision_deck` tool for the LLM. A full-screen TUI deck — one framed card per option, each with a syntax-highlighted code snippet and pros/cons — for design/architecture forks where the choice hinges on seeing the concrete shape, not a label.
-
-```ts
-decision_deck({
-  title: "State management",
-  prompt: "How should modules communicate?",
-  options: [
-    { title: "Direct calls", summary: "Call modules directly.", pros: ["simple"], cons: ["coupling"] },
-    { title: "Event bus", code: "const bus = new Bus()\nbus.emit('x')", lang: "ts",
-      pros: ["decoupled"], cons: ["harder to trace"], recommended: true }
-  ]
-})
-```
-
-Flip cards with ←/→ (or 1-N), choose with Enter, Esc to cancel. Native TUI — no browser, no server.
-
----
-
-## 🖼 HTML Artifacts
-
-`html_artifact` tool for the LLM — soly's local "artifacts". Renders HTML (a full document or just body content, themed light/dark) and serves it from a **per-session gallery SPA** — a sidebar of every artifact this session, an iframe viewer, a filter box, a light/dark toggle, and live SSE updates — on one stable localhost URL, opened in your browser. Pass `id` to update an artifact in place; pass `assets` to write sibling files (images/css/json) the HTML references; restyle everything via `.agents/artifact-theme.css`. (Falls back to opening the file directly if the server is disabled.)
-
-```ts
-html_artifact({
-  title: "API examples",
-  html: "<h2>Usage</h2><pre><code>client.send(msg)</code></pre>"
-})
-```
-
-Use it when a visual, rendered result beats terminal text (example galleries, comparisons, diagrams). The gallery URL lives only while the pi session runs. **`/artifacts`** reopens the gallery anytime (modal: Enter opens an artifact, `g` the gallery, `x` delete, `/artifacts clear` clears); a `▦ N` footer indicator shows the live count. Config under `artifacts` (`open`, `dir`, `server`, `theme`, `retentionDays`).
-
----
-
-## 🏗 Architecture
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                   pi-coding-agent (peer dep)                 │
-└────────────────────────┬─────────────────────────────────────┘
-                         │
-        ┌────────────────┴────────────────┐
-        ▼                                 ▼
-  ┌────────────┐                  ┌─────────────┐
-  │  ask_pro   │                  │  soly_read  │
-  │  picker    │                  │  soly_log_  │
-  │  (tool)    │                  │  decision   │
-  └────────────┘                  └─────────────┘
-        │                                 │
-        └─────────────────┬───────────────┘
-                          │
-                          ▼
-                ┌──────────────────┐
-                │  Workflow engine │
-                │                  │
-                │  /plan /execute  │
-                │  /resume /inspect│
-                │  /discuss /quick │
-                │  /soly /why      │
-                │  /rules /docs    │
-                └────────┬─────────┘
-                         │
-            ┌────────────┼────────────┐
-            ▼            ▼            ▼
-       .agents/STATE  phases/<N>/   rules/
-       (current     CONTEXT,      docs/
-        position)   PLAN,         (system
-                    RESEARCH)     prompt)
-                         │
-                         ▼
-                ┌──────────────────┐
-                │  soly-framework  │
-                │  SKILL.md        │
-                │                  │
-                │  LLM loads on    │
-                │  demand \u2014 no  │
-                │  subagent layer  │
-                └──────────────────┘
-```
-
-State lives in `.agents/` — portable, git-friendly, human-readable.
-
-```
-.agents/
-├── ROADMAP.md           # phase table
-├── STATE.md             # current position + decisions log
-├── docs/                # 0-point intent docs (preview-loaded)
-├── rules/               # rules (glob-matched or always-on)
-└── phases/
-    └── 01-foundation/
-        ├── 01-CONTEXT.md       # domain + decisions for this phase
-        ├── 01-RESEARCH.md      # what we looked up
-        └── tasks/              # unified model: one dir per task
-            └── auth-login-a3f9/
-                ├── PLAN.md     # frontmatter: id, kind, status, depends-on
-                └── SUMMARY.md
-```
-
-> Legacy projects (standalone `NN-MM-PLAN.md` files / a `features/` dir) still load and run alongside the unified `phases/<N>/tasks/` layout.
-
----
-
-## 📚 Events
-
-| Event | When | What we do |
-|---|---|---|
-| `session_start` | session opens | Install `soly-framework` skill, build initial state |
-| `before_agent_start` | every turn | Inject rules + docs sections into system prompt |
-| `tool_call` (edit/write) | LLM edits file | Track edited files (silent — used by `/why`) |
-| `turn_end` | turn finishes | Refresh rules/state, hot-reload changes |
-| `session_shutdown` | session closes | Flush iterators, cleanup |
-
----
-
-## 🛠 Development
-
-### Requirements
-
-- [Bun](https://bun.sh) ≥ 1.3
-- [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent) ≥ 0.78
-
-### Setup
+## Development
 
 ```bash
 git clone https://github.com/lowern1ght/pi-soly.git
 cd pi-soly
 bun install
+bun test                 # all 600+ tests
+bun run typecheck         # tsc --noEmit, both packages
 ```
 
-### Test + typecheck
+Edit a file, then in pi: `/reload` to pick up changes. Live-reload
+handles the chrome, rules, and intent-doc watchers.
 
-```bash
-bun test          # run the test suite
-bun run typecheck # tsc --noEmit
-bun run ci        # both
-```
+## License
 
-### Live-reload in pi
-
-```bash
-pi install ./packages/pi-soly
-# edit files → /reload in pi to pick up changes
-```
-
----
-
-## 🚢 Releases
-
-Tag-based, fully automated. Push a `pi-soly-v*` tag, get a publish.
-
-```bash
-./scripts/release.sh pi-soly 1.9.1
-git push github master
-git push github pi-soly-v1.9.1 --force
-```
-
-CI runs on a self-hosted GitHub Actions runner:
-
-| Trigger | Job | Action |
-|---|---|---|
-| Push to `master` | `test` | `bun install` + `bun test` + `bun run typecheck` |
-| PR to `master` | `test` | same |
-| Push tag `pi-soly-v*` | `test` → `publish` | tests + `npm publish` to npmjs |
-
-The `publish` job uses GitHub Environment `npm-publish` so `NPM_TOKEN` is only exposed during the publish step. **Zero secrets in workflow YAML.**
-
----
-
-## 🤝 Compatibility
-
-- **pi-coding-agent** ≥ 0.78
-- **Node** ≥ 20 (pre-installed on the runner)
-- **Bun** ≥ 1.3 (pre-installed on the runner)
-- **OS** — Linux, macOS, Windows (anywhere Bun runs)
-
----
-
-## 📜 License
-
-MIT — see [LICENSE](LICENSE).
-
----
-
-<div align="center">
-
-**Built by [@lowern1ght](https://github.com/lowern1ght) · Powered by [pi](https://github.com/nicobailon/pi-coding-agent) + [Bun](https://bun.sh)**
-
-[⭐ Star on GitHub](https://github.com/lowern1ght/pi-soly) · [📦 View on npm](https://www.npmjs.com/package/pi-soly) · [🐛 Report a bug](https://github.com/lowern1ght/pi-soly/issues)
-
-</div>
+MIT — see [LICENSE](./LICENSE).
