@@ -4,6 +4,19 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [2.2.5] — 2026-07-05
+
+### Fixed
+- **Root `README.md` rewritten as a clean landing page.** Previously the
+  repo root README was a 414-line duplicate of the per-package
+  README — GitHub's repo landing page rendered that, but the banner
+  image referenced from the per-package README (`packages/pi-soly/.assets/banner.png`)
+  didn't show up because the root README had no link to it. New root
+  README is a landing page: title, banner, brief description, install
+  command, monorepo layout, recent releases table, license. Full docs
+  live in `packages/pi-soly/README.md` (which already has the banner
+  and the rewritten engineer-tone content from 2.2.3).
+
 ## [2.2.4] — 2026-07-05
 
 ### Added

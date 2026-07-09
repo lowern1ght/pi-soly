@@ -2,9 +2,7 @@
 
 # ⚡ pi-soly
 
-**The project management + workflow engine for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent).**
-
-Plans · State · Rules · Multi-question picker. One `npm install`. Zero config.
+### Project management + workflow engine for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent)
 
 [![npm version](https://img.shields.io/npm/v/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
 [![npm downloads](https://img.shields.io/npm/dm/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
@@ -12,123 +10,78 @@ Plans · State · Rules · Multi-question picker. One `npm install`. Zero config
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/lowern1ght/pi-soly/blob/master/LICENSE)
 [![Built with Bun](https://img.shields.io/badge/Built_with-Bun-f9f1e1?logo=bun)](https://bun.sh)
 
-[Install](#-install) · [Commands](#-commands) · [Rules & Docs](#-rules--docs) · [Releases](#-releases)
+[Install](#install) · [Commands](packages/pi-soly/README.md#commands) · [Architecture](packages/pi-soly/README.md#architecture) · [Releases](packages/pi-soly/README.md#releases)
 
 </div>
 
-See **[packages/pi-soly/README.md](packages/pi-soly/README.md)** for the full package documentation.
+![banner](packages/pi-soly/.assets/banner.png)
+
+> Plans · State · MANDATORY rules · Self-review · Multi-question picker.
+> One `npm install`. Zero config. LLM drives the workflow inline.
 
 ---
 
-## ⚡ Install
+## What it is
+
+pi-soly turns a plain pi-coding-agent session into a structured project:
+**plans** become git branches, **state** lives in `.agents/STATE.md` (visible
+to the LLM every turn), and **rules** load automatically into a
+`## ⚠️ MANDATORY` block in the system prompt. Workflows (plan / execute /
+verify / pause / resume) are first-class slash commands — no LLM round-trip
+needed, no external subagent plugin.
+
+The LLM doesn't drive the workflow — *you* do, via `/sly` /
+`soly new` / `soly execute`. The LLM is the executor inside that frame,
+following the rules and writing to the agreed paths.
+
+## Install
 
 ```bash
 pi install npm:pi-soly
 ```
 
-Restart pi (`/reload`), and you have:
+That's it. Restart the pi session, then:
 
-- **Project management** — plans, state, phases, decisions
-- **Workflow engine** — `/plan`, `/execute`, `/resume`, `/inspect`, `/discuss`, `/quick`
-- **Mandatory rules** — strict-mode directives injected every turn
-- **Multi-question picker** — `ask_pro` tool for the LLM
-- **Decision deck** — `decision_deck` tool: full-screen TUI cards for comparing design options by code shape
-- **HTML artifacts** — `html_artifact` tool serves self-contained HTML from a per-session browser gallery (live-updating, one stable URL)
-- **Skill-based execution** — LLM reads the `soly-framework` skill on demand
+```text
+/sly                # open the project picker (aliases: /soly, /s)
+/sly init           # scaffold a new project (.agents/, docs/, rules/)
+```
 
-The LLM drives execution; `plan`/`execute` delegate to a `worker` subagent when one is available (via pi-subagents), with first-party delegation on the roadmap. You focus on the work.
+**Full documentation** (commands, rules engine, architecture, compatibility,
+development) lives in [packages/pi-soly/README.md](packages/pi-soly/README.md).
 
----
+## Layout
 
-## 📋 Quick command reference
+```text
+pi-soly.framework/                 monorepo root
+├── packages/pi-soly/              the published package
+│   ├── commands/                  /sly, /soly, /rules, /docs, /why, …
+│   ├── workflows/                  soly new / execute / verify / done
+│   ├── visual/                     list-panel + chrome primitives
+│   ├── built-in-rules/             shipped rules (temp-files.md, …)
+│   ├── workflows-data/             prompt markdown the LLM receives
+│   └── README.md                  full docs (this page is a landing)
+├── README.md                      you are here
+└── CHANGELOG.md
+```
 
-| Command | What it does |
+## Releases
+
+| Version | Highlights |
 |---|---|
-| `/plan` / `/execute` / `/resume` / `/inspect` | Core workflow |
-| `/soly` | Interactive state picker |
-| `/rules stats` | Context breakdown for rules |
-| `/docs stats` | Context breakdown for intent docs |
-| `/soly-init` / `/soly-migrate` / `/soly-status` | Setup |
-| `/why` | Rules + state that grounded the last turn |
-| `/rulewizard` | Rule vs .editorconfig vs linter |
+| **2.2.4** | Hero banner.png in `.assets/` (root README + per-package) |
+| **2.2.3** | README reworked (engineer tone); npm description tightened |
+| **2.2.2** | `.soly/` legacy removed; `.agents/` is the only path |
+| **2.2.1** | `commands.ts` split into per-command modules; `release-discipline.md` rule |
+| **2.2.0** | Grouped `/sly` picker; interactive `/sly settings`; aliases `/sly` / `/s` |
+| **2.1.5** | Dedicated `## 🔒 Built-in rules (shipped with soly)` block |
+| **2.1.4** | Built-in rules system (first rule: `temp-files.md`) |
+| **2.1.3** | `ask_pro` read-only summary view before submit |
+| **2.1.2** | Info / warning notifications silenced — only errors fire |
+| **2.1.1** | Goal-aware verification at end of execute |
 
-See [packages/pi-soly/README.md](packages/pi-soly/README.md) for full details.
+Full history: [CHANGELOG.md](./CHANGELOG.md).
 
----
+## License
 
-## 🛠 Development (monorepo)
-
-### Requirements
-
-- [Bun](https://bun.sh) ≥ 1.3
-- [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent) ≥ 0.78
-
-### Setup
-
-```bash
-git clone https://github.com/lowern1ght/pi-soly.git
-cd pi-soly
-bun install
-```
-
-### Test + typecheck
-
-```bash
-bun test          # run the test suite
-bun run typecheck # tsc --noEmit
-bun run ci        # both
-```
-
-### Live-reload in pi
-
-```bash
-pi install ./packages/pi-soly
-# edit files → /reload in pi to pick up changes
-```
-
----
-
-## 🚢 Releases
-
-Tag-based, fully automated. Push a `pi-soly-v*` tag, get a publish.
-
-```bash
-./scripts/release.sh pi-soly 1.9.1
-git push github master
-git push github pi-soly-v1.9.1 --force
-```
-
-CI runs on a self-hosted GitHub Actions runner:
-
-| Trigger | Job | Action |
-|---|---|---|
-| Push to `master` | `test` | `bun install` + `bun test` + `bun run typecheck` |
-| PR to `master` | `test` | same |
-| Push tag `pi-soly-v*` | `test` → `publish` | tests + `npm publish` to npmjs |
-
-The `publish` job uses GitHub Environment `npm-publish` so `NPM_TOKEN` is only exposed during the publish step. **Zero secrets in workflow YAML.**
-
----
-
-## 🤝 Compatibility
-
-- **pi-coding-agent** ≥ 0.78
-- **Node** ≥ 20 (pre-installed on the runner)
-- **Bun** ≥ 1.3 (pre-installed on the runner)
-- **OS** — Linux, macOS, Windows (anywhere Bun runs)
-
----
-
-## 📜 License
-
-MIT — see [LICENSE](LICENSE).
-
----
-
-<div align="center">
-
-**Built by [@lowern1ght](https://github.com/lowern1ght) · Powered by [pi](https://github.com/nicobailon/pi-coding-agent) + [Bun](https://bun.sh)**
-
-[⭐ Star on GitHub](https://github.com/lowern1ght/pi-soly) · [📦 View on npm](https://www.npmjs.com/package/pi-soly) · [🐛 Report a bug](https://github.com/lowern1ght/pi-soly/issues)
-
-</div>
+MIT — see [LICENSE](./LICENSE).
