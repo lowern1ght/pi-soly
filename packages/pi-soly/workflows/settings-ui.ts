@@ -27,6 +27,7 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 import { ListPanel, type ListItem, type ListAction, type ListGroup, type PanelKeybindings } from "../visual/list-panel.ts";
 
 import { DEFAULT_CONFIG, type SolyConfig } from "../config.ts";
+import { emit } from "../visual/event-sink.ts";
 
 // ---------------------------------------------------------------------------
 // Setting descriptors
@@ -442,12 +443,12 @@ export function openSettingsUI(deps: SettingsUIDeps): void {
 						try {
 							const diff = diffVsDefaults(working);
 							saveConfigFile(solyDir, diff);
-							ui.notify(`settings saved → ${path.basename(solyDir)}/soly.json`, "info");
+							emit(`settings saved → ${path.basename(solyDir)}/soly.json`, "info");
 							// Re-read the config from disk so the active config matches
 							// what we just wrote.
 							reloadConfig();
 						} catch (e) {
-							ui.notify(`save failed: ${(e as Error).message}`, "error");
+							emit(`save failed: ${(e as Error).message}`, "error");
 						}
 					}
 					done();

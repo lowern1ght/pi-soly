@@ -17,6 +17,7 @@ import * as path from "node:path";
 import { readIfExists, buildProgressBar, type SolyState } from "../core.js";
 import type { SolyConfig } from "../config.js";
 import type { SolyCommand } from "./parser.ts";
+import { emit } from "../visual/event-sink.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -36,7 +37,7 @@ export function showStatus(
 	config?: SolyConfig,
 ): void {
 	if (!state.exists) {
-		ui.notify("soly: no .agents/ directory in cwd", "error");
+		emit("soly: no .agents/ directory in cwd", "error");
 		return;
 	}
 	const maxPhases = config?.display.maxPhasesInStatus ?? 20;
@@ -122,14 +123,14 @@ const DECISIONS_TABLE_ROW = /^\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*
 
 export function showLog(cmd: SolyCommand, state: SolyState, ui: QuickUI): void {
 	if (!state.exists) {
-		ui.notify("soly log: no .agents/ directory in cwd", "error");
+		emit("soly log: no .agents/ directory in cwd", "error");
 		return;
 	}
 
 	const statePath = path.join(state.solyDir, "STATE.md");
 	const raw = readIfExists(statePath);
 	if (!raw) {
-		ui.notify("soly log: STATE.md not found", "error");
+		emit("soly log: STATE.md not found", "error");
 		return;
 	}
 
@@ -160,7 +161,7 @@ export function showLog(cmd: SolyCommand, state: SolyState, ui: QuickUI): void {
 	if (limitArg) {
 		const parsed = parseInt(limitArg, 10);
 		if (!Number.isFinite(parsed) || parsed <= 0) {
-			ui.notify(
+			emit(
 				`soly log: invalid limit "${limitArg}" (must be a positive integer)`,
 				"error",
 			);

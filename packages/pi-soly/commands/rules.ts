@@ -91,12 +91,12 @@ export function registerRulesCommand(pi: ExtensionAPI, deps: RulesDeps): void {
 
 			if (sub === "show") {
 				if (!target) {
-					ui.notify("Usage: /rules show <relPath>", "error");
+					recordEvent("Usage: /rules show <relPath>", "error");
 					return;
 				}
 				const r = getRules().find((x) => x.relPath === target);
 				if (!r) {
-					ui.notify(`Rule not found: ${target}`, "error");
+					recordEvent(`Rule not found: ${target}`, "error");
 					return;
 				}
 				const text = `---\n${r.meta.description ? `description: ${r.meta.description}\n` : ""}source: ${r.sourceLabel}\nenabled: ${r.enabled}\n---\n\n${r.body}`;
@@ -119,12 +119,12 @@ export function registerRulesCommand(pi: ExtensionAPI, deps: RulesDeps): void {
 
 			if (sub === "enable" || sub === "disable") {
 				if (!target) {
-					ui.notify(`Usage: /rules ${sub} <relPath>`, "error");
+					recordEvent(`Usage: /rules ${sub} <relPath>`, "error");
 					return;
 				}
 				const r = getRules().find((x) => x.relPath === target);
 				if (!r) {
-					ui.notify(`Rule not found: ${target}`, "error");
+					recordEvent(`Rule not found: ${target}`, "error");
 					return;
 				}
 				r.enabled = sub === "enable";
@@ -141,7 +141,7 @@ export function registerRulesCommand(pi: ExtensionAPI, deps: RulesDeps): void {
 			}
 
 			if (sub === "add") {
-				ui.notify(
+				recordEvent(
 					"Use /rulewizard add <url> (or /rules add for the rule-creation guide).",
 					"info",
 				);
@@ -149,7 +149,7 @@ export function registerRulesCommand(pi: ExtensionAPI, deps: RulesDeps): void {
 			}
 
 			if (sub === "new") {
-				ui.notify(
+				recordEvent(
 					"Use /rulewizard to scaffold a new rule (it guides the rule-vs-editorconfig-vs-linter decision).",
 					"info",
 				);
@@ -165,7 +165,7 @@ export function registerRulesCommand(pi: ExtensionAPI, deps: RulesDeps): void {
 					path.join(require("node:os").homedir(), ".agents", "rules"),
 				];
 				const found = dirs.filter((d) => fs.existsSync(d));
-				ui.notify(
+				recordEvent(
 					"Rules sources (existing first):\n" +
 						(found.length ? found.map((d) => `  ✓ ${d}`).join("\n") : "  (none)") +
 						"\n" +
@@ -178,7 +178,7 @@ export function registerRulesCommand(pi: ExtensionAPI, deps: RulesDeps): void {
 				return;
 			}
 
-			ui.notify(
+			recordEvent(
 				`Usage: /rules <list|show|stats|analytics|enable|disable|reload|add|new|path> [target]`,
 				"error",
 			);

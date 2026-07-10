@@ -9,6 +9,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { showDoctor, showIterations, showDiffIterations, showPhaseDelete } from "../workflows/inspect.js";
+import { setEventSink } from "../visual/event-sink.ts";
 import { DEFAULT_CONFIG } from "../config.js";
 import type { SolyState } from "../core.js";
 
@@ -59,6 +60,7 @@ describe("showDoctor", () => {
 
 	test("no .agents/ → fail check (silent in 2.1.1+)", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		showDoctor(null, fakeState({ exists: false, solyDir: "" }), ui, DEFAULT_CONFIG);
 		// 2.1.1+ contract: doctor report was a single info-level notify; now silent.
 		expect(captured.length).toBe(0);
@@ -66,6 +68,7 @@ describe("showDoctor", () => {
 
 	test("happy path: no info or error notifications fire", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		fs.writeFileSync(path.join(solyDir, "STATE.md"), "---\nmilestone: v1.0\n---\n\n# X\n\n## Current Position\nPhase: 1\n");
 		fs.writeFileSync(path.join(solyDir, "ROADMAP.md"), "# Roadmap\n\n## Phase 1\n");
 		fs.mkdirSync(path.join(solyDir, "phases", "01-bootstrap"), { recursive: true });
@@ -78,6 +81,7 @@ describe("showDoctor", () => {
 
 	test("too many iteration files → silent in 2.1.1+", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		fs.mkdirSync(path.join(solyDir, "iterations"), { recursive: true });
 		for (let i = 0; i < 51; i++) {
 			fs.writeFileSync(path.join(solyDir, "iterations", `iter-${i}.md`), "# x");
@@ -92,6 +96,7 @@ describe("showDoctor", () => {
 
 	test("iteration retentionDays > 0 + stale files → silent in 2.1.1+", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		fs.mkdirSync(path.join(solyDir, "iterations"), { recursive: true });
 		const oldFile = path.join(solyDir, "iterations", "stale.md");
 		fs.writeFileSync(oldFile, "# x");
@@ -105,6 +110,7 @@ describe("showDoctor", () => {
 
 	test("ROADMAP.md missing → silent in 2.1.1+", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		try { fs.unlinkSync(path.join(solyDir, "ROADMAP.md")); } catch { /* ok */ }
 		showDoctor(null, fakeState(), ui, DEFAULT_CONFIG);
 		expect(captured.length).toBe(0);
@@ -112,6 +118,7 @@ describe("showDoctor", () => {
 
 	test("pi-todo detected → no error notification", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		showDoctor(null, fakeState(), ui, DEFAULT_CONFIG, ["ask_pro", "todo_update", "bash"]);
 		// "pi-todo detected" is a pass-level finding. In 2.1.1+ pass-level output
 		// is silent. No notifications fire at all.
@@ -120,6 +127,7 @@ describe("showDoctor", () => {
 
 	test("pi-todo NOT detected → silent (2.1.1+ contract)", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		showDoctor(null, fakeState(), ui, DEFAULT_CONFIG, ["ask_pro", "bash"]);
 		// "not detected" used to be info-level; in 2.1.1+ that's silent.
 		expect(captured.filter((c) => c.kind === "info").length).toBe(0);
@@ -130,6 +138,7 @@ describe("showDoctor", () => {
 describe("pluralDays grammar (regression for '1 day' vs 'N days')", () => {
 	test("2 days uses plural 'days' (silent in 2.1.1+, but grammar preserved in code)", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		fs.mkdirSync(path.join(solyDir, "iterations"), { recursive: true });
 		const f = path.join(solyDir, "iterations", "old.md");
 		fs.writeFileSync(f, "# x");
@@ -147,12 +156,14 @@ describe("pluralDays grammar (regression for '1 day' vs 'N days')", () => {
 describe("showIterations", () => {
 	test("no .agents/ → error notify", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		showIterations({ verb: "iterations", args: [], raw: "soly iterations" }, fakeState({ exists: false, solyDir: "" }), ui);
 		expect(captured.some((c) => c.kind === "error")).toBe(true);
 	});
 
 	test("no iterations dir → silent (info removed in 2.1.1+)", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		showIterations({ verb: "iterations", args: [], raw: "soly iterations" }, fakeState(), ui);
 		expect(captured.filter((c) => c.kind === "info").length).toBe(0);
 		expect(captured.filter((c) => c.kind === "error").length).toBe(0);
@@ -160,6 +171,7 @@ describe("showIterations", () => {
 
 	test("lists files sorted by mtime desc — silently (info output removed)", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		fs.mkdirSync(path.join(solyDir, "iterations"), { recursive: true });
 		const oldFile = path.join(solyDir, "iterations", "old.md");
 		const newFile = path.join(solyDir, "iterations", "new.md");
@@ -176,6 +188,7 @@ describe("showIterations", () => {
 
 	test("invalid N → error notify", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		fs.mkdirSync(path.join(solyDir, "iterations"), { recursive: true });
 		fs.writeFileSync(path.join(solyDir, "iterations", "x.md"), "# x");
 		showIterations({ verb: "iterations", args: ["abc"], raw: "soly iterations abc" }, fakeState(), ui);
@@ -187,6 +200,7 @@ describe("showIterations", () => {
 describe("showDiffIterations", () => {
 	test("no .agents/ → error", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		showDiffIterations(
 			{ verb: "diff", args: ["iterations", "a.md", "b.md"], raw: "soly diff iterations a.md b.md" },
 			fakeState({ exists: false, solyDir: "" }),
@@ -197,6 +211,7 @@ describe("showDiffIterations", () => {
 
 	test("fewer than 2 args → error", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		showDiffIterations(
 			{ verb: "diff", args: ["a.md"], raw: "soly diff iterations a.md" },
 			fakeState(),
@@ -207,6 +222,7 @@ describe("showDiffIterations", () => {
 
 	test("missing file → error", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		fs.mkdirSync(path.join(solyDir, "iterations"), { recursive: true });
 		showDiffIterations(
 			{ verb: "diff", args: ["nope.md", "nope2.md"], raw: "soly diff iterations nope.md nope2.md" },
@@ -219,6 +235,7 @@ describe("showDiffIterations", () => {
 
 	test("identical files → silent (info removed in 2.1.1+)", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		fs.mkdirSync(path.join(solyDir, "iterations"), { recursive: true });
 		fs.writeFileSync(path.join(solyDir, "iterations", "a.md"), "same");
 		fs.writeFileSync(path.join(solyDir, "iterations", "b.md"), "same");
@@ -235,6 +252,7 @@ describe("showDiffIterations", () => {
 describe("showPhaseDelete", () => {
 	test("no .agents/ → error", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		showPhaseDelete(
 			{ verb: "phase", args: ["5"], raw: "soly phase delete 5" },
 			fakeState({ exists: false, solyDir: "" }),
@@ -245,6 +263,7 @@ describe("showPhaseDelete", () => {
 
 	test("no arg → error", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		// The workflow handler in index.ts slices off the "delete" subverb
 		// before calling showPhaseDelete, so we pass [] here (mirroring that).
 		showPhaseDelete(
@@ -257,6 +276,7 @@ describe("showPhaseDelete", () => {
 
 	test("non-existent phase → error", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		showPhaseDelete(
 			{ verb: "phase", args: ["99"], raw: "soly phase delete 99" },
 			fakeState({
@@ -269,6 +289,7 @@ describe("showPhaseDelete", () => {
 
 	test("valid phase moves to .trash/ (silent in 2.1.1+)", () => {
 		captured = [];
+		setEventSink((text: string, level?: string) => captured.push({ text, kind: level }));
 		const phaseDir = path.join(solyDir, "phases", "05-auth");
 		fs.mkdirSync(phaseDir, { recursive: true });
 		fs.writeFileSync(path.join(phaseDir, "05-CONTEXT.md"), "# x");

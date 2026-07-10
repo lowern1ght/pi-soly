@@ -14,6 +14,8 @@ import type { McpExtensionState } from "../mcp/state.ts";
 
 type Notified = { body: string; level: string };
 
+import { setEventSink } from "../visual/event-sink.ts";
+
 async function renderStatus(state: McpExtensionState): Promise<Notified> {
 	const { showStatus } = await import("../mcp/commands.ts");
 	const notified: Notified = { body: "", level: "" };
@@ -26,6 +28,7 @@ async function renderStatus(state: McpExtensionState): Promise<Notified> {
 			},
 		},
 	} as never;
+	setEventSink((body: string, level?: string) => { notified.body = body; notified.level = level ?? "info"; });
 	await showStatus(state, ctx as never);
 	return notified;
 }

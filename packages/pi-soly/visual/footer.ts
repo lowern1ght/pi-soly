@@ -127,10 +127,19 @@ export class SolyFooter implements Component {
 		const out: string[] = [buildFooterLine(this.data, this.fd, width, { ascii: this.getAscii(), styler: themeStyler(this.theme) })];
 		const event = this.data.recentEvent;
 		if (event) {
-			const glyph = this.data.recentEventLevel === "warning" ? "└─ ⚠" : "└─";
-			const styled = this.data.recentEventLevel === "warning"
-				? themeStyler(this.theme).fg("warning", `${glyph} ${event}`)
-				: themeStyler(this.theme).dim(`${glyph} ${event}`);
+			const styler = themeStyler(this.theme);
+			const level = this.data.recentEventLevel;
+			let glyph = "└─";
+			let styled: string;
+			if (level === "error") {
+				glyph = "└─ ✗";
+				styled = styler.fg("error", `${glyph} ${event}`);
+			} else if (level === "warning") {
+				glyph = "└─ ⚠";
+				styled = styler.fg("warning", `${glyph} ${event}`);
+			} else {
+				styled = styler.dim(`${glyph} ${event}`);
+			}
 			out.push("    " + styled);
 		}
 		return out;

@@ -18,6 +18,7 @@
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { AgentMessageLike, ContextManager, ContextRewriter } from "../context-manager.ts";
+import { emit } from "../visual/event-sink.ts";
 
 /** Resolved verify settings (from soly config `verify`). */
 export type VerifyConfig = {
@@ -121,7 +122,7 @@ export function createVerifyLoop(pi: ExtensionAPI, deps: VerifyDeps): VerifyLoop
 	let exitRes: RegExp[] = [];
 	let fixedRes: RegExp[] = [];
 
-	const emit = () => deps.onState({ active, iteration, max, fresh });
+	const emitState = () => deps.onState({ active, iteration, max, fresh });
 
 	// Captures the boundary on the first call, then strips prior iterations.
 	const rewriter: ContextRewriter = (messages) => {
@@ -137,8 +138,7 @@ export function createVerifyLoop(pi: ExtensionAPI, deps: VerifyDeps): VerifyLoop
 		active = false;
 		boundary = -1;
 		deps.contextManager.setRewriter(null);
-		emit();
-		ctx?.ui.notify(`soly verify: ${reason}`, "info");
+		emit(`soly verify: ${reason}`);
 	};
 
 	pi.on("agent_end", async (event, ctx) => {
@@ -158,7 +158,7 @@ export function createVerifyLoop(pi: ExtensionAPI, deps: VerifyDeps): VerifyLoop
 			stop(ctx, `stopped after ${max} iterations`);
 			return;
 		}
-		emit();
+		emit(`soly verify: loop iteration ${iteration}`);
 		pi.sendUserMessage(deps.getConfig().prompt, { deliverAs: "followUp" });
 	});
 
@@ -173,7 +173,7 @@ export function createVerifyLoop(pi: ExtensionAPI, deps: VerifyDeps): VerifyLoop
 		isActive: () => active,
 		start(ctx, opts = {}): void {
 			if (active) {
-				ctx.ui.notify("soly verify: already running", "info");
+				emit("soly verify: already running");
 				return;
 			}
 			const cfg = deps.getConfig();
@@ -185,8 +185,7 @@ export function createVerifyLoop(pi: ExtensionAPI, deps: VerifyDeps): VerifyLoop
 			exitRes = compilePatterns(cfg.exitPatterns);
 			fixedRes = compilePatterns(cfg.issuesFixedPatterns);
 			if (fresh) deps.contextManager.setRewriter(rewriter);
-			emit();
-			ctx.ui.notify(`soly verify: review mode on (max ${max}${fresh ? ", fresh context" : ""})`, "info");
+			emit("verify started");
 			pi.sendUserMessage(cfg.prompt);
 		},
 		stop,

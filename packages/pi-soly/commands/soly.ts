@@ -68,7 +68,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 
 			const showFile = (label: string, content: string | null) => {
 				if (!content) {
-					ui.notify(`${label}: not found`, "error");
+					recordEvent(`${label}: not found`, "error");
 					return;
 				}
 				const MAX = 4000;
@@ -176,7 +176,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 						const s = getState();
 						if (s.position) {
 							// Brief status; full inspector lives in `/soly inspect`.
-							ui.notify(
+							recordEvent(
 								`pos: ${s.position.phase} · ${s.position.plan} (${s.position.status}) · ${s.progress.percent}%`,
 								"info",
 							);
@@ -199,7 +199,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 						if (parts.length <= 1) {
 							const s = getState();
 							if (!s.currentPlanPath) {
-								ui.notify("soly: no current plan", "error");
+								recordEvent("soly: no current plan", "error");
 								return;
 							}
 							showFile(
@@ -216,7 +216,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 					run: () => {
 						const s = getState();
 						if (!s.currentPhase) {
-							ui.notify("soly: no current phase", "error");
+							recordEvent("soly: no current phase", "error");
 							return;
 						}
 						const p = path.join(s.currentPhase.dir, `${s.currentPhase.slug}-CONTEXT.md`);
@@ -228,7 +228,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 					run: () => {
 						const s = getState();
 						if (!s.currentPhase) {
-							ui.notify("soly: no current phase", "error");
+							recordEvent("soly: no current phase", "error");
 							return;
 						}
 						const p = path.join(s.currentPhase.dir, `${s.currentPhase.slug}-RESEARCH.md`);
@@ -296,13 +296,13 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 					run: (parts: string[]) => {
 						const id = (parts[1] ?? "").trim();
 						if (!id) {
-							ui.notify("Usage: /soly task <task-id>", "error");
+							recordEvent("Usage: /soly task <task-id>", "error");
 							return;
 						}
 						const s = getState();
 						const task = s.tasks.find((t) => t.id === id);
 						if (!task) {
-							ui.notify(
+							recordEvent(
 								`soly: task ${id} not found.\nKnown: ${s.tasks.map((t) => t.id).join(", ") || "(none)"}`,
 								"error",
 							);
@@ -357,7 +357,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 								return;
 							}
 						}
-						ui.notify(
+						recordEvent(
 							`soly: no milestone file found. tried:\n  ${candidates.map((c) => path.relative(process.cwd(), c)).join("\n  ")}`,
 							"error",
 						);
@@ -536,7 +536,7 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 			}
 
 			if (!(subcommands as Record<string, unknown>)[sub]) {
-				ui.notify(`soly: unknown subcommand '${sub}'`, "error");
+				recordEvent(`soly: unknown subcommand '${sub}'`, "error");
 				return openMenu();
 			}
 

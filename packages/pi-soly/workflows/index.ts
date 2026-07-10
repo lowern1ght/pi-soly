@@ -30,6 +30,7 @@ import { createVerifyLoop, type VerifyState } from "./verify.ts";
 import type { ContextManager } from "../context-manager.ts";
 import type { SolyState } from "../core.js";
 import type { SolyConfig } from "../config.js";
+import { emit } from "../visual/event-sink.ts";
 
 export interface WorkflowsDeps {
 	recordEvent: (text: string, level?: "info" | "warning") => void;
@@ -277,10 +278,10 @@ State inspection lives on the slash form — \`/soly <sub>\`:
 				"and .agents/.continue-here.md. Preserve milestone/phase/plan position and key " +
 				"decisions in the summary. Drop implementation-detail noise.",
 			onComplete: () => {
-				recordEvent("session compacted — use 'soly resume' to pick up");
+				emit("session compacted — use 'soly resume' to pick up");
 			},
 			onError: (err) => {
-				ctx.ui.notify(`soly: compact failed — ${err.message}`, "error");
+				emit(`soly: compact failed — ${err.message}`, "error");
 			},
 		});
 	});

@@ -11,6 +11,7 @@
 // =============================================================================
 
 /// <reference types="bun-types" />
+import { setEventSink } from "../visual/event-sink.ts";
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -79,6 +80,7 @@ beforeAll(() => {
 	tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "soly-bugs-"));
 	solyDir = path.join(tmpRoot, ".agents");
 	fs.mkdirSync(solyDir, { recursive: true });
+	setEventSink((text: string, level?: string) => capturedNotify.push({ text, kind: level }));
 });
 
 afterAll(() => {

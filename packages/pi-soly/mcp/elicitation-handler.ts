@@ -12,6 +12,7 @@ import {
 import { AjvJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/ajv";
 import type { JsonSchemaType } from "@modelcontextprotocol/sdk/validation/types.js";
 import open from "open";
+import { emit } from "../visual/event-sink.ts";
 
 export type ElicitationValue = string | number | boolean | string[] | undefined;
 type FormProperty = ElicitRequestFormParams["requestedSchema"]["properties"][string];
@@ -104,7 +105,7 @@ async function collectValidField(
       }, { [name]: result.value });
       return result;
     } catch (error) {
-      ui.notify(error instanceof Error ? error.message : String(error), "error");
+      emit(error instanceof Error ? error.message : String(error), "error");
       current = result.value;
     }
   }

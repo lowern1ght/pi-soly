@@ -35,6 +35,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { SOLY_DIRNAME } from "./core.js";
+import { emit } from "./visual/event-sink.ts";
 
 export type InitTemplate = "minimal" | "web-app" | "library" | "cli";
 
@@ -207,7 +208,7 @@ export async function initSolyProject(
 
 	// Preconditions
 	if (fs.existsSync(agentsDir)) {
-		ui.notify(
+		emit(
 			`soly init: project already initialized (found ${SOLY_DIRNAME}/). ` +
 				`Aborting to avoid overwriting.`,
 			"error",

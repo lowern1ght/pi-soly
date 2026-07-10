@@ -20,6 +20,7 @@ import { getAuthForUrl } from "./mcp-auth.ts";
 import { notifyReconnectFailed } from "./notify.ts";
 import { loadOnboardingState, markSetupCompleted as persistSetupCompleted, markSharedConfigHintShown } from "./onboarding-state.ts";
 import { openPath } from "./utils.ts";
+import { emit } from "../visual/event-sink.ts";
 
 export async function showStatus(state: McpExtensionState, ctx: ExtensionContext): Promise<void> {
   if (!ctx.hasUI) return;
@@ -70,7 +71,7 @@ export async function showStatus(state: McpExtensionState, ctx: ExtensionContext
     );
   }
 
-  ctx.ui.notify(lines.join("\n"), "info");
+  emit(lines.join("\n"), "info");
 }
 
 export async function showTools(state: McpExtensionState, ctx: ExtensionContext): Promise<void> {
@@ -79,7 +80,7 @@ export async function showTools(state: McpExtensionState, ctx: ExtensionContext)
   const allTools = [...state.toolMetadata.values()].flat().map(m => m.name);
 
   if (allTools.length === 0) {
-    ctx.ui.notify("No MCP tools available", "info");
+    emit("No MCP tools available", "info");
     return;
   }
 
@@ -91,7 +92,7 @@ export async function showTools(state: McpExtensionState, ctx: ExtensionContext)
     `Total: ${allTools.length} tools`,
   ];
 
-  ctx.ui.notify(lines.join("\n"), "info");
+  emit(lines.join("\n"), "info");
 }
 
 export async function reconnectServers(
@@ -101,7 +102,7 @@ export async function reconnectServers(
 ): Promise<void> {
   if (targetServer && !state.config.mcpServers[targetServer]) {
     if (ctx.hasUI) {
-      ctx.ui.notify(`Server "${targetServer}" not found in config`, "error");
+      emit(`Server "${targetServer}" not found in config`, "error");
     }
     return;
   }
@@ -117,7 +118,7 @@ export async function reconnectServers(
       const connection = await state.manager.connect(name, definition);
       if (connection.status === "needs-auth") {
         if (ctx.hasUI) {
-          ctx.ui.notify(`MCP: ${name} requires OAuth. Run /mcp-auth ${name} first.`, "warning");
+          emit(`MCP: ${name} requires OAuth. Run /mcp-auth ${name} first.`, "warning");
         }
         continue;
       }
@@ -129,12 +130,12 @@ export async function reconnectServers(
       state.failureTracker.delete(name);
 
       if (ctx.hasUI) {
-        ctx.ui.notify(
+        emit(
           `MCP: Reconnected to ${name} (${connection.tools.length} tools, ${connection.resources.length} resources)`,
           "info"
         );
         if (failedTools.length > 0) {
-          ctx.ui.notify(`MCP: ${name} - ${failedTools.length} tools skipped`, "warning");
+          emit(`MCP: ${name} - ${failedTools.length} tools skipped`, "warning");
         }
       }
     } catch (error) {
@@ -159,13 +160,13 @@ export async function authenticateServer(
   const definition = config.mcpServers[serverName];
   if (!definition) {
     const message = `Server "${serverName}" not found in config`;
-    ctx.ui.notify(message, "error");
+    emit(message, "error");
     return { ok: false, message };
   }
 
   if (!supportsOAuth(definition)) {
     const message = `Server "${serverName}" does not use OAuth authentication. Set "auth": "oauth" or omit auth for auto-detection.`;
-    ctx.ui.notify(
+    emit(
       `Server "${serverName}" does not use OAuth authentication.\n` +
       `Set "auth": "oauth" or omit auth for auto-detection.`,
       "error"
@@ -175,7 +176,7 @@ export async function authenticateServer(
 
   if (!definition.url) {
     const message = `Server "${serverName}" has no URL configured (OAuth requires HTTP transport)`;
-    ctx.ui.notify(message, "error");
+    emit(message, "error");
     return { ok: false, message };
   }
 
@@ -185,7 +186,7 @@ export async function authenticateServer(
 
     if (status === "authenticated") {
       const message = `OAuth authentication successful for "${serverName}"! Run /mcp reconnect ${serverName} to connect with the new token.`;
-      ctx.ui.notify(
+      emit(
         `OAuth authentication successful for "${serverName}"!\n` +
         `Run /mcp reconnect ${serverName} to connect with the new token.`,
         "info"
@@ -194,11 +195,11 @@ export async function authenticateServer(
     }
 
     const message = `OAuth authentication failed for "${serverName}".`;
-    ctx.ui.notify(message, "error");
+    emit(message, "error");
     return { ok: false, message };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    ctx.ui.notify(`Failed to authenticate "${serverName}": ${message}`, "error");
+    emit(`Failed to authenticate "${serverName}": ${message}`, "error");
     return { ok: false, message };
   } finally {
     ctx.ui.setStatus("mcp-auth", undefined);
@@ -213,7 +214,7 @@ export async function logoutServer(
   const definition = state.config.mcpServers[serverName];
   if (!definition) {
     const message = `Server "${serverName}" not found in config`;
-    if (ctx.hasUI) ctx.ui.notify(message, "error");
+    if (ctx.hasUI) emit(message, "error");
     return { ok: false, message };
   }
 
@@ -222,7 +223,7 @@ export async function logoutServer(
   updateStatusBar(state);
 
   const message = `OAuth credentials cleared for "${serverName}". Run /mcp-auth ${serverName} to authenticate again.`;
-  if (ctx.hasUI) ctx.ui.notify(message, "info");
+  if (ctx.hasUI) emit(message, "info");
   return { ok: true, message };
 }
 
@@ -376,7 +377,7 @@ export async function openMcpPanel(
           if (!result.cancelled && result.changes.size > 0) {
             writeDirectToolsConfig(result.changes, provenanceMap, config);
             configChanged = true;
-            ctx.ui.notify("Direct tools updated. Pi will reload after this panel closes.", "info");
+            emit("Direct tools updated. Pi will reload after this panel closes.", "info");
           }
           done(undefined);
           resolve();
@@ -404,7 +405,7 @@ export async function openMcpAuthPanel(
   const config = state.config;
   const oauthServers = Object.entries(config.mcpServers).filter(([, definition]) => supportsOAuth(definition));
   if (oauthServers.length === 0) {
-    ctx.ui.notify("No OAuth-capable MCP servers are configured.", "warning");
+    emit("No OAuth-capable MCP servers are configured.", "warning");
     return { configChanged: false };
   }
 

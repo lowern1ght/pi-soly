@@ -9,6 +9,7 @@ import * as path from "node:path";
 import { solyDirFor } from "../core.js";
 import type { SolyState } from "../core.js";
 import type { SolyConfig } from "../config.js";
+import { emit } from "../visual/event-sink.ts";
 
 interface InspectUI {
 	notify: (text: string, kind?: "info" | "warning" | "error") => void;
@@ -282,7 +283,7 @@ export function showTodos(
 	ui: InspectUI,
 ): void {
 	if (!state.exists) {
-		ui.notify("soly todos: no .agents/ directory in cwd", "error");
+		emit("soly todos: no .agents/ directory in cwd", "error");
 		return;
 	}
 	const file = findTodosFile(state.solyDir);
@@ -294,7 +295,7 @@ export function showTodos(
 	try {
 		parsed = JSON.parse(fs.readFileSync(file, "utf-8"));
 	} catch {
-		ui.notify(`soly todos: failed to parse ${path.basename(file)} (corrupt JSON?)`, "error");
+		emit(`soly todos: failed to parse ${path.basename(file)} (corrupt JSON?)`, "error");
 		return;
 	}
 	if (!parsed || !Array.isArray(parsed.todos) || parsed.todos.length === 0) {
@@ -327,7 +328,7 @@ export function showIterations(
 	limitDefault: number = 10,
 ): void {
 	if (!state.exists) {
-		ui.notify("soly iterations: no .agents/ directory in cwd", "error");
+		emit("soly iterations: no .agents/ directory in cwd", "error");
 		return;
 	}
 	const iterDir = path.join(state.solyDir, "iterations");
@@ -342,7 +343,7 @@ export function showIterations(
 	if (nArg) {
 		const parsed = parseInt(nArg, 10);
 		if (!Number.isFinite(parsed) || parsed <= 0) {
-			ui.notify(`soly iterations: invalid count "${nArg}"`, "error");
+			emit(`soly iterations: invalid count "${nArg}"`, "error");
 			return;
 		}
 		limit = parsed;
@@ -396,12 +397,12 @@ export function showDiffIterations(
 	ui: InspectUI,
 ): void {
 	if (!state.exists) {
-		ui.notify("soly diff iterations: no .agents/ directory in cwd", "error");
+		emit("soly diff iterations: no .agents/ directory in cwd", "error");
 		return;
 	}
 	const iterDir = path.join(state.solyDir, "iterations");
 	if (cmd.args.length < 2) {
-		ui.notify(
+		emit(
 			`soly diff iterations: need two file arguments (e.g. "soly diff iterations 05-02-exec-T1.md 05-02-exec-T2.md")`,
 			"error",
 		);
@@ -412,11 +413,11 @@ export function showDiffIterations(
 	const pathB = path.isAbsolute(b) ? b : path.join(iterDir, b);
 
 	if (!fs.existsSync(pathA)) {
-		ui.notify(`soly diff iterations: file not found: ${a}`, "error");
+		emit(`soly diff iterations: file not found: ${a}`, "error");
 		return;
 	}
 	if (!fs.existsSync(pathB)) {
-		ui.notify(`soly diff iterations: file not found: ${b}`, "error");
+		emit(`soly diff iterations: file not found: ${b}`, "error");
 		return;
 	}
 
@@ -454,23 +455,23 @@ export function showPhaseDelete(
 	ui: InspectUI,
 ): void {
 	if (!state.exists) {
-		ui.notify("soly phase delete: no .agents/ directory in cwd", "error");
+		emit("soly phase delete: no .agents/ directory in cwd", "error");
 		return;
 	}
 	if (cmd.args.length < 1) {
-		ui.notify("soly phase delete: need a phase number (e.g. `soly phase delete 5`)", "error");
+		emit("soly phase delete: need a phase number (e.g. `soly phase delete 5`)", "error");
 		return;
 	}
 	const phaseNum = parseInt(cmd.args[0]!, 10);
 	if (!Number.isFinite(phaseNum)) {
-		ui.notify(`soly phase delete: invalid phase number "${cmd.args[0]}"`, "error");
+		emit(`soly phase delete: invalid phase number "${cmd.args[0]}"`, "error");
 		return;
 	}
 
 	const phase = state.phases.find((p) => p.number === phaseNum);
 	if (!phase) {
 		const known = state.phases.map((p) => p.number).join(", ") || "(none)";
-		ui.notify(`soly phase delete: phase ${phaseNum} not found. Known: ${known}`, "error");
+		emit(`soly phase delete: phase ${phaseNum} not found. Known: ${known}`, "error");
 		return;
 	}
 
@@ -482,7 +483,7 @@ export function showPhaseDelete(
 		fs.mkdirSync(trashDir, { recursive: true });
 		fs.renameSync(phase.dir, dest);
 	} catch (e) {
-		ui.notify(`soly phase delete: failed to move phase (${(e as Error).message})`, "error");
+		emit(`soly phase delete: failed to move phase (${(e as Error).message})`, "error");
 		return;
 	}
 

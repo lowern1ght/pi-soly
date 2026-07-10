@@ -1,3 +1,4 @@
+import { emit } from "../visual/event-sink.ts";
 // =============================================================================
 // commands/rulewizard.ts — /rulewizard command (interactive guide)
 // =============================================================================
@@ -11,7 +12,7 @@ export function registerRulewizardCommand(pi: ExtensionAPI, deps: CommandsDeps):
 		description:
 			"interactive guide: decide whether a constraint should be a soly rule, an .editorconfig entry, or a linter config (eslint/biome/prettier). Use this BEFORE writing a new rule to avoid duplicating what linters already enforce.",
 		handler: async (_args, ctx) => {
-			ctx.ui.notify(
+			emit(
 				[
 					"soly-rule-wizard:",
 					"",

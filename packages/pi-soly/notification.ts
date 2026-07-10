@@ -6,7 +6,7 @@
 // soft background — the same pattern pi itself uses for branch summaries
 // and compaction messages (see pi-coding-agent's BranchSummaryMessage).
 //
-// Why a widget, not `ui.notify()`?
+// Why a widget, not `emit()`?
 //   - `notify()` is plain text, no background, no styled box
 //   - `setWidget(key, factory, opts)` accepts a factory returning a
 //     `Box` / `Text` component, which gives full theme support
@@ -29,6 +29,7 @@
 import { Box, Spacer, Text, type TUI } from "@earendil-works/pi-tui";
 import type { ExtensionUIContext, Theme } from "@earendil-works/pi-coding-agent";
 import { appendNotification } from "./notifications-log.ts";
+import { emit } from "./visual/event-sink.ts";
 
 /** Theme background color names (subset of ThemeBg). */
 export type NotifBg =

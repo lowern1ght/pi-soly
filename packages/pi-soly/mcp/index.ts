@@ -14,6 +14,7 @@ import { initializeOAuth, shutdownOAuth } from "./mcp-auth-flow.ts";
 import { createMcpDirectToolCallRenderer, renderMcpProxyToolCall, renderMcpToolResult } from "./tool-result-renderer.ts";
 import { ToolCache, cacheKey as makeCacheKey } from "./tool-cache.ts";
 import { preloadAppBridge } from "./ext-apps-bridge.ts";
+import { emit } from "../visual/event-sink.ts";
 
 /** Default TTL for cached MCP tool results (60s). Tools that hit a stable
  *  server benefit; volatile ones are penalized for 60s — call sites can
@@ -190,12 +191,12 @@ export default function mcpAdapter(pi: ExtensionAPI) {
           state = await initPromise;
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          if (ctx.hasUI) ctx.ui.notify(`MCP initialization failed: ${message}`, "error");
+          if (ctx.hasUI) emit(`MCP initialization failed: ${message}`, "error");
           return;
         }
       }
       if (!state) {
-        if (ctx.hasUI) ctx.ui.notify("MCP not initialized", "error");
+        if (ctx.hasUI) emit("MCP not initialized", "error");
         return;
       }
 
@@ -222,7 +223,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
         case "logout": {
           const serverName = rest;
           if (!serverName) {
-            if (ctx.hasUI) ctx.ui.notify("Usage: /mcp logout <server>", "error");
+            if (ctx.hasUI) emit("Usage: /mcp logout <server>", "error");
             return;
           }
           await logoutServer(serverName, state, ctx);
@@ -258,12 +259,12 @@ export default function mcpAdapter(pi: ExtensionAPI) {
           state = await initPromise;
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          if (ctx.hasUI) ctx.ui.notify(`MCP initialization failed: ${message}`, "error");
+          if (ctx.hasUI) emit(`MCP initialization failed: ${message}`, "error");
           return;
         }
       }
       if (!state) {
-        if (ctx.hasUI) ctx.ui.notify("MCP not initialized", "error");
+        if (ctx.hasUI) emit("MCP not initialized", "error");
         return;
       }
 

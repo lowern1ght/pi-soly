@@ -22,6 +22,7 @@ import { UiResourceHandler } from "./ui-resource-handler.ts";
 import { openUrl, parallelLimit } from "./utils.ts";
 import { logger } from "./logger.ts";
 import { getMissingConfiguredDirectToolServers } from "./direct-tools.ts";
+import { emit } from "../visual/event-sink.ts";
 import {
 	notifySessionRecovered,
 	notifySessionRecoveryFailed,
@@ -158,7 +159,7 @@ export async function initializeMcp(
   for (const { name, definition, connection, error } of results) {
     if (error || !connection) {
       if (ctx.hasUI) {
-        ctx.ui.notify(`MCP: Failed to connect to ${name}: ${error}`, "error");
+        emit(`MCP: Failed to connect to ${name}: ${error}`, "error");
       }
       console.error(`MCP: Failed to connect to ${name}: ${error}`);
       continue;
@@ -169,7 +170,7 @@ export async function initializeMcp(
     updateMetadataCache(state, name);
 
     if (failedTools.length > 0 && ctx.hasUI) {
-      ctx.ui.notify(
+      emit(
         `MCP: ${name} - ${failedTools.length} tools skipped`,
         "warning"
       );
@@ -183,7 +184,7 @@ export async function initializeMcp(
     const msg = failedCount > 0
       ? `MCP: ${connectedCount}/${startupServers.length} servers connected (${totalTools} tools)`
       : `MCP: ${connectedCount} servers connected (${totalTools} tools)`;
-    ctx.ui.notify(msg, "info");
+    emit(msg, "info");
   }
 
   const envDirect = process.env.MCP_DIRECT_TOOLS;
@@ -215,7 +216,7 @@ export async function initializeMcp(
       );
       const bootstrapped = bootstrapResults.filter(r => r.ok).map(r => r.name);
       if (bootstrapped.length > 0 && ctx.hasUI) {
-        ctx.ui.notify(`MCP: direct tools for ${bootstrapped.join(", ")} will be available after restart`, "info");
+        emit(`MCP: direct tools for ${bootstrapped.join(", ")} will be available after restart`, "info");
       }
     }
   }

@@ -20,6 +20,7 @@ import { SolyFooter } from "./footer.ts";
 import { SolyTopBar } from "./topbar.ts";
 import { SolyHeader, type WelcomeInput } from "./welcome.ts";
 import { buildWorkingMessage } from "./working.ts";
+import { emit } from "./event-sink.ts";
 
 /** Subset of soly config that controls the chrome (see config.ts `chrome`). */
 export type ChromeConfig = {
@@ -61,11 +62,11 @@ export type Chrome = {
 	updateWorking(ui: ExtensionUIContext, outputTokens: number): void;
 	/** Stop the telemetry line and restore the default message (agent_end). */
 	stopWorking(ui: ExtensionUIContext): void;
-	/** Record a non-error soly event. Rendered as a sub-line under the
-	 *  Working indicator (└─ prefixed, level-marker glyph). Auto-cleared on
-	 *  the next `startWorking`. Errors are still surfaced via
-	 *  `ui.notify(text, "error")` — call that directly for the popup. */
-	recordEvent(text: string, level?: "info" | "warning"): void;
+	/** Record a soly event (any level). Rendered as a sub-line under the
+	 *  Working indicator. No popups — everything goes through the sub-line.
+	 *  └─ for info, └─ ⚠ for warning, └─ ✗ for error. Auto-cleared on
+	 *  the next `startWorking`. */
+	emit(text: string, level?: "info" | "warning" | "error"): void;
 	/** Restore pi's native footer/widgets/indicator (session_shutdown / disable). */
 	dispose(ui?: ExtensionUIContext): void;
 };
@@ -103,7 +104,7 @@ export function createChrome(getConfig: () => ChromeConfig): Chrome {
 	};
 
 	return {
-		recordEvent(text: string, level: "info" | "warning" = "info"): void {
+		emit(text: string, level: "info" | "warning" | "error" = "info"): void {
 			data.recentEvent = text;
 			data.recentEventLevel = level;
 			try { tui?.requestRender(); } catch { /* not mounted yet */ }

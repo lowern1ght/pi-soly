@@ -97,7 +97,7 @@ export function registerWhyCommand(pi: ExtensionAPI, deps: WhyDeps): void {
 					"If a behavior surprises you, look here first for the basis.",
 			);
 
-			ctx.ui.notify(lines.join("\n"), "info");
+			recordEvent(lines.join("\n"), "info");
 
 			// Suppress unused arg
 			void args;

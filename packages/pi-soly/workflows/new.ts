@@ -18,6 +18,7 @@ import * as fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import { parsePlanName, type SolyCommand } from "./parser.ts";
 import type { SolyState } from "../core.js";
+import { emit } from "../visual/event-sink.ts";
 
 export interface NewResult {
 	handled: boolean;
@@ -152,7 +153,7 @@ export function buildNewTransform(
 		}
 		try {
 			git(["checkout", baseBranch], { cwd: projectRoot });
-			ui.notify(
+			emit(
 				`auto-checkout ${baseBranch} (was on ${currentBranch})`,
 				"info",
 			);

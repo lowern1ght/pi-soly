@@ -14,6 +14,7 @@
 
 import { notifyFramed, type NotifBg } from "../notification.ts";
 import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+import { emit } from "../visual/event-sink.ts";
 
 const MCP_KEY_PREFIX = "mcp-";
 
@@ -36,7 +37,7 @@ function notifyBox(
 		// with a short title-only message. Don't crash the MCP handler.
 		const plain = lines.length > 0 ? `${title} — ${lines.join(" ")}` : title;
 		try {
-			ui.notify(plain, bg === "toolErrorBg" ? "error" : bg === "toolPendingBg" ? "warning" : "info");
+			emit(plain, bg === "toolErrorBg" ? "error" : bg === "toolPendingBg" ? "warning" : "info");
 		} catch {
 			// no UI at all — silent
 		}

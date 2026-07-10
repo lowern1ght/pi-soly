@@ -77,6 +77,7 @@ import piAskExtension from "./ask/index.ts";
 import piDeckExtension from "./deck/index.ts";
 import piArtifactExtension from "./artifact/index.ts";
 import { getArtifactServer } from "./artifact/session.ts";
+import { emit } from "./visual/event-sink.ts";
 
 /** Compact phase label for the chrome top bar, e.g. "plan 2/5". Null when idle. */
 function phaseLabelFromState(s: SolyState): string | null {
@@ -387,7 +388,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 		// Non-error soly events land in the Working sub-line (└─ prefixed).
 		// The route goes through the chrome so the sub-line auto-clears on
 		// the next agent_start.
-		recordEvent: (text, level) => chrome.recordEvent(text, level),
+		recordEvent: (text, level) => chrome.emit(text, level),
 	});
 
 	registerTools(pi, {
@@ -397,7 +398,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 	});
 
 	registerWorkflows(pi, {
-		recordEvent: (text, level) => chrome.recordEvent(text, level),
+		recordEvent: (text, level) => chrome.emit(text, level),
 		getState: () => state,
 		getInteractiveRules: () =>
 			combinedRules()
@@ -463,20 +464,20 @@ export default function solyExtension(pi: ExtensionAPI) {
 		const cfgResult = loadConfig(ctx.cwd);
 		activeConfig = cfgResult.config;
 		for (const w of cfgResult.warnings) {
-			ctx.ui.notify(`soly config: ${w}`, "warning");
+			emit(`soly config: ${w}`, "warning");
 		}
 		if (cfgResult.sources.global || cfgResult.sources.project) {
 			const sources = [
 				cfgResult.sources.global ? `global: ${cfgResult.sources.global}` : null,
 				cfgResult.sources.project ? `project: ${cfgResult.sources.project}` : null,
 			].filter(Boolean).join(", ");
-			ctx.ui.notify(`soly config loaded (${sources})`, "info");
+			emit(`soly config loaded (${sources})`, "info");
 		}
 		// Auto-prune old iteration files per retention config
 		if (state.exists) {
 			const r = pruneOldIterations(state.solyDir, activeConfig.iteration.retentionDays);
 			if (r.pruned > 0) {
-				ctx.ui.notify(
+				emit(
 					`soly: pruned ${r.pruned} old iteration file(s) (retention ${activeConfig.iteration.retentionDays}d)`,
 					"info",
 				);
@@ -540,7 +541,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 		// Working indicator (└─ reloaded 47 rules). Errors here are real
 		// (disk I/O failed) and stay as popups.
 		hotReload.setNotifyHandler((reason) => {
-			chrome.recordEvent(`reloaded rules (${reason})`);
+			chrome.emit(`reloaded rules (${reason})`);
 		});
 
 		// Notifications (one-shot at startup)
@@ -556,10 +557,10 @@ export default function solyExtension(pi: ExtensionAPI) {
 			if (phaseRules.length > 0) {
 				summary += ` + ${phaseRules.length} phase-${state.currentPhase?.number}`;
 			}
-			ctx.ui.notify(summary, "info");
+			emit(summary, "info");
 
 			if (overriddenRulePaths.length > 0) {
-				ctx.ui.notify(
+				emit(
 					`soly: ${overriddenRulePaths.length} rule(s) overridden by project (${overriddenRulePaths.join(", ")})`,
 					"info",
 				);
@@ -583,23 +584,23 @@ export default function solyExtension(pi: ExtensionAPI) {
 				if (added.length) parts.push(`+${added.length}`);
 				if (removed.length) parts.push(`-${removed.length}`);
 				if (changed.length) parts.push(`~${changed.length}`);
-				ctx.ui.notify(`soly: rules changed since last session (${parts.join(" ")})`, "info");
+				emit(`soly: rules changed since last session (${parts.join(" ")})`, "info");
 			}
 
 			// Rule budget analytics
 			const analytics = analyzeRules(alwaysOnRules, CONTEXT_WINDOW_TOKENS);
 			if (analytics.contextBudgetPct > 5) {
-				ctx.ui.notify(
+				emit(
 					`soly: rules use ${analytics.contextBudgetPct.toFixed(1)}% of context window (${formatTok(analytics.totalTokens)} across ${analytics.fileCount} files)`,
 					"info",
 				);
 			}
 		} else {
-			ctx.ui.notify("soly rules: none found in .agents/rules.local, .agents/rules, or ~/.agents/rules", "info");
+			emit("soly rules: none found in .agents/rules.local, .agents/rules, or ~/.agents/rules", "info");
 		}
 
 		if (state.exists) {
-			ctx.ui.notify(`soly state: ${state.milestone} (${state.phases.length} phases)`, "info");
+			emit(`soly state: ${state.milestone} (${state.phases.length} phases)`, "info");
 		}
 
 		updateStatus(ctx);

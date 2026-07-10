@@ -67,7 +67,7 @@ export function registerDocsCommand(pi: ExtensionAPI, deps: DocsDeps): void {
 				return;
 			}
 
-			ui.notify("Usage: /docs <list|stats>", "error");
+			recordEvent("Usage: /docs <list|stats>", "error");
 			void solyDirFor; // kept available for future subcommands
 		},
 	});
