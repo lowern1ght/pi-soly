@@ -232,7 +232,7 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 		}
 	});
 
-	test("bad plan name returns clean error", () => {
+	test("auto-slugified plan name on wrong branch returns branch error", () => {
 		run(repo, ["checkout", "-b", "anything-branch"]);
 		const ui = fakeUi();
 		const state = fakeState(path.join(repo, ".agents"));
@@ -243,7 +243,9 @@ describe("buildDoneTransform (real git, mocked gh)", () => {
 			repo,
 		);
 		expect(result.handled).toBe(true);
-		expect(result.transformedText).toMatch(/bad plan name/);
+		// "BadName" auto-slugifies to "badname" → valid → done checks branch.
+		// We're on "anything-branch", not "badname" → branch mismatch error.
+		expect(result.transformedText).toMatch(/not the plan branch|currently on/);
 	});
 
 	test("blocks when no .agents/ directory", () => {

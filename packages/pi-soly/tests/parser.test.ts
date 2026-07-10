@@ -100,14 +100,16 @@ describe("describeExecuteTarget", () => {
 		expect(t).toEqual({ kind: "phase", phase: 11, plan: 2, raw: "11.02" });
 	});
 
-	test("rejects malformed numbers", () => {
-		expect(describeExecuteTarget(["11.2.3"])).toBeNull();
+	test("auto-slugifies malformed numbers", () => {
+		// "11.2.3" → auto-slugified to "11-2-3" → plan
+		const t = describeExecuteTarget(["11.2.3"]);
+		expect(t?.kind).toBe("plan");
 		expect(describeExecuteTarget(["-5"])).toBeNull();
 	});
 
 	test("plain letters are now a valid plan slug (1.15.x)", () => {
 		// `abc` matches the kebab-case slug regex, so it's a valid plan name.
-		expect(describeExecuteTarget(["abc"])).toEqual({ kind: "plan", name: "abc", prefix: null, raw: "abc" });
+		expect(describeExecuteTarget(["abc"])).toEqual({ kind: "plan", name: "abc", prefix: null, autoSlugified: false, originalInput: "abc", raw: "abc" });
 	});
 
 	test("parses task id (slug-4hex)", () => {
@@ -127,6 +129,8 @@ describe("describeExecuteTarget", () => {
 			kind: "plan",
 			name: "auth-be-login-zzzz",
 			prefix: null,
+			autoSlugified: false,
+			originalInput: "auth-be-login-zzzz",
 			raw: "auth-be-login-zzzz",
 		});
 	});
@@ -219,6 +223,8 @@ describe("describePlanTarget", () => {
 			kind: "plan",
 			name: "add-logout",
 			prefix: null,
+			autoSlugified: false,
+			originalInput: "add-logout",
 			raw: "--new-task add-logout",
 		});
 	});
@@ -247,8 +253,10 @@ describe("describePlanTarget", () => {
 		expect(t!.kind).toBe("new-task");
 	});
 
-	test("rejects unknown shapes", () => {
-		expect(describePlanTarget(["11.02"])).toBeNull(); // plan-shape N.MM is execute-only
+	test("auto-slugifies non-phase shapes", () => {
+		// "11.02" in plan target → not a valid phase (no .MM) → auto-slugified
+		const t = describePlanTarget(["11.02"]);
+		expect(t?.kind).toBe("plan"); // plan-shape N.MM is execute-only
 	});
 
 	test("plain word is now a valid plan slug (1.15.x)", () => {
@@ -256,6 +264,8 @@ describe("describePlanTarget", () => {
 			kind: "plan",
 			name: "whatever",
 			prefix: null,
+			autoSlugified: false,
+			originalInput: "whatever",
 			raw: "whatever",
 		});
 	});

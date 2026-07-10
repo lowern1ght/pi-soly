@@ -89,7 +89,7 @@ export function buildNewTransform(
 	const parsed = parsePlanName(cmd.args.join(" "));
 	if ("error" in parsed) return reply(`soly new: ${parsed.error}`);
 
-	const { name, prefix } = parsed;
+	const { name, prefix, autoSlugified, originalInput } = parsed;
 	// Branch can be one of three shapes:
 	//   - "feature/statistic-preparation" (user typed <prefix>/<slug>)
 	//   - "feature/statistic-preparation" (config has defaultBranchPrefix "feature", user typed "statistic-preparation")
@@ -123,18 +123,45 @@ export function buildNewTransform(
 
 	const currentBranch = git(["branch", "--show-current"], { cwd: projectRoot }) || "HEAD (detached)";
 	// A plan branch is a kebab-case slug (no `<type>/` prefix after 1.15.x).
-	// The branch can also be the long-lived integration branches `master`
-	// or `main`. Anything else (release tags, weird suffixes) → user must
-	// checkout first.
+	// The base can also be the long-lived integration branches `master`/`main`.
+	// Anything else (release tags, weird suffixes, feature branches from
+	// previous work) — we auto-checkout the base branch instead of
+	// blocking the user. The LLM driving soly shouldn't have to manage
+	// git state.
 	if (
 		currentBranch !== "master" &&
 		currentBranch !== "main" &&
 		!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(currentBranch)
 	) {
-		return reply(
-			`soly new: currently on "${currentBranch}" (not master/main, not a soly plan branch). ` +
-				`Switch back to master first with \`git checkout master\`.`,
-		);
+		// Detect which base branch the repo uses: try `main` first, fall
+		// back to `master`. If neither exists, give up — the repo is in
+		// a state the user needs to resolve by hand.
+		const baseBranch = ["main", "master"].find((b) => {
+			try {
+				git(["rev-parse", "--verify", b], { cwd: projectRoot });
+				return true;
+			} catch {
+				return false;
+			}
+		});
+		if (!baseBranch) {
+			return reply(
+				`soly new: cannot find a base branch to base off — repo has neither "main" nor "master". ` +
+					`Run \`git checkout <base>\` first, or create a default branch.`,
+			);
+		}
+		try {
+			git(["checkout", baseBranch], { cwd: projectRoot });
+			ui.notify(
+				`auto-checkout ${baseBranch} (was on ${currentBranch})`,
+				"info",
+			);
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			return reply(
+				`soly new: failed to checkout ${baseBranch} (was on ${currentBranch}): ${msg}`,
+			);
+		}
 	}
 
 	let branchExisted = false;

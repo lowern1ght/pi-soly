@@ -32,6 +32,7 @@ import type { SolyState } from "../core.js";
 import type { SolyConfig } from "../config.js";
 
 export interface WorkflowsDeps {
+	recordEvent: (text: string, level?: "info" | "warning") => void;
 	getState: () => SolyState;
 	/** List of rule relPaths marked `interactive: true` — inlined into the
 	 *  execute instruction so the model knows which rules are explicitly out of
@@ -57,7 +58,7 @@ export interface WorkflowsDeps {
 const MODE_VERBS: readonly string[] = ["execute", "plan", "discuss", "resume"];
 
 export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
-	const { getState, getInteractiveRules, getActiveTools, getConfig, onWorkflowUsed } = deps;
+	const { getState, getInteractiveRules, getActiveTools, getConfig, onWorkflowUsed, recordEvent } = deps;
 
 	// Self-review loop ("soly verify"). Owns its own agent_end + input hooks;
 	// fresh-context mode rewrites the next LLM call through the context manager.
@@ -276,7 +277,7 @@ State inspection lives on the slash form — \`/soly <sub>\`:
 				"and .agents/.continue-here.md. Preserve milestone/phase/plan position and key " +
 				"decisions in the summary. Drop implementation-detail noise.",
 			onComplete: () => {
-				ctx.ui.notify("soly: session compacted. Use `soly resume` to pick up.", "info");
+				recordEvent("session compacted — use 'soly resume' to pick up");
 			},
 			onError: (err) => {
 				ctx.ui.notify(`soly: compact failed — ${err.message}`, "error");

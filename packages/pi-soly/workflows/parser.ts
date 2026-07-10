@@ -37,12 +37,36 @@ export type WorkflowVerb =
  *   soly new statistic-preparation
  *   soly new login-redirect-bug
  *   soly new stats-rollup
+ *
+ * If the input doesn't match the strict kebab-case shape, we attempt
+ * to auto-slugify it (lowercase, replace non-slug chars with `-`,
+ * collapse, trim). For free-form prose like "this is a feature" or
+ * even Cyrillic text, the auto-slugified result becomes the plan name
+ * and the original input is preserved as the plan's description so
+ * the LLM has the human-authored context.
  */
 export function parsePlanName(
 	raw: string,
-): { name: string; prefix: string | null } | { error: string } {
+): { name: string; prefix: string | null; autoSlugified: boolean; originalInput: string } | { error: string; tried: string } {
 	const trimmed = raw.trim();
-	if (!trimmed) return { error: "missing plan name" };
+	if (!trimmed) return { error: "missing plan name", tried: "" };
+
+	// Strict regex: ASCII alphanumerics + hyphen, must start and end with
+	// an alnum. The kebab-case shape we want to encourage.
+	// Unicode regex used for the lenient path below (e.g. Cyrillic, accents).
+	const SLUG_STRICT = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/u;
+	const SLUG_LENIENT = /^[\p{L}\p{N}][\p{L}\p{N}_-]*[\p{L}\p{N}]$/u;
+	const MAX_LEN = 64;
+	const MIN_LEN = 2;
+
+	/** Lowercase, replace non-slug chars with `-`, collapse, trim. */
+	const autoSlugify = (s: string): string =>
+		s
+			.toLowerCase()
+			.normalize("NFKD")
+			.replace(/[^\p{L}\p{N}_-]/gu, "-")
+			.replace(/-+/g, "-")
+			.replace(/^-+|-+$/g, "");
 
 	// Optional `<prefix>/<slug>` form: prefix is one kebab-case word
 	// (no internal slashes), slug is the same kebab-case shape. Examples:
@@ -54,49 +78,67 @@ export function parsePlanName(
 	if (slashIdx > 0) {
 		const prefix = trimmed.slice(0, slashIdx);
 		const slug = trimmed.slice(slashIdx + 1);
-		const prefixOk = /^[a-z][a-z0-9-]*[a-z0-9]$/.test(prefix);
-		const slugOk = /^[a-z][a-z0-9-]*[a-z0-9]$/.test(slug);
+		const prefixOk = SLUG_STRICT.test(prefix);
+		const slugOk = SLUG_STRICT.test(slug);
 		if (!prefixOk || !slugOk) {
 			return {
 				error:
 					`bad plan name "${trimmed}".\n` +
-					`\nExpected: <slug> OR <prefix>/<slug>\n` +
+					`\nExpected: <prefix>/<slug>  (e.g. "feature/login-redirect-bug")\n` +
 					`  prefix: one kebab-case word (e.g. "feature", "fix", "chore")\n` +
 					`  slug:   kebab-case (lowercase letters, digits, hyphens)\n` +
-					`\nExample: soly new feature/statistic-preparation`,
+					`\nTip: pass free-form prose instead and soly will auto-slugify:\n` +
+					`  soly new "add a button to the settings page"  →  add-a-button-to-the-settings-page`,
+				tried: trimmed,
 			};
 		}
-		return { name: slug, prefix };
+		return { name: slug, prefix, autoSlugified: false, originalInput: trimmed };
 	}
 
-	// Plain slug form. Must contain at least one letter — pure-digit strings
-	// are reserved for phase numbers (`soly plan 11` → phase 11), not slugs.
-	if (!/[a-z]/.test(trimmed)) {
-		return {
-			error:
-				`bad plan name "${trimmed}".\n` +
-				`\nExpected: <slug> OR <prefix>/<slug>\n` +
-				`  chars:  lowercase letters, digits, and hyphens\n` +
-				`         must start and end with a letter or digit\n` +
-				`\nExample: soly new statistic-preparation`,
-		};
+	// Plain slug form. If it's already kebab-case, accept as-is.
+	// Exception: pure-digit strings are reserved for phase numbers
+	// (`soly plan 11` → phase 11), not slugs.
+	if (
+		SLUG_STRICT.test(trimmed) &&
+		/[a-z]/.test(trimmed) &&
+		trimmed.length >= MIN_LEN &&
+		trimmed.length <= MAX_LEN
+	) {
+		return { name: trimmed, prefix: null, autoSlugified: false, originalInput: trimmed };
 	}
-	const m = trimmed.match(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/);
-	if (!m) {
-		return {
-			error:
-				`bad plan name "${trimmed}".\n` +
-				`\nExpected: <slug> OR <prefix>/<slug>\n` +
-				`  length: 2-64 chars\n` +
-				`  chars:  lowercase letters, digits, and hyphens\n` +
-				`         must start and end with a letter or digit\n` +
-				`\nExample: soly new statistic-preparation`,
-		};
+
+	// Otherwise, try to auto-slugify (handles free-form prose, Cyrillic,
+	// accented chars, mixed punctuation). The result must be a valid slug
+	// under the lenient Unicode regex.
+	//
+	// Exception: pure-digit strings (e.g. "11") are reserved for phase
+	// numbers (`soly plan 11` → phase 11), not slugs. Don't auto-slugify them.
+	const candidate = autoSlugify(trimmed);
+	const isPureDigits = /^\d+$/.test(candidate);
+	if (
+		!isPureDigits &&
+		candidate.length >= MIN_LEN &&
+		candidate.length <= MAX_LEN &&
+		SLUG_LENIENT.test(candidate)
+	) {
+		return { name: candidate, prefix: null, autoSlugified: true, originalInput: trimmed };
 	}
-	if (trimmed.length > 64) {
-		return { error: `name "${trimmed}" is too long (max 64 chars)` };
-	}
-	return { name: trimmed, prefix: null };
+
+	// Couldn't make anything valid out of the input. Surface a clear error
+	// that explains what we tried and what works.
+	return {
+		error:
+			`bad plan name "${trimmed}".\n` +
+			`\nExpected: <slug> OR <prefix>/<slug>\n` +
+			`  length: ${MIN_LEN}-${MAX_LEN} chars\n` +
+			`  chars:  Unicode letters/digits/hyphens/underscores (auto-slugified to kebab-case)\n` +
+			`\nTip: pass the plan description as a free-form string and soly will\n` +
+			`auto-slugify it for you:\n` +
+			`  soly new "add a button to the settings page"  →  add-a-button-to-the-settings-page\n` +
+			`\nOr pick a short kebab-case name yourself:\n` +
+			`  soly new statistic-preparation`,
+		tried: candidate,
+	};
 }
 
 export interface SolyCommand {
@@ -242,7 +284,7 @@ function parseNewTaskFlag(
  */
 export type ExecuteTarget =
 	| { kind: "phase"; phase: number; plan: number | null; raw: string }
-	| { kind: "plan"; name: string; prefix: string | null; raw: string }
+	| { kind: "plan"; name: string; prefix: string | null; autoSlugified: boolean; originalInput: string; raw: string }
 	| { kind: "task"; taskId: string; raw: string }
 	| { kind: "all"; raw: string }
 	| { kind: "feature"; feature: string; raw: string };
@@ -286,14 +328,17 @@ export function describeExecuteTarget(args: string[]): ExecuteTarget | null {
 		return { kind: "task", taskId, raw };
 	}
 
-	const plan = parsePlanName(target);
-	if (!("error" in plan)) {
-		return { kind: "plan", name: plan.name, prefix: plan.prefix, raw };
-	}
-
+	// Check phase shape FIRST — pure digits and NN.MM patterns are phase
+	// numbers, not plan slugs. Must come before parsePlanName because
+	// auto-slugify would turn "11.02" into "11-02" (a valid plan slug).
 	const phase = parsePhaseShape(target);
 	if (phase) {
 		return { kind: "phase", phase: phase.phase, plan: phase.plan, raw };
+	}
+
+	const plan = parsePlanName(target);
+	if (!("error" in plan)) {
+		return { kind: "plan", name: plan.name, prefix: plan.prefix, autoSlugified: plan.autoSlugified, originalInput: plan.originalInput, raw };
 	}
 
 	return null;
@@ -314,7 +359,7 @@ export function describeExecuteTarget(args: string[]): ExecuteTarget | null {
  */
 export type PlanTarget =
 	| { kind: "phase"; phase: number; raw: string }
-	| { kind: "plan"; name: string; prefix: string | null; raw: string }
+	| { kind: "plan"; name: string; prefix: string | null; autoSlugified: boolean; originalInput: string; raw: string }
 	| { kind: "task"; taskId: string; raw: string }
 	| { kind: "new-task"; slug: string; feature: string; raw: string }
 	| { kind: "feature"; feature: string; raw: string };
@@ -360,16 +405,17 @@ export function describePlanTarget(args: string[]): PlanTarget | null {
 		return { kind: "task", taskId, raw };
 	}
 
-	const plan = parsePlanName(target);
-	if (!("error" in plan)) {
-		return { kind: "plan", name: plan.name, prefix: plan.prefix, raw };
-	}
-
-	// Plan target only matches plain N (no .MM — plan is per-phase, executed
-	// at the phase level by `soly execute <N.MM>`).
+	// Check phase shape FIRST — pure digits are phase numbers, not slugs.
+	// Must come before parsePlanName because auto-slugify would turn digits
+	// into a valid plan slug.
 	const phase = parsePhaseOnlyShape(target);
 	if (phase) {
 		return { kind: "phase", phase: phase.phase, raw };
+	}
+
+	const plan = parsePlanName(target);
+	if (!("error" in plan)) {
+		return { kind: "plan", name: plan.name, prefix: plan.prefix, autoSlugified: plan.autoSlugified, originalInput: plan.originalInput, raw };
 	}
 
 	return null;

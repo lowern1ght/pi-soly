@@ -397,6 +397,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 	});
 
 	registerWorkflows(pi, {
+		recordEvent: (text, level) => chrome.recordEvent(text, level),
 		getState: () => state,
 		getInteractiveRules: () =>
 			combinedRules()
@@ -535,9 +536,11 @@ export default function solyExtension(pi: ExtensionAPI) {
 			},
 		});
 		// Editors save in bursts (write to .tmp, rename, touch). Coalesce
-		// those rapid reload events into a single user-visible notify.
+		// those rapid reload events into a single sub-line event under the
+		// Working indicator (└─ reloaded 47 rules). Errors here are real
+		// (disk I/O failed) and stay as popups.
 		hotReload.setNotifyHandler((reason) => {
-			ctx.ui.notify(`soly: rules reloaded (${reason})`, "info");
+			chrome.recordEvent(`reloaded rules (${reason})`);
 		});
 
 		// Notifications (one-shot at startup)

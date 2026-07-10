@@ -55,12 +55,12 @@ function initTmpRepoWithSoly(): string {
 describe("describePlanTarget — plan kind (W2)", () => {
 	test("auth-jwt → plan", () => {
 		const t = describePlanTarget(["auth-jwt"]);
-		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: null, raw: "auth-jwt" });
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: null, autoSlugified: false, originalInput: "auth-jwt", raw: "auth-jwt" });
 	});
 
 	test("feature/auth-jwt → plan (prefixed form)", () => {
 		const t = describePlanTarget(["feature/auth-jwt"]);
-		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: "feature", raw: "feature/auth-jwt" });
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: "feature", autoSlugified: false, originalInput: "feature/auth-jwt", raw: "feature/auth-jwt" });
 	});
 
 	test("login-redirect → plan", () => {
@@ -80,7 +80,7 @@ describe("describePlanTarget — plan kind (W2)", () => {
 
 	test("legacy <type>/<name> form is now accepted as <prefix>/<slug> (1.16.x)", () => {
 		const t = describePlanTarget(["feat/auth-jwt"]);
-		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: "feat", raw: "feat/auth-jwt" });
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: "feat", autoSlugified: false, originalInput: "feat/auth-jwt", raw: "feat/auth-jwt" });
 	});
 
 	test("Foo/Bar (uppercase) → null", () => {
@@ -88,26 +88,26 @@ describe("describePlanTarget — plan kind (W2)", () => {
 		expect(t).toBeNull();
 	});
 
-	test("name with leading dash → null", () => {
+	test("name with leading dash → auto-slugified", () => {
 		const t = describePlanTarget(["-auth"]);
-		expect(t).toBeNull();
+		expect(t?.kind).toBe("plan");
 	});
 
-	test("name with trailing dash → null", () => {
+	test("name with trailing dash → auto-slugified", () => {
 		const t = describePlanTarget(["auth-"]);
-		expect(t).toBeNull();
+		expect(t?.kind).toBe("plan");
 	});
 });
 
 describe("describeExecuteTarget — plan kind (W2)", () => {
 	test("auth-jwt → plan", () => {
 		const t = describeExecuteTarget(["auth-jwt"]);
-		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: null, raw: "auth-jwt" });
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: null, autoSlugified: false, originalInput: "auth-jwt", raw: "auth-jwt" });
 	});
 
 	test("feature/auth-jwt → plan (prefixed form)", () => {
 		const t = describeExecuteTarget(["feature/auth-jwt"]);
-		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: "feature", raw: "feature/auth-jwt" });
+		expect(t).toEqual({ kind: "plan", name: "auth-jwt", prefix: "feature", autoSlugified: false, originalInput: "feature/auth-jwt", raw: "feature/auth-jwt" });
 	});
 
 	test("plain 5 → still phase (backward compat)", () => {

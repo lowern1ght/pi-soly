@@ -76,20 +76,20 @@ function run(cwd: string, args: string[]): string {
 describe("parsePlanName (pure)", () => {
 	test("valid kebab-case slug", () => {
 		const r = parsePlanName("statistic-preparation");
-		expect(r).toEqual({ name: "statistic-preparation", prefix: null });
+		expect(r).toEqual({ name: "statistic-preparation", prefix: null, autoSlugified: false, originalInput: "statistic-preparation" });
 	});
 
 	test("digits allowed", () => {
-		expect(parsePlanName("api-v2-rate-limit")).toEqual({ name: "api-v2-rate-limit", prefix: null });
+		expect(parsePlanName("api-v2-rate-limit")).toEqual({ name: "api-v2-rate-limit", prefix: null, autoSlugified: false, originalInput: "api-v2-rate-limit" });
 	});
 
 	test("single-letter segments", () => {
-		expect(parsePlanName("a-b")).toEqual({ name: "a-b", prefix: null });
+		expect(parsePlanName("a-b")).toEqual({ name: "a-b", prefix: null, autoSlugified: false, originalInput: "a-b" });
 	});
 
 	test("valid <prefix>/<slug> form", () => {
-		expect(parsePlanName("feature/auth-jwt")).toEqual({ name: "auth-jwt", prefix: "feature" });
-		expect(parsePlanName("fix/login-redirect-bug")).toEqual({ name: "login-redirect-bug", prefix: "fix" });
+		expect(parsePlanName("feature/auth-jwt")).toEqual({ name: "auth-jwt", prefix: "feature", autoSlugified: false, originalInput: "feature/auth-jwt" });
+		expect(parsePlanName("fix/login-redirect-bug")).toEqual({ name: "login-redirect-bug", prefix: "fix", autoSlugified: false, originalInput: "fix/login-redirect-bug" });
 	});
 
 	test("rejects <prefix>/<slug> with bad prefix", () => {
@@ -101,8 +101,11 @@ describe("parsePlanName (pure)", () => {
 		expect("error" in parsePlanName("feature/Auth-Jwt")).toBe(true);
 	});
 
-	test("rejects /leading-slash or trailing-slash/", () => {
-		expect("error" in parsePlanName("/foo")).toBe(true);
+	test("auto-slugifies leading slash, rejects trailing slash", () => {
+		// "/foo" → slashIdx=0 → skipped (no prefix before slash) → plain slug
+		// → auto-slugified to "foo" (valid).
+		expect("error" in parsePlanName("/foo")).toBe(false);
+		// "foo/" → prefix="foo", slug="" → error (empty slug after slash).
 		expect("error" in parsePlanName("foo/")).toBe(true);
 	});
 
@@ -115,38 +118,48 @@ describe("parsePlanName (pure)", () => {
 		expect("error" in r).toBe(true);
 	});
 
-	test("rejects type prefix (1.15.x dropped the <type>/<name> convention)", () => {
-		// Old convention was `feat/auth-jwt` with strict type validation.
-		// 1.16.0+ accepts `<prefix>/<slug>` as a free-form shape — the test
-		// below is now obsolete; replaced by a stricter "no nested paths" test.
+	test("accepts <prefix>/<slug> (1.16.x accepts free-form)", () => {
 		const r = parsePlanName("feature/auth-jwt");
 		expect("error" in r).toBe(false);
-		expect(r).toEqual({ name: "auth-jwt", prefix: "feature" });
 	});
 
-	test("rejects name with uppercase", () => {
+	test("auto-slugifies uppercase names", () => {
 		const r = parsePlanName("AuthJwt");
-		expect("error" in r).toBe(true);
+		expect("error" in r).toBe(false);
+		if ("error" in r) return;
+		expect(r.autoSlugified).toBe(true);
+		expect(r.name).toBe("authjwt");
 	});
 
-	test("rejects name with space", () => {
+	test("auto-slugifies names with spaces", () => {
 		const r = parsePlanName("auth jwt");
-		expect("error" in r).toBe(true);
+		expect("error" in r).toBe(false);
+		if ("error" in r) return;
+		expect(r.autoSlugified).toBe(true);
+		expect(r.name).toBe("auth-jwt");
 	});
 
-	test("rejects name with leading dash", () => {
+	test("auto-slugifies leading dash", () => {
 		const r = parsePlanName("-auth");
-		expect("error" in r).toBe(true);
+		expect("error" in r).toBe(false);
+		if ("error" in r) return;
+		expect(r.autoSlugified).toBe(true);
+		expect(r.name).toBe("auth");
 	});
 
-	test("rejects name with trailing dash", () => {
+	test("auto-slugifies trailing dash", () => {
 		const r = parsePlanName("auth-");
-		expect("error" in r).toBe(true);
+		expect("error" in r).toBe(false);
+		if ("error" in r) return;
+		expect(r.autoSlugified).toBe(true);
+		expect(r.name).toBe("auth");
 	});
 
-	test("rejects too-long name (>64)", () => {
+	test("truncates too-long name after auto-slugify", () => {
 		const r = parsePlanName("a".repeat(65));
-		expect("error" in r && (r as { error: string }).error).toMatch(/too long/);
+		// 65 'a' chars → auto-slugify keeps them (all valid), but the result
+		// is still 65 chars → too long → error.
+		expect("error" in r).toBe(true);
 	});
 });
 
@@ -251,13 +264,18 @@ describe("buildNewTransform (real git)", () => {
 		expect(result.transformedText).toMatch(/no \.agents\/ directory/);
 	});
 
-	test("blocks when not on master/main/plan branch", () => {
+	test("auto-checkouts master when not on master/main/plan branch", () => {
 		run(repo, ["checkout", "-b", "randomBranch_underscores"]);
 		const ui = fakeUi();
 		const state = fakeState(path.join(repo, ".agents"));
 		const result = buildNewTransform(cmd(["auth-jwt"]), state, ui, repo);
 		expect(result.handled).toBe(true);
-		expect(result.transformedText).toMatch(/not master\/main/);
+		// 2.3.0+: auto-checkout to master/main instead of blocking. The
+		// workflow should succeed and the branch should be created.
+		expect(result.scaffolded).toBeDefined();
+		expect(result.scaffolded?.branch).toBe("auth-jwt");
+		// Verify we're now on the plan branch, not the random branch.
+		expect(run(repo, ["branch", "--show-current"])).toBe("auth-jwt");
 	});
 
 	test("accepts <prefix>/<slug> input (1.16.x convention)", () => {

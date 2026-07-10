@@ -95,7 +95,7 @@ export function buildDoneTransform(
 	if ("error" in parsed) {
 		return reply(`soly done: ${parsed.error}\n\nUsage: soly done <slug> OR soly done <prefix>/<slug>`);
 	}
-	const { name, prefix } = parsed;
+	const { name, prefix, autoSlugified, originalInput } = parsed;
 	const effectivePrefix = prefix ?? opts.defaultBranchPrefix ?? "";
 	const branchName = effectivePrefix ? `${effectivePrefix}/${name}` : name;
 
