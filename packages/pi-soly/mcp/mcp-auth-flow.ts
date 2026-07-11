@@ -32,6 +32,7 @@ import {
   type StoredTokens,
 } from "./mcp-auth.ts"
 import type { ServerEntry } from "./types.ts"
+import { emit } from "../visual/event-sink.ts";
 
 /** Auth status for a server */
 export type AuthStatus = "authenticated" | "expired" | "not_authenticated"
@@ -399,11 +400,11 @@ export async function authenticate(
     try {
       // Open browser. Always print the URL first so remote/headless users can copy it
       // even when the OS browser handoff is unavailable or invisible.
-      console.log(`MCP Auth: Open this URL to authenticate ${serverName}:\n${authorizationUrl}`)
+      emit(`MCP Auth: Open this URL to authenticate ${serverName}:\n${authorizationUrl}`, "info");
       try {
         await open(authorizationUrl)
       } catch (error) {
-        console.warn(`MCP Auth: Failed to open browser for ${serverName}; waiting for manual callback`, { error })
+        emit(`MCP Auth: Failed to open browser for ${serverName}; waiting for manual callback`, "warning");
       }
 
       // Wait for callback
@@ -462,7 +463,7 @@ export async function getValidToken(
 
   if (expired === true && entry.tokens.refreshToken) {
     // Token is expired, try to refresh
-    console.log(`MCP Auth: Token expired for ${serverName}, attempting refresh`)
+    emit(`MCP Auth: Token expired for ${serverName}, attempting refresh`, "info");
 
     try {
       // Create auth provider for token refresh
@@ -472,7 +473,7 @@ export async function getValidToken(
 
       const clientInfo = await authProvider.clientInformation()
       if (!clientInfo) {
-        console.log(`MCP Auth: No client info for refresh for ${serverName}`)
+        emit(`MCP Auth: No client info for refresh for ${serverName}`, "info");
         return null
       }
 
@@ -483,7 +484,7 @@ export async function getValidToken(
       const refreshed = await getAuthForUrl(serverName, serverUrl)
       return refreshed?.tokens ?? null
     } catch (error) {
-      console.error(`MCP Auth: Token refresh failed for ${serverName}`, { error })
+      emit(`MCP Auth: Token refresh failed for ${serverName}`, "error");
       return null
     }
   }
@@ -519,7 +520,7 @@ export async function removeAuth(serverName: string): Promise<void> {
   await clearPendingAuth(serverName, oauthState)
   clearAllCredentials(serverName)
   await clearOAuthState(serverName)
-  console.log(`MCP Auth: Removed credentials for ${serverName}`)
+  emit(`MCP Auth: Removed credentials for ${serverName}`, "info");
 }
 
 /**

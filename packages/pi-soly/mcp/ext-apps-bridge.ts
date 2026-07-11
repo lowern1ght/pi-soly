@@ -17,6 +17,8 @@
 // resolve ext-apps' types (which themselves reference the missing sdk subpath).
 // =============================================================================
 
+import { emit } from "../visual/event-sink.ts";
+
 /** Minimal shape of the bits of ext-apps/app-bridge we use. */
 interface AppBridge {
 	RESOURCE_MIME_TYPE: string;
@@ -43,9 +45,10 @@ export async function preloadAppBridge(): Promise<void> {
 		cached = (await import(APP_BRIDGE_SPECIFIER)) as unknown as AppBridge;
 	} catch {
 		cached = null;
-		console.error(
-			"[soly] MCP UI (ext-apps/app-bridge) could not load — app-bridge features are disabled " +
-				"(upstream ext-apps/sdk version mismatch, not a soly bug). Core MCP is unaffected.",
+		emit(
+			"MCP UI (ext-apps/app-bridge) could not load — app-bridge features disabled " +
+				"(upstream ext-apps/sdk version mismatch, not a soly bug). Core MCP unaffected.",
+			"warning",
 		);
 	}
 }

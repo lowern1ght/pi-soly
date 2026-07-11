@@ -13,6 +13,7 @@ import { resourceNameToToolName } from "./resource-tools.ts";
 import { authenticate, supportsOAuth } from "./mcp-auth-flow.ts";
 import { formatAuthRequiredMessage } from "./utils.ts";
 import { ToolCache, cacheKey } from "./tool-cache.ts";
+import { emit } from "../visual/event-sink.ts";
 
 const BUILTIN_NAMES = new Set(["read", "bash", "edit", "write", "grep", "find", "ls", "mcp"]);
 
@@ -133,11 +134,11 @@ export function resolveDirectTools(
       if (isToolExcluded(tool.name, serverName, prefix, definition.excludeTools)) continue;
       const prefixedName = formatToolName(tool.name, serverName, prefix);
       if (BUILTIN_NAMES.has(prefixedName)) {
-        console.warn(`MCP: skipping direct tool "${prefixedName}" (collides with builtin)`);
+        emit(`MCP: skipping direct tool "${prefixedName}" (collides with builtin)`, "warning");
         continue;
       }
       if (seenNames.has(prefixedName)) {
-        console.warn(`MCP: skipping duplicate direct tool "${prefixedName}" from "${serverName}"`);
+        emit(`MCP: skipping duplicate direct tool "${prefixedName}" from "${serverName}"`, "warning");
         continue;
       }
       seenNames.add(prefixedName);
@@ -159,11 +160,11 @@ export function resolveDirectTools(
         if (isToolExcluded(baseName, serverName, prefix, definition.excludeTools)) continue;
         const prefixedName = formatToolName(baseName, serverName, prefix);
         if (BUILTIN_NAMES.has(prefixedName)) {
-          console.warn(`MCP: skipping direct resource tool "${prefixedName}" (collides with builtin)`);
+          emit(`MCP: skipping direct resource tool "${prefixedName}" (collides with builtin)`, "warning");
           continue;
         }
         if (seenNames.has(prefixedName)) {
-          console.warn(`MCP: skipping duplicate direct resource tool "${prefixedName}" from "${serverName}"`);
+          emit(`MCP: skipping duplicate direct resource tool "${prefixedName}" from "${serverName}"`, "warning");
           continue;
         }
         seenNames.add(prefixedName);

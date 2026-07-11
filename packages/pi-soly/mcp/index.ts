@@ -58,7 +58,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
       await currentState.lifecycle.gracefulShutdown();
     } catch (error) {
       if (flushError) {
-        console.error("MCP: graceful shutdown failed after metadata flush error", error);
+        emit("MCP: graceful shutdown failed after metadata flush error" + ": " + (error instanceof Error ? error.message : String(error)), "error");
       } else {
         throw error;
       }
@@ -122,7 +122,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
         shutdownOAuth(),
       ]);
     } catch (error) {
-      console.error("MCP: failed to shut down previous session state", error);
+      emit("MCP: failed to shut down previous session state" + ": " + (error instanceof Error ? error.message : String(error)), "error");
     }
 
     if (generation !== lifecycleGeneration) {
@@ -130,7 +130,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
     }
 
     await initializeOAuth().catch(err => {
-      console.error("MCP OAuth initialization failed:", err);
+      emit("MCP OAuth initialization failed:" + ": " + (err instanceof Error ? err.message : String(err)), "error");
     });
 
     // Load the (optional, sometimes-broken upstream) ext-apps UI bridge once,
@@ -145,7 +145,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
         try {
           await shutdownState(nextState, "stale_session_start");
         } catch (error) {
-          console.error("MCP: failed to clean stale session state", error);
+          emit("MCP: failed to clean stale session state" + ": " + (error instanceof Error ? error.message : String(error)), "error");
         }
         return;
       }
@@ -161,7 +161,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
       if (initPromise !== promise && initPromise !== null) {
         return;
       }
-      console.error("MCP initialization failed:", err);
+      emit("MCP initialization failed:" + ": " + (err instanceof Error ? err.message : String(err)), "error");
       initPromise = null;
     });
   });
@@ -179,7 +179,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
         shutdownOAuth(),
       ]);
     } catch (error) {
-      console.error("MCP: session shutdown cleanup failed", error);
+      emit("MCP: session shutdown cleanup failed" + ": " + (error instanceof Error ? error.message : String(error)), "error");
     }
   });
 

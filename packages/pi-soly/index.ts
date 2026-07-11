@@ -973,13 +973,13 @@ export default function solyExtension(pi: ExtensionAPI) {
 				try {
 					m.default(pi);
 				} catch (err) {
-					console.error("[soly] MCP adapter failed to initialize:", err);
+					emit("[soly] MCP adapter failed to initialize:" + ": " + (err instanceof Error ? err.message : String(err)), "error");
 				}
 			})
 			.catch((err) => {
-				console.error("[soly] MCP adapter unavailable (load failed):", err);
+				emit("[soly] MCP adapter unavailable (load failed):" + ": " + (err instanceof Error ? err.message : String(err)), "error");
 			});
 	} catch (err) {
-		console.error("[soly] MCP adapter unavailable (load threw):", err);
+		emit("[soly] MCP adapter unavailable (load threw):" + ": " + (err instanceof Error ? err.message : String(err)), "error");
 	}
 }

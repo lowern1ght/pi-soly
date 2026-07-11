@@ -12,6 +12,7 @@ import { createHash } from 'crypto';
 import { mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from 'fs';
 import { join } from 'path';
 import { getAgentPath } from './agent-dir.ts';
+import { emit } from "../visual/event-sink.ts";
 
 /** OAuth token storage format */
 export interface StoredTokens {
@@ -86,7 +87,7 @@ function readAuthEntry(serverName: string): AuthEntry | undefined {
     const data = readFileSync(filePath, 'utf-8');
     return JSON.parse(data) as AuthEntry;
   } catch (error) {
-    console.error(`Failed to read auth entry for ${serverName}:`, error);
+    emit(`Failed to read auth entry for ${serverName}:` + ": " + (error instanceof Error ? error.message : String(error)), "error");
     return undefined;
   }
 }
@@ -155,7 +156,7 @@ export function removeAuthEntry(serverName: string): void {
       }
     }
   } catch (error) {
-    console.error(`Failed to remove auth entry for ${serverName}:`, error);
+    emit(`Failed to remove auth entry for ${serverName}:` + ": " + (error instanceof Error ? error.message : String(error)), "error");
   }
 }
 

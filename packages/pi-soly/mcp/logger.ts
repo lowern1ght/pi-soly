@@ -3,6 +3,8 @@
  * Provides structured, contextual logs with levels.
  */
 
+import { emit as emitEvent } from "../visual/event-sink.ts";
+
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface LogContext {
@@ -73,19 +75,22 @@ class Logger {
       timestamp: new Date(),
     };
 
-    // Default console output
-    const prefix = LEVEL_PREFIX[level];
+    // Route through the event sink → Working sub-line (no console output).
+    // Context is appended for usefulness; the console-style [MCP-UI:*]
+    // prefix is dropped (the sub-line glyph carries the level).
     const contextStr = formatContext(entry.context);
-    const fullMessage = contextStr ? `${prefix} ${message} ${contextStr}` : `${prefix} ${message}`;
+    const errStr = error ? `: ${error.message}` : "";
+    const text = contextStr ? `${message}${errStr} ${contextStr}` : `${message}${errStr}`;
 
     if (level === "error") {
-      console.error(fullMessage, error ?? "");
+      emitEvent(text, "error");
     } else if (level === "warn") {
-      console.warn(fullMessage);
+      emitEvent(text, "warning");
     } else if (level === "debug") {
-      console.debug(fullMessage);
+      // Debug is too verbose for a single-line toolbar slot; drop unless
+      // a custom handler (e.g. file logger) is registered.
     } else {
-      console.log(fullMessage);
+      emitEvent(text, "info");
     }
 
     // Custom handlers

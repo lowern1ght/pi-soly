@@ -161,7 +161,7 @@ export async function initializeMcp(
       if (ctx.hasUI) {
         emit(`MCP: Failed to connect to ${name}: ${error}`, "error");
       }
-      console.error(`MCP: Failed to connect to ${name}: ${error}`);
+      emit(`MCP: Failed to connect to ${name}: ${error}`, "error");
       continue;
     }
 

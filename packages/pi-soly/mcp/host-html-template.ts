@@ -1,4 +1,5 @@
 import type { UiHostContext, UiResourceContent, UiResourceCsp } from "./types.ts";
+import { emit } from "../visual/event-sink.ts";
 
 // Use locally bundled AppBridge to avoid CDN Zod bundling issues
 const DEFAULT_APP_BRIDGE_MODULE_URL = "/app-bridge.bundle.js";
@@ -268,7 +269,7 @@ export function buildHostHtmlTemplate(input: HostHtmlTemplateInput): string {
       const transport = new PostMessageTransport(iframe.contentWindow, null);
       await bridge.connect(transport);
     } catch (error) {
-      console.error("[host] Bridge connection failed:", error);
+      emit("[host] Bridge connection failed:" + ": " + (error instanceof Error ? error.message : String(error)), "error");
       showError("Failed to initialize AppBridge: " + String(error));
     }
 
