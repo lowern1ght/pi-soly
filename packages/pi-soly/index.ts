@@ -65,6 +65,9 @@ import { registerTools } from "./tools.ts";
 import { registerWorkflows } from "./workflows/index.ts";
 import { readGitContext, buildGitSection, type GitContext } from "./git.ts";
 import { startHotReload, type HotReloadHandle } from "./hotreload.ts";
+import { registerQuotaProvider } from "./quota/registry.ts";
+import { minimaxProvider } from "./quota/minimax.ts";
+import { startQuotaPoller, type QuotaPoller } from "./quota/poller.ts";
 import { detectEnv, buildEnvSection, type EnvSummary } from "./env.ts";
 import { buildCodeMap, buildCodeMapSection, type CodeMap } from "./codemap.ts";
 import { loadIntentDocs, buildIntentSection, loadInlineIntentBodies, type IntentDoc } from "./intent.ts";
@@ -101,6 +104,12 @@ When terminal text isn't the best medium, reach for these (details + when-NOT in
 - \`html_artifact\` — render HTML to a self-contained, browseable per-project gallery.`;
 
 export default function solyExtension(pi: ExtensionAPI) {
+	// ============================================================================
+	// Register built-in quota providers (MiniMax via mmx CLI).
+	// Adding a new provider = new adapter + registerQuotaProvider() here.
+	// ============================================================================
+	registerQuotaProvider(minimaxProvider);
+
 	// ============================================================================
 	// State (module-local, lives for the duration of one extension instance)
 	// ============================================================================
@@ -168,6 +177,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 
 	// Hot reload watcher for rules
 	let hotReload: HotReloadHandle | null = null;
+	let quotaPoller: QuotaPoller | null = null;
 
 	// Session stats (computed on demand)
 	let sessionStats: { turns: number; tokensEstimate: number } = { turns: 0, tokensEstimate: 0 };
@@ -536,6 +546,12 @@ export default function solyExtension(pi: ExtensionAPI) {
 				});
 			},
 		});
+
+		// Start the background quota poller (reads modelProvider from
+		// ChromeData each tick, resolves the registered adapter, writes
+		// quotaPercent/quotaResetsLabel back for the footer to render).
+		if (quotaPoller) quotaPoller.stop();
+		quotaPoller = startQuotaPoller(chrome.data, () => getActiveConfig().chrome.enabled);
 		// Editors save in bursts (write to .tmp, rename, touch). Coalesce
 		// those rapid reload events into a single sub-line event under the
 		// Working indicator (└─ reloaded 47 rules). Errors here are real
@@ -632,6 +648,11 @@ export default function solyExtension(pi: ExtensionAPI) {
 		if (hotReload) {
 			hotReload.stop();
 			hotReload = null;
+		}
+		// Stop the background quota poller
+		if (quotaPoller) {
+			quotaPoller.stop();
+			quotaPoller = null;
 		}
 		// Restore pi's native footer/widgets/indicator before teardown
 		chrome.dispose(ctx.ui);

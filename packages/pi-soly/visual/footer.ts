@@ -71,6 +71,12 @@ export function buildFooterLine(data: ChromeData, fd: FooterData, width: number,
 		left.push({ id: "git", text: styler.fg("muted", withGlyph("git", `${branch}${dirty}`, ascii)), priority: 7 });
 	}
 
+	if (data.quotaPercent !== null) {
+		const quotaText = ascii ? `${data.quotaPercent}%` : `⬢ ${data.quotaPercent}%`;
+		const label = data.quotaResetsLabel ? `${quotaText} · ${data.quotaResetsLabel}` : quotaText;
+		left.push({ id: "quota", text: styler.fg("muted", label), priority: 6 });
+	}
+
 	if (data.rulesActive > 0) {
 		const word = data.rulesActive === 1 ? "rule" : "rules";
 		const rulesText = ascii ? `${data.rulesActive} ${word}` : `${RULES_GLYPH} ${data.rulesActive}`;
