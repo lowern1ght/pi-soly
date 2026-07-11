@@ -95,7 +95,7 @@ export function createChrome(getConfig: () => ChromeConfig): Chrome {
 			},
 			workingWidth(),
 		);
-		try { working.ui.setWorkingMessage(message); } catch { /* session may have ended */ }
+		try { working.ui.setWorkingMessage(message + (data.recentEvent ? `\n    ${data.recentEventLevel === "error" ? "└─ ✗" : data.recentEventLevel === "warning" ? "└─ ⚠" : "└─"} ${data.recentEvent}` : "")); } catch { /* session may have ended */ }
 	};
 
 	const clearWorking = (): void => {
@@ -107,6 +107,9 @@ export function createChrome(getConfig: () => ChromeConfig): Chrome {
 		emit(text: string, level: "info" | "warning" | "error" = "info"): void {
 			data.recentEvent = text;
 			data.recentEventLevel = level;
+			// Force the working message to re-render so the sub-line appears
+			// immediately, even mid-turn.
+			if (working) renderWorking();
 			try { tui?.requestRender(); } catch { /* not mounted yet */ }
 		},
 
