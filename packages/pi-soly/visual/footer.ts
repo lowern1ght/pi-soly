@@ -75,6 +75,21 @@ export function buildFooterLine(data: ChromeData, fd: FooterData, width: number,
 		const quotaText = ascii ? `${data.quotaPercent}%` : `⬢ ${data.quotaPercent}%`;
 		const label = data.quotaResetsLabel ? `${quotaText} · ${data.quotaResetsLabel}` : quotaText;
 		left.push({ id: "quota", text: styler.fg("muted", label), priority: 6 });
+		// TEMP DEBUG
+		try {
+			const fs = require("node:fs");
+			const os = require("node:os");
+			const p = require("node:path");
+			fs.appendFileSync(p.join(os.tmpdir(), "pi-soly-quota-debug.log"), `[${new Date().toISOString()}] [footer] render: pushed quota segment pct=${data.quotaPercent}\n`);
+		} catch {}
+	} else {
+		// TEMP DEBUG
+		try {
+			const fs = require("node:fs");
+			const os = require("node:os");
+			const p = require("node:path");
+			fs.appendFileSync(p.join(os.tmpdir(), "pi-soly-quota-debug.log"), `[${new Date().toISOString()}] [footer] render: quotaPercent=null (segment skipped)\n`);
+		} catch {}
 	}
 
 	if (data.rulesActive > 0) {
