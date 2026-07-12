@@ -103,10 +103,27 @@ export function createChrome(getConfig: () => ChromeConfig): Chrome {
 		working = null;
 	};
 
+	// TTL timer for the event sub-line. Each emit() schedules a clear after
+	// EVENT_TTL_MS; a new emit or startWorking cancels the previous timer.
+	let eventClearTimer: ReturnType<typeof setTimeout> | null = null;
+	const EVENT_TTL_MS = 5_000;
+
+	const clearEventSoon = (): void => {
+		if (eventClearTimer) clearTimeout(eventClearTimer);
+		eventClearTimer = setTimeout(() => {
+			data.recentEvent = null;
+			data.recentEventLevel = null;
+			eventClearTimer = null;
+			if (working) renderWorking();
+			try { tui?.requestRender(); } catch { /* not mounted yet */ }
+		}, EVENT_TTL_MS);
+	};
+
 	return {
 		emit(text: string, level: "info" | "warning" | "error" = "info"): void {
 			data.recentEvent = text;
 			data.recentEventLevel = level;
+			clearEventSoon();
 			// Force the working message to re-render so the sub-line appears
 			// immediately, even mid-turn.
 			if (working) renderWorking();
@@ -152,6 +169,7 @@ export function createChrome(getConfig: () => ChromeConfig): Chrome {
 			// from the previous turn, not relevant to the current one.
 			data.recentEvent = null;
 			data.recentEventLevel = null;
+			if (eventClearTimer) { clearTimeout(eventClearTimer); eventClearTimer = null; }
 			working = { ui, startMs: Date.now(), inputTokens: data.ctxTokens ?? 0, outputTokens: 0, timer: null };
 			renderWorking();
 			working.timer = setInterval(renderWorking, 1000);

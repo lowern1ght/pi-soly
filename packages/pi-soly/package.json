@@ -1,6 +1,6 @@
 {
   "name": "pi-soly",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "Workflow + project management for pi-coding-agent. Plans, state, MANDATORY rules, self-review, multi-question picker. One npm install, zero config. LLM drives the workflow inline via the soly_workflow tool — no external subagent plugin.",
   "type": "module",
   "main": "index.ts",
