@@ -74,7 +74,7 @@ export function buildFooterLine(data: ChromeData, fd: FooterData, width: number,
 	if (data.quotaPercent !== null) {
 		const quotaText = ascii ? `${data.quotaPercent}%` : `⬢ ${data.quotaPercent}%`;
 		const label = data.quotaResetsLabel ? `${quotaText} · ${data.quotaResetsLabel}` : quotaText;
-		left.push({ id: "quota", text: styler.fg("muted", label), priority: 6 });
+		left.push({ id: "quota", text: styler.fg("muted", label), priority: 8 });
 		// TEMP DEBUG
 		try {
 			const fs = require("node:fs");
