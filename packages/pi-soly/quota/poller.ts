@@ -21,9 +21,20 @@
 //   It only runs while a session is active.
 // =============================================================================
 
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import type { ChromeData } from "../visual/data.ts";
 import { resolveQuotaProvider } from "./registry.ts";
 import { formatReset } from "./format.ts";
+
+/** TEMP DEBUG — append a line to the quota debug log. Remove after diagnosis. */
+const DEBUG_LOG = path.join(os.tmpdir(), "pi-soly-quota-debug.log");
+function dbg(msg: string): void {
+	try {
+		fs.appendFileSync(DEBUG_LOG, `[${new Date().toISOString()}] ${msg}\n`);
+	} catch { /* best effort */ }
+}
 
 /** Default poll interval: 60 seconds. */
 const POLL_INTERVAL_MS = 60_000;
@@ -59,33 +70,44 @@ export function startQuotaPoller(
 
 	const tick = async (): Promise<void> => {
 		if (stopped) return;
+		dbg(`tick: enabled=${isEnabled()} provider=${data.modelProvider}`);
 		if (!isEnabled()) {
+			dbg("disabled, skipping");
 			scheduleNext();
 			return;
 		}
 
 		const providerId = data.modelProvider;
 		if (!providerId) {
+			dbg("no modelProvider");
 			scheduleNext();
 			return;
 		}
 
 		const provider = resolveQuotaProvider(providerId);
 		if (!provider) {
-			// No adapter for this provider — clear and skip.
+			dbg(`no adapter for ${providerId}`);
 			data.quotaPercent = null;
 			data.quotaResetsLabel = null;
 			scheduleNext();
 			return;
 		}
 
-		const snapshot = await provider.fetch();
+		let snapshot;
+		try {
+			snapshot = await provider.fetch();
+			dbg(`fetch result: ${JSON.stringify(snapshot)}`);
+		} catch (e) {
+			dbg(`fetch threw: ${e instanceof Error ? e.message : String(e)}`);
+			snapshot = null;
+		}
 		if (snapshot) {
 			data.quotaPercent = snapshot.remainingPercent;
 			data.quotaResetsLabel = snapshot.resetsInMs !== null ? formatReset(snapshot.resetsInMs) : null;
+			dbg(`wrote data: pct=${data.quotaPercent} label=${data.quotaResetsLabel}`);
 			onUpdate();
+			dbg("called onUpdate (poke)");
 		}
-		// On null (fetch failed), keep the previous snapshot — don't clear.
 		scheduleNext();
 	};
 
