@@ -16,6 +16,7 @@ import { matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@ea
 import type { Component, TUI } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "./panel-keys.ts";
+import { fuzzyScore } from "./fuzzy.ts";
 // (PanelKeybindings re-exported by re-export side below.)
 
 /** One row in the panel. `body` is shown in the preview pane when selected. */
@@ -60,15 +61,7 @@ const MAX_ROWS = 12; // list window height (render() has no viewport height)
 const PREVIEW_LINES = 4;
 
 /** Subsequence fuzzy match: substring scores highest, then in-order chars. */
-function fuzzyScore(query: string, text: string): number {
-	const q = query.toLowerCase();
-	const t = text.toLowerCase();
-	if (!q) return 1;
-	if (t.includes(q)) return 100 + q.length / t.length;
-	let qi = 0;
-	for (let i = 0; i < t.length && qi < q.length; i++) if (t[i] === q[qi]) qi++;
-	return qi === q.length ? 1 : 0;
-}
+// fuzzyScore moved to ./fuzzy.ts — imported above.
 
 /** Index into `flatRows` (mixed item + group header rows). */
 type RowIndex = number;
@@ -253,7 +246,7 @@ export class ListPanel implements Component {
 		const left = ` ${this.p.title} `;
 		const right = this.p.headerRight ? ` ${this.p.headerRight} ` : "";
 		const fillN = Math.max(1, inner + 2 - visibleWidth(left) - visibleWidth(right));
-		return dim("┌") + muted(left) + dim("─".repeat(fillN)) + muted(right) + dim("┐");
+		return dim("╭") + muted(left) + dim("─".repeat(fillN)) + muted(right) + dim("╮");
 	}
 
 	private searchLine(inner: number, dim: (s: string) => string, muted: (s: string) => string): string {
@@ -289,6 +282,6 @@ export class ListPanel implements Component {
 		const open = this.p.onSelect ? "⏎ open · " : "";
 		const hint = ` ↑↓ move · ${open}/ search${acts ? " · " + acts : ""} · esc `;
 		const fillN = Math.max(1, inner + 2 - visibleWidth(hint));
-		return dim("└") + dim(hint) + dim("─".repeat(fillN)) + dim("┘");
+		return dim("╰") + dim(hint) + dim("─".repeat(fillN)) + dim("╯");
 	}
 }

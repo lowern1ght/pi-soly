@@ -1,5 +1,6 @@
 import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "../visual/panel-keys.ts";
+import { borderTop, borderBottom, borderDivider, borderRow, borderEmpty, type BorderStyler } from "../visual/border.ts";
 import type { ImportKind } from "./types.ts";
 import type { ConfigWritePreview, McpDiscoverySummary } from "./config.ts";
 import type { McpOnboardingState } from "./onboarding-state.ts";
@@ -345,22 +346,24 @@ export class McpSetupPanel {
   render(width: number): string[] {
     const innerW = Math.max(40, width - 2);
     const lines: string[] = [];
-    const border = fg(this.t.border, "─".repeat(innerW));
-    lines.push(`┌${border}┐`);
-    lines.push(this.padLine(fg(this.t.title, "MCP setup"), innerW));
-    lines.push(this.padLine(this.discoverySummaryLine(), innerW));
-    lines.push(this.padLine(fg(this.t.muted, this.secondarySummaryLine()), innerW));
-    lines.push(this.padLine("", innerW));
+    const borderS: BorderStyler = (s: string) => fg(this.t.border, s);
+    const row = (content: string) => borderRow(content, innerW, borderS);
+
+    lines.push(borderTop("", innerW, borderS));
+    lines.push(row(fg(this.t.title, "MCP setup")));
+    lines.push(row(this.discoverySummaryLine()));
+    lines.push(row(fg(this.t.muted, this.secondarySummaryLine())));
+    lines.push(borderEmpty(innerW, borderS));
 
     if (this.notice) {
       const tone = this.notice.tone === "success" ? this.t.success : this.notice.tone === "warning" ? this.t.warning : this.t.hint;
       for (const line of wrapText(this.notice.text, innerW - 6)) {
-        lines.push(this.padLine(fg(tone, line), innerW));
+        lines.push(row(fg(tone, line)));
       }
-      lines.push(this.padLine("", innerW));
+      lines.push(borderEmpty(innerW, borderS));
     }
 
-    lines.push(`├${border}┤`);
+    lines.push(borderDivider(innerW, borderS));
 
     if (this.screen === "imports") {
       lines.push(...this.renderImports(innerW));
@@ -370,7 +373,7 @@ export class McpSetupPanel {
       lines.push(...this.renderActions(innerW));
     }
 
-    lines.push(`└${border}┘`);
+    lines.push(borderBottom(innerW, borderS));
     return lines;
   }
 
@@ -554,12 +557,7 @@ export class McpSetupPanel {
   }
 
   private padLine(text: string, innerW: number): string {
-    const inset = 2;
-    const contentW = Math.max(0, innerW - inset * 2);
-    const fitted = truncateToWidth(text, contentW, "…", true);
-    const plainWidth = visibleWidth(fitted);
-    const padding = Math.max(0, contentW - plainWidth);
-    return `│${" ".repeat(inset)}${fitted}${" ".repeat(padding)}${" ".repeat(inset)}│`;
+    return borderRow(text, innerW, (s) => fg(this.t.border, s));
   }
 
   invalidate(): void {}

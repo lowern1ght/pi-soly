@@ -1,5 +1,7 @@
 import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "../visual/panel-keys.ts";
+import { fuzzyScore } from "../visual/fuzzy.ts";
+import { borderTop, borderBottom, borderDivider, borderRow, borderEmpty, type BorderStyler } from "../visual/border.ts";
 import { isToolExcluded } from "./types.ts";
 import type { McpConfig, McpPanelCallbacks, McpPanelResult, ServerProvenance } from "./types.ts";
 import { resourceNameToToolName } from "./resource-tools.ts";
@@ -55,24 +57,7 @@ function rainbowProgress(filled: number, total: number): string {
   return dots.join(" ");
 }
 
-function fuzzyScore(query: string, text: string): number {
-  const lq = query.toLowerCase();
-  const lt = text.toLowerCase();
-  if (lt.includes(lq)) return 100 + (lq.length / lt.length) * 50;
-  let score = 0;
-  let qi = 0;
-  let consecutive = 0;
-  for (let i = 0; i < lt.length && qi < lq.length; i++) {
-    if (lt[i] === lq[qi]) {
-      score += 10 + consecutive;
-      consecutive += 5;
-      qi++;
-    } else {
-      consecutive = 0;
-    }
-  }
-  return qi === lq.length ? score : 0;
-}
+// fuzzyScore moved to ../visual/fuzzy.ts — imported above.
 
 function estimateTokens(tool: CachedTool): number {
   const schemaLen = JSON.stringify(tool.inputSchema ?? {}).length;
@@ -599,18 +584,15 @@ class McpPanel {
     const italic = (s: string) => `\x1b[3m${s}\x1b[23m`;
     const inverse = (s: string) => `\x1b[7m${s}\x1b[27m`;
 
-    const row = (content: string) =>
-      fg(t.border, "│") + truncateToWidth(" " + content, innerW, "…", true) + fg(t.border, "│");
-    const emptyRow = () => fg(t.border, "│") + " ".repeat(innerW) + fg(t.border, "│");
-    const divider = () => fg(t.border, "├" + "─".repeat(innerW) + "┤");
+    // Shared border styler — colors border chars via the panel theme.
+    const borderS: BorderStyler = (s: string) => fg(t.border, s);
+    const titleS: BorderStyler = (s: string) => fg(t.title, s);
+    const row = (content: string) => borderRow(content, innerW, borderS);
+    const emptyRow = () => borderEmpty(innerW, borderS);
+    const divider = () => borderDivider(innerW, borderS);
 
-    const titleText = this.authOnly ? " MCP OAuth " : " MCP Servers ";
-    const borderLen = innerW - visibleWidth(titleText);
-    const leftB = Math.floor(borderLen / 2);
-    const rightB = borderLen - leftB;
-    lines.push(fg(t.border, "╭" + "─".repeat(leftB)) + fg(t.title, titleText) + fg(t.border, "─".repeat(rightB) + "╮"));
-
-    lines.push(emptyRow());
+    const titleText = this.authOnly ? "MCP OAuth" : "MCP Servers";
+    lines.push(borderTop(titleText, innerW, borderS, titleS));
 
     const cursor = fg(t.selected, "│");
     const searchIcon = fg(t.border, "◎");
@@ -622,26 +604,20 @@ class McpPanel {
       lines.push(row(`${searchIcon}  ${fg(t.placeholder, italic("search..."))}`));
     }
 
-    lines.push(emptyRow());
     if (this.noticeLines.length > 0) {
       for (const notice of this.noticeLines) {
         lines.push(row(fg(t.hint, italic(notice))));
       }
-      lines.push(emptyRow());
     }
     lines.push(divider());
 
     if (this.servers.length === 0) {
-      lines.push(emptyRow());
       lines.push(row(fg(t.hint, italic(this.authOnly ? "No OAuth-capable MCP servers configured." : "No MCP servers configured."))));
-      lines.push(emptyRow());
     } else {
       const maxVis = McpPanel.MAX_VISIBLE;
       const total = this.visibleItems.length;
       const startIdx = Math.max(0, Math.min(this.cursorIndex - Math.floor(maxVis / 2), total - maxVis));
       const endIdx = Math.min(startIdx + maxVis, total);
-
-      lines.push(emptyRow());
 
       for (let i = startIdx; i < endIdx; i++) {
         const item = this.visibleItems[i];
@@ -655,26 +631,20 @@ class McpPanel {
         }
       }
 
-      lines.push(emptyRow());
-
       if (total > maxVis) {
         const prog = Math.round(((this.cursorIndex + 1) / total) * 10);
         lines.push(row(`${rainbowProgress(prog, 10)}  ${fg(t.hint, `${this.cursorIndex + 1}/${total}`)}`));
-        lines.push(emptyRow());
       }
 
       if (this.importNotice) {
         lines.push(row(fg(t.needsAuth, italic(this.importNotice))));
-        lines.push(emptyRow());
       }
       if (this.authNotice) {
         lines.push(row(fg(t.needsAuth, italic(this.authNotice))));
-        lines.push(emptyRow());
       }
     }
 
     lines.push(divider());
-    lines.push(emptyRow());
 
     if (this.confirmingDiscard) {
       const discardBtn = this.discardSelected === 0
@@ -699,7 +669,6 @@ class McpPanel {
       }
     }
 
-    lines.push(emptyRow());
     const hints = this.authOnly
       ? [
           italic("↑↓") + " navigate",
@@ -738,8 +707,7 @@ class McpPanel {
     }
     if (curLine) lines.push(row(fg(t.hint, curLine)));
 
-    lines.push(fg(t.border, "╰" + "─".repeat(innerW) + "╯"));
-
+    lines.push(borderBottom(innerW, borderS));
     return lines;
   }
 
