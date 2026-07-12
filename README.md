@@ -4,10 +4,10 @@
 
 # ⚡ pi-soly
 
-[![npm version](https://img.shields.io/npm/v/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
-[![npm downloads](https://img.shields.io/npm/dm/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
-[![CI](https://img.shields.io/github/actions/workflow/status/lowern1ght/pi-soly/ci.yml)](https://github.com/lowern1ght/pi-soly/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/lowern1ght/pi-soly/blob/master/LICENSE)
+[![npm version](https://img.shields.io/npm/v/@dot-stbl/soly.svg)](https://www.npmjs.com/package/@dot-stbl/soly)
+[![npm downloads](https://img.shields.io/npm/dm/@dot-stbl/soly.svg)](https://www.npmjs.com/package/@dot-stbl/soly)
+[![CI](https://img.shields.io/github/actions/workflow/status/lowern1ght/pi-soly/ci.yml)](https://github.com/lowern1ght/pi-soly.framework/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/lowern1ght/pi-soly.framework/blob/master/LICENSE)
 [![Built with Bun](https://img.shields.io/badge/Built_with-Bun-f9f1e1?logo=bun)](https://bun.sh)
 
 [Install](#install) · [Commands](packages/pi-soly/README.md#commands) · [Architecture](packages/pi-soly/README.md#architecture) · [Releases](packages/pi-soly/README.md#releases)

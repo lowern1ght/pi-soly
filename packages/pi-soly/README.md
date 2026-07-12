@@ -4,8 +4,8 @@
 
 # ⚡ pi-soly
 
-[![npm version](https://img.shields.io/npm/v/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
-[![npm downloads](https://img.shields.io/npm/dm/pi-soly.svg)](https://www.npmjs.com/package/pi-soly)
+[![npm version](https://img.shields.io/npm/v/@dot-stbl/soly.svg)](https://www.npmjs.com/package/@dot-stbl/soly)
+[![npm downloads](https://img.shields.io/npm/dm/@dot-stbl/soly.svg)](https://www.npmjs.com/package/@dot-stbl/soly)
 [![CI](https://img.shields.io/github/actions/workflow/status/lowern1ght/pi-soly/ci.yml)](https://github.com/lowern1ght/pi-soly/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/lowern1ght/pi-soly/blob/master/LICENSE)
 
@@ -29,7 +29,7 @@ following the rules and writing to the agreed paths.
 ## Install
 
 ```bash
-pi install npm:pi-soly
+pi install npm:@dot-stbl/soly
 ```
 
 That registers the extension in your current pi session. Restart pi
@@ -46,10 +46,10 @@ to pick up the new package's `session_start` event), then:
 
 ```bash
 cd ~/.pi/agent/npm
-npm install pi-soly
+npm install @dot-stbl/soly
 ```
 
-Then add `"pi-soly"` to your project's `~/.pi/agent/extensions.json` (or
+Then add `"@dot-stbl/soly"` to your project's `~/.pi/agent/extensions.json` (or
 just to `.pi/extensions.json` for project-local).
 
 ## Quick start

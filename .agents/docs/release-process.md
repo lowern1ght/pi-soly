@@ -48,10 +48,10 @@ After publishing to npm, the new version needs to be **available locally** for p
 ### Scenario A: User installs via npm command
 
 ```bash
-pi install npm:pi-soly
+pi install npm:@dot-stbl/soly
 ```
 
-This downloads the version from npmjs.com into `~/.pi/agent/npm/pi-soly/` automatically. No manual copy needed.
+This downloads the version from npmjs.com into `~/.pi/agent/npm/@dot-stbl/soly/` automatically. No manual copy needed.
 
 ### Scenario B: User installs via local path (developer mode)
 
@@ -84,7 +84,7 @@ Then in `settings.json`:
 ```json
 {
   "packages": [
-    "npm:pi-soly"
+    "npm:@dot-stbl/soly"
   ]
 }
 ```
@@ -98,10 +98,10 @@ After pushing the tag:
 ```bash
 # 1. Wait for CI to finish (~1 minute)
 # 2. Verify on npmjs:
-curl -s "https://registry.npmjs.org/pi-soly" | jq .['dist-tags'].latest
+curl -s "https://registry.npmjs.org/@dot-stbl/soly" | jq .['dist-tags'].latest
 
 # 3. Verify install works:
-pi install npm:pi-soly
+pi install npm:@dot-stbl/soly
 # Then in pi:
 /reload
 /soly status   # or /keyrouter status etc.

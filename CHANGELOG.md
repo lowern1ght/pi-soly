@@ -4,6 +4,33 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+## [3.0.0-alpha.1] — 2026-07-12
+
+### Changed — package rename
+- **Published as `@dot-stbl/soly`** (was `pi-soly`). npm install command
+  changes from `pi install npm:pi-soly` to `pi install npm:@dot-stbl/soly`.
+  The old `pi-soly` package will be deprecated immediately after this
+  release: `npm deprecate pi-soly "Moved to @dot-stbl/soly"`.
+
+### Migration for current users
+
+1. In `~/.pi/agent/settings.json` (or `extensions.json`):
+   ```diff
+   - "npm:pi-soly"
+   + "npm:@dot-stbl/soly"
+   ```
+2. Restart pi. The extension loads under the new name; no behavioural
+   change in this alpha — the mode system ships in the next prerelease.
+3. Your existing rules, plans, state, settings are untouched (paths,
+   filenames, behaviour unchanged).
+
+### What's NOT changed in 3.0.0-alpha.1
+- Source code (relative imports are agnostic to npm name)
+- GitHub repo URL
+- Skills manifest path (`./skills` — relative)
+- Plugin compatibility (`pi-keyrouter` doesn't depend on soly)
+- Behaviour — zero code changes outside the package name
+
 ## [2.3.0] — 2026-07-05
 
 ### Changed
