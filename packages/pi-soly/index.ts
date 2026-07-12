@@ -551,7 +551,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 		// ChromeData each tick, resolves the registered adapter, writes
 		// quotaPercent/quotaResetsLabel back for the footer to render).
 		if (quotaPoller) quotaPoller.stop();
-		quotaPoller = startQuotaPoller(chrome.data, () => getActiveConfig().chrome.enabled);
+		quotaPoller = startQuotaPoller(chrome.data, () => getActiveConfig().chrome.enabled, () => chrome.poke());
 		// Editors save in bursts (write to .tmp, rename, touch). Coalesce
 		// those rapid reload events into a single sub-line event under the
 		// Working indicator (└─ reloaded 47 rules). Errors here are real

@@ -39,10 +39,14 @@ export type QuotaPoller = {
  *
  *  @param data - the shared ChromeData (mutated in place with quota fields)
  *  @param isEnabled - gate; return false to skip polling (e.g. chrome disabled)
+ *  @param onUpdate - called after each successful write to ChromeData, so the
+ *    caller can trigger a footer re-render (pi doesn't auto-render when a
+ *    background timer mutates data — only on token ticks / user input).
  *  @param intervalMs - override poll interval (default 60_000); for tests */
 export function startQuotaPoller(
 	data: ChromeData,
 	isEnabled: () => boolean,
+	onUpdate: () => void,
 	intervalMs: number = POLL_INTERVAL_MS,
 ): QuotaPoller {
 	let stopped = false;
@@ -79,6 +83,7 @@ export function startQuotaPoller(
 		if (snapshot) {
 			data.quotaPercent = snapshot.remainingPercent;
 			data.quotaResetsLabel = snapshot.resetsInMs !== null ? formatReset(snapshot.resetsInMs) : null;
+			onUpdate();
 		}
 		// On null (fetch failed), keep the previous snapshot — don't clear.
 		scheduleNext();

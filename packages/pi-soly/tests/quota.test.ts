@@ -96,7 +96,7 @@ describe("startQuotaPoller", () => {
 		};
 		registerQuotaProvider(mockProv);
 
-		const poller = startQuotaPoller(data, () => true, 10);
+		const poller = startQuotaPoller(data, () => true, () => {}, 10);
 		// The first tick is async (fires immediately). Give it a tick.
 		await new Promise((r) => setTimeout(r, 50));
 
@@ -111,7 +111,7 @@ describe("startQuotaPoller", () => {
 		data.quotaPercent = 50; // pre-existing value
 		data.quotaResetsLabel = "in 10m";
 
-		const poller = startQuotaPoller(data, () => true, 10);
+		const poller = startQuotaPoller(data, () => true, () => {}, 10);
 		await new Promise((r) => setTimeout(r, 50));
 
 		expect(data.quotaPercent).toBeNull();
@@ -132,7 +132,7 @@ describe("startQuotaPoller", () => {
 		};
 		registerQuotaProvider(flaky);
 
-		const poller = startQuotaPoller(data, () => true, 10);
+		const poller = startQuotaPoller(data, () => true, () => {}, 10);
 		await new Promise((r) => setTimeout(r, 50));
 
 		// Previous value kept — stale is better than flashing.
@@ -145,10 +145,29 @@ describe("startQuotaPoller", () => {
 		const data = emptyChromeData();
 		data.modelProvider = "mockprov";
 
-		const poller = startQuotaPoller(data, () => false, 10);
+		const poller = startQuotaPoller(data, () => false, () => {}, 10);
 		await new Promise((r) => setTimeout(r, 50));
 
 		expect(data.quotaPercent).toBeNull();
+		poller.stop();
+	});
+
+	test("calls onUpdate after writing snapshot (for footer re-render)", async () => {
+		const data = emptyChromeData();
+		data.modelProvider = "mockprov";
+		let updateCount = 0;
+		const mockProv: QuotaProvider = {
+			id: "mockprov",
+			async fetch() {
+				return { remainingPercent: 50, resetsInMs: null };
+			},
+		};
+		registerQuotaProvider(mockProv);
+
+		const poller = startQuotaPoller(data, () => true, () => updateCount++, 10);
+		await new Promise((r) => setTimeout(r, 50));
+
+		expect(updateCount).toBeGreaterThanOrEqual(1);
 		poller.stop();
 	});
 
@@ -166,7 +185,7 @@ describe("startQuotaPoller", () => {
 		// Overwrite the earlier mockprov registration.
 		registerQuotaProvider(countingProv);
 
-		const poller = startQuotaPoller(data, () => true, 10);
+		const poller = startQuotaPoller(data, () => true, () => {}, 10);
 		await new Promise((r) => setTimeout(r, 30));
 		poller.stop();
 		const countAtStop = fetchCount;
