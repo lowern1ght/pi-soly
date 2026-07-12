@@ -79,19 +79,7 @@ function dropToFit(left: Segment[], right: Segment[], width: number, sep: string
 			break;
 		}
 	}
-	const keptIds = [...l.map((s) => `${s.id}:${s.priority}`), ...r.map((s) => `${s.id}:${s.priority}`)].join(",");
-	dbgDrop(`width=${width} kept=[${keptIds}]`);
 	return { left: l, right: r };
-}
-
-// TEMP DEBUG — trace which segments survive dropToFit
-function dbgDrop(msg: string): void {
-	try {
-		const fs = require("node:fs");
-		const os = require("node:os");
-		const p = require("node:path");
-		fs.appendFileSync(p.join(os.tmpdir(), "pi-soly-quota-debug.log"), `[${new Date().toISOString()}] [dropToFit] ${msg}\n`);
-	} catch {}
 }
 
 /**

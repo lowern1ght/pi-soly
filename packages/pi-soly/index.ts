@@ -353,17 +353,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 		d.home = os.homedir();
 		const model = ctx.model as { id?: string; provider?: string; reasoning?: boolean } | undefined;
 		d.modelId = model?.id ?? null;
-		const prevProvider = d.modelProvider;
 		d.modelProvider = model?.provider ?? null;
-		// TEMP DEBUG
-		if (prevProvider !== d.modelProvider) {
-			try {
-				const fs = require("node:fs");
-				const os = require("node:os");
-				const p = require("node:path");
-				fs.appendFileSync(p.join(os.tmpdir(), "pi-soly-quota-debug.log"), `[${new Date().toISOString()}] updateChromeData: modelProvider changed ${prevProvider} -> ${d.modelProvider}, modelId=${d.modelId}\n`);
-			} catch {}
-		}
 		d.reasoning = Boolean(model?.reasoning);
 		try {
 			d.thinkingLevel = pi.getThinkingLevel();
@@ -562,14 +552,6 @@ export default function solyExtension(pi: ExtensionAPI) {
 		// quotaPercent/quotaResetsLabel back for the footer to render).
 		if (quotaPoller) quotaPoller.stop();
 		quotaPoller = startQuotaPoller(chrome.data, () => getActiveConfig().chrome.enabled, () => chrome.poke());
-		// TEMP DEBUG
-		try {
-			const fs = await import("node:fs");
-			const os = await import("node:os");
-			const p = await import("node:path");
-			const dbgLog = p.join(os.tmpdir(), "pi-soly-quota-debug.log");
-			fs.appendFileSync(dbgLog, `[${new Date().toISOString()}] session_start: poller started, chrome.enabled=${getActiveConfig().chrome.enabled}, modelProvider=${chrome.data.modelProvider}\n`);
-		} catch {}
 		// Editors save in bursts (write to .tmp, rename, touch). Coalesce
 		// those rapid reload events into a single sub-line event under the
 		// Working indicator (└─ reloaded 47 rules). Errors here are real

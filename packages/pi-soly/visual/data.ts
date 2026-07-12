@@ -46,10 +46,15 @@ export type ChromeData = {
 	/** Level of the recent event (used for glyph/color). */
 	recentEventLevel: "info" | "warning" | "error" | null;
 	/** Remaining quota percent (0–100) for the active provider, polled in
-	 *  the background by quota/poller.ts. null = no adapter / not polled. */
+	 *  the background by quota/poller.ts. null = no adapter / not polled.
+	 *  Semantic: **used** (inverted from API's remaining) — grows as you
+	 *  spend, matching the MiniMax dashboard. */
 	quotaPercent: number | null;
 	/** Human-readable reset time label (e.g. "in 20m"), or null. */
 	quotaResetsLabel: string | null;
+	/** Raw ms until the quota window resets, or null. Used by the footer to
+	 *  color the time yellow when < 30 minutes remain. */
+	quotaResetsMs: number | null;
 };
 
 /** A fresh ChromeData with everything empty/idle. */
@@ -73,5 +78,6 @@ export function emptyChromeData(): ChromeData {
 		recentEventLevel: null,
 		quotaPercent: null,
 		quotaResetsLabel: null,
+		quotaResetsMs: null,
 	};
 }

@@ -22,3 +22,12 @@ export function ctxColor(percent: number | null): ChromeColor {
 	if (percent > 70) return "warning";
 	return "muted";
 }
+
+/** Quota color by **used** percentage. Conservative threshold: only yellow when
+ *  > 90% of the interval is spent (no red — quota resets, it's not a hard
+ *  error). Muted otherwise. */
+export function quotaColor(usedPercent: number | null): ChromeColor {
+	if (usedPercent === null || !Number.isFinite(usedPercent)) return "muted";
+	if (usedPercent > 90) return "warning";
+	return "muted";
+}

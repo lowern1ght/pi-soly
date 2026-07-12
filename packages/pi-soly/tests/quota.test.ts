@@ -102,6 +102,7 @@ describe("startQuotaPoller", () => {
 
 		expect(data.quotaPercent).toBe(67);
 		expect(data.quotaResetsLabel).toBe("in 20m");
+		expect(data.quotaResetsMs).toBe(1_200_000);
 		poller.stop();
 	});
 
@@ -116,6 +117,7 @@ describe("startQuotaPoller", () => {
 
 		expect(data.quotaPercent).toBeNull();
 		expect(data.quotaResetsLabel).toBeNull();
+		expect(data.quotaResetsMs).toBeNull();
 		poller.stop();
 	});
 
@@ -192,5 +194,31 @@ describe("startQuotaPoller", () => {
 		// Wait past one interval — no new fetches should fire.
 		await new Promise((r) => setTimeout(r, 50));
 		expect(fetchCount).toBe(countAtStop);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// quotaColor — threshold-based color
+// ---------------------------------------------------------------------------
+
+describe("quotaColor", () => {
+	const { quotaColor } = require("../visual/colors.ts") as { quotaColor: (p: number | null) => string };
+
+	test("muted when used <= 90%", () => {
+		expect(quotaColor(0)).toBe("muted");
+		expect(quotaColor(33)).toBe("muted");
+		expect(quotaColor(70)).toBe("muted");
+		expect(quotaColor(90)).toBe("muted"); // exactly 90, not >90
+	});
+
+	test("warning when used > 90%", () => {
+		expect(quotaColor(91)).toBe("warning");
+		expect(quotaColor(99)).toBe("warning");
+		expect(quotaColor(100)).toBe("warning");
+	});
+
+	test("muted for null/NaN", () => {
+		expect(quotaColor(null)).toBe("muted");
+		expect(quotaColor(Number.NaN)).toBe("muted");
 	});
 });
