@@ -28,6 +28,41 @@ const NON_TRIVIAL_VERBS =
 const RESEARCH_VERBS =
 	/\b(find out|look up|check|verify|investigate|research|figure out|figure out how|discover|why does|how does|what is the best|compare|which library|which approach|benchmark|audit|review|trace|debug why)\b/i;
 
+// Complaint patterns — the user is unhappy about code the agent wrote or a
+// behavior it exhibits. Triggers the agent-coach skill (proposes a soly rule
+// to prevent recurrence). RU + EN, case-insensitive. Word-boundary where
+// possible; some RU forms don't use \b well so we anchor on the phrase.
+const COMPLAINT_PATTERNS: RegExp[] = [
+	// Russian — explicit dissatisfaction
+	/меня напрягает/i,
+	/мне не нравится/i,
+	/не нравится/i,
+	/переделай/i,
+	/почему опять/i,
+	/опять\s+(?:эт[оа]|этот|эта)/i,
+	/не делай так/i,
+	/убирай?/i,
+	/кринж/i,
+	/бесит/i,
+	/заставь/i,
+	/хватит (?:делать|писать|так)/i,
+	/опять (?:делаешь|пишешь|создаёшь|создаешь)/i,
+	// English
+	/redo .*(?:differently|another way|other way)/i,
+	/i don't like/i,
+	/why (?:does|do) .*(?:keep|always)/i,
+	/stop doing/i,
+	/don't do that/i,
+	/annoying/i,
+	/make .* not/i,
+];
+
+/** Detect whether the user prompt is a complaint about agent behavior/coding.
+ *  Used to inject the agent-coach skill directive so the LLM doesn't skip it. */
+export function detectComplaint(prompt: string): boolean {
+	return COMPLAINT_PATTERNS.some((rx) => rx.test(prompt));
+}
+
 const URL_PATTERN = /https?:\/\/\S+/;
 // Library/version-ish reference (e.g. v1.2.3, @scope/pkg).
 // NB: no leading `\b` — `@` is a non-word char so `\b` won't match before it.
@@ -37,6 +72,9 @@ const VERSION_PATTERN = /(?<!\w)(v?\d+\.\d+(?:\.\d+)?|@[\w\-]+\/[\w\-]+)(?!\w)/;
 export interface TaskHeuristics {
 	nonTrivial: boolean;
 	researchHeavy: boolean;
+	/** True when the prompt reads as a complaint about agent-written code or
+	 *  behavior — triggers the agent-coach skill directive. */
+	complaint: boolean;
 	mentions: string[];
 	suggestedAngles: string[];
 }
@@ -48,6 +86,7 @@ export function classifyTaskHeuristics(prompt: string): TaskHeuristics {
 	const hasResearch = RESEARCH_VERBS.test(trimmed);
 	const hasUrl = URL_PATTERN.test(trimmed);
 	const hasVersion = VERSION_PATTERN.test(trimmed);
+	const hasComplaint = detectComplaint(trimmed);
 
 	// Extract file-ish mentions from the prompt. We don't import core's
 	// extractFilePathsFromPrompt to keep nudge.ts self-contained.
@@ -85,7 +124,7 @@ export function classifyTaskHeuristics(prompt: string): TaskHeuristics {
 		suggestedAngles.push("any constraints (deadline, scope, style) I should know?");
 	}
 
-	return { nonTrivial, researchHeavy, mentions, suggestedAngles };
+	return { nonTrivial, researchHeavy, complaint: hasComplaint, mentions, suggestedAngles };
 }
 
 // ---------------------------------------------------------------------------
@@ -139,6 +178,9 @@ export function buildNudgeSection(
 	}
 	if (heuristics.researchHeavy) {
 		triggers.push("research-heavy (web lookup / library decision / unknown behavior)");
+	}
+	if (heuristics.complaint) {
+		triggers.push("user complaint about code/behavior (agent-coach eligible)");
 	}
 
 	const triggerLine = triggers.length
@@ -213,6 +255,17 @@ export function buildNudgeSection(
 			? `\n\n   ${confirmLevel === "scope" ? SCOPE_DIRECTIVE : ASK_DIRECTIVE}`
 			: "";
 
+	// Complaint directive: when the user is unhappy about code the agent wrote
+	// or a behavior it exhibits, inject an explicit order to load the
+	// agent-coach skill and follow its workflow. Passive skills (listed in
+	// available_skills) are unreliable — the LLM often skips them and jumps
+	// into the code. This directive lands in the system prompt right before
+	// the turn, so it can't be missed.
+	const complaintBlock =
+		heuristics.complaint
+			? `\n\n5. **⚠️ User complaint detected — use the agent-coach skill.** The user is unhappy about code behavior. DO NOT just fix this instance and move on. First read the **agent-coach** skill file (\`packages/pi-soly/skills/agent-coach/SKILL.md\`) and follow its workflow: analyze the complaint → extract the underlying pattern → check existing rules (dedup) → draft a soly rule (\`.agents/rules/[category]/[name].md\`) → propose via \`ask_pro\` → write only on confirmation. This closes the feedback loop so the mistake doesn't repeat. If a rule already covers it but was ignored, the rule is too vague — propose strengthening it instead of creating a duplicate.`
+			: "";
+
 	return `
 
 ## soly behavioral nudge (always on)
@@ -224,7 +277,7 @@ The following are user-set defaults, not project rules. They tell you how the us
 
 2. **Scout with soly's own read tools.** When you need to read unfamiliar code, map a directory, or gather context, use soly's read tools — \`soly_snippet(path, offset, limit)\`, \`soly_doc_search(query)\`, \`soly_read(...)\` — plus \`grep\` / \`find\`. Prefer bounded snippets over reading whole files. soly does the work INLINE in this session; there is no separate worker or \`subagent(...)\` tool to delegate to (and none is required).
 
-3. **Reach for soly's interaction tools.** For structured questions use \`ask_pro\` (batched, multi-select, ⭐ recommended); for design/architecture forks where the choice hinges on the concrete code shape use \`decision_deck\`; for visual output (galleries, comparisons, diagrams) use \`html_artifact\`. Give each question a concrete recommended default + rationale — don't dump open-ended prompts.${workflowPoint}
+3. **Reach for soly's interaction tools.** For structured questions use \`ask_pro\` (batched, multi-select, ⭐ recommended); for design/architecture forks where the choice hinges on the concrete code shape use \`decision_deck\`; for visual output (galleries, comparisons, diagrams) use \`html_artifact\`. Give each question a concrete recommended default + rationale — don't dump open-ended prompts.${workflowPoint}${complaintBlock}
 
 Treat (1) and (2) as defaults, not laws. The user can always override per-task ("just do it", "ask me everything"). When overriding, briefly acknowledge it.
 `;

@@ -133,6 +133,7 @@ describe("buildNudgeSection", () => {
 			researchHeavy: false,
 			mentions: [],
 			suggestedAngles: [],
+			complaint: false,
 		});
 		expect(section).toContain("1. **Pre-action gate.**");
 		expect(section).toContain("2. **Scout with soly's own read tools.**");
@@ -159,6 +160,7 @@ describe("buildNudgeSection", () => {
 			researchHeavy: false,
 			mentions: [],
 			suggestedAngles: [],
+			complaint: false,
 		});
 		expect(section).toMatch(/Heuristics for this prompt:.*non-trivial task/);
 	});
@@ -169,6 +171,7 @@ describe("buildNudgeSection", () => {
 			researchHeavy: true,
 			mentions: [],
 			suggestedAngles: [],
+			complaint: false,
 		});
 		expect(section).toMatch(/Heuristics for this prompt:.*research-heavy/);
 	});
@@ -179,6 +182,7 @@ describe("buildNudgeSection", () => {
 			researchHeavy: false,
 			mentions: [],
 			suggestedAngles: ["which files are in scope?", "any deadline?"],
+			complaint: false,
 		});
 		expect(section).toContain("1. which files are in scope?");
 		expect(section).toContain("2. any deadline?");
@@ -190,6 +194,7 @@ describe("buildNudgeSection", () => {
 			researchHeavy: false,
 			mentions: [],
 			suggestedAngles: [],
+			complaint: false,
 		});
 		expect(section).toContain("looks routine");
 	});
@@ -200,6 +205,7 @@ describe("buildNudgeSection", () => {
 			researchHeavy: false,
 			mentions: [],
 			suggestedAngles: [],
+			complaint: false,
 		});
 		expect(section).toContain("Treat (1) and (2) as defaults, not laws");
 	});
@@ -382,5 +388,66 @@ describe("buildSuggestionSection (proactive next step)", () => {
 		const s = buildSuggestionSection({ ...base, readyTaskIds: ["auth-login-a3f9", "auth-token-b1c2"] });
 		expect(s).toContain('action: "execute"');
 		expect(s).toContain("auth-login-a3f9");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// detectComplaint — complaint pattern detection
+// ---------------------------------------------------------------------------
+
+describe("detectComplaint", () => {
+	const { detectComplaint } = require("../nudge.ts") as { detectComplaint: (s: string) => boolean };
+
+	test("detects Russian complaint phrases", () => {
+		expect(detectComplaint("IdentityExceptionKind меня напрягает")).toBe(true);
+		expect(detectComplaint("мне не нравится что agent делает X")).toBe(true);
+		expect(detectComplaint("this кринж")).toBe(true);
+		expect(detectComplaint("убирай this просто ренейм делай")).toBe(true);
+		expect(detectComplaint("почему опять god switch")).toBe(true);
+		expect(detectComplaint("не делай так")).toBe(true);
+		expect(detectComplaint("бесит когда он так пишет")).toBe(true);
+		expect(detectComplaint("переделай по-другому")).toBe(true);
+	});
+
+	test("detects English complaint phrases", () => {
+		expect(detectComplaint("redo this differently")).toBe(true);
+		expect(detectComplaint("I don't like the agent doing X")).toBe(true);
+		expect(detectComplaint("why does it keep doing Z")).toBe(true);
+		expect(detectComplaint("stop doing that")).toBe(true);
+		expect(detectComplaint("this is annoying")).toBe(true);
+	});
+
+	test("does not flag neutral requests", () => {
+		expect(detectComplaint("add a login page")).toBe(false);
+		expect(detectComplaint("refactor the auth module")).toBe(false);
+		expect(detectComplaint("how does this work?")).toBe(false);
+		expect(detectComplaint("use cancellationToken instead of ct")).toBe(false);
+	});
+});
+
+describe("buildNudgeSection — complaint directive", () => {
+	test("injects agent-coach directive when complaint detected", () => {
+		const section = buildNudgeSection({
+			nonTrivial: true,
+			researchHeavy: false,
+			mentions: [],
+			suggestedAngles: [],
+			complaint: true,
+		});
+		expect(section).toContain("User complaint detected");
+		expect(section).toContain("agent-coach");
+		expect(section).toContain("SKILL.md");
+	});
+
+	test("no complaint directive when complaint is false", () => {
+		const section = buildNudgeSection({
+			nonTrivial: true,
+			researchHeavy: false,
+			mentions: [],
+			suggestedAngles: [],
+			complaint: false,
+		});
+		expect(section).not.toContain("User complaint detected");
+		expect(section).not.toContain("agent-coach");
 	});
 });

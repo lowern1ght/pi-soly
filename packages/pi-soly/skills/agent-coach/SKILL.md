@@ -1,6 +1,6 @@
 ---
 name: agent-coach
-description: Use when the user complains about how the agent wrote code or behaves — phrases like "переделай X по-другому", "мне не нравится что agent делает Y", "почему опять Z", "не делай так", "agent keeps doing X", "I don't like the agent doing X", "заставь agent-а не делать X", "опять этот god switch". Analyzes the complaint, identifies the missing rule that would have prevented it, and proposes a soly rule draft (.agents/rules/*.md) for the user to confirm via ask_pro. Language-agnostic — works for any codebase. NOT for C#/.NET analyzer rules (use analyzer-coach for that).
+description: Use when the user complains about how the agent wrote code or behaves — phrases like "переделай X по-другому", "мне не нравится что agent делает Y", "почему опять Z", "не делай так", "меня напрягает", "кринж", "убирай", "бесит", "agent keeps doing X", "I don't like the agent doing X", "заставь agent-а не делать X", "опять этот god switch", "redo differently", "annoying". Analyzes the complaint, identifies the missing rule that would have prevented it, and proposes a soly rule draft (.agents/rules/*.md) for the user to confirm via ask_pro. Language-agnostic — works for any codebase. NOT for C#/.NET analyzer rules (use analyzer-coach for that).
 priority: high
 ---
 
