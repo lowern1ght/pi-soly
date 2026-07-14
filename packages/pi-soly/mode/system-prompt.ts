@@ -82,7 +82,7 @@ export function buildModeAwareSections(
 			const state = loadProjectState(cwd);
 			if (state.exists) {
 				const section = buildProjectStateSection(state);
-				if (section.hasContent) projectState = section.section;
+				if (section) projectState = section;
 			}
 		} catch {
 			// best effort — skip on error

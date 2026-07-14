@@ -26,7 +26,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 
 import {
 	analyzeRules,
-	buildProjectStateSection,
+
 	buildRulesSection,
 	buildStatusLine,
 	CONTEXT_WINDOW_TOKENS,
@@ -65,8 +65,9 @@ import { registerTools } from "./tools.ts";
 import { registerWorkflows } from "./workflows/index.ts";
 import { readGitContext, buildGitSection, type GitContext } from "./git.ts";
 import { startHotReload, type HotReloadHandle } from "./hotreload.ts";
-import { resolveMode, type SolyMode } from "./config-mode.ts";
+import { resolveMode, writeModeConfig, type SolyMode } from "./config-mode.ts";
 import { pickAndPersist } from "./mode/picker.ts";
+import { buildModeAwareSections } from "./mode/system-prompt.ts";
 import { registerQuotaProvider } from "./quota/registry.ts";
 import { minimaxProvider } from "./quota/minimax.ts";
 import { startQuotaPoller, type QuotaPoller } from "./quota/poller.ts";
@@ -484,21 +485,36 @@ export default function solyExtension(pi: ExtensionAPI) {
 			emit(`soly mode: ${w}`, "warning");
 		}
 		if (modeResolved.needsPicker) {
-			// First run — show the picker, persist the choice, then re-resolve.
+			// First run for a new project (no config + no STATE.md/ROADMAP.md).
+			// Show the picker so the user can opt into phases mode. The picker
+			// itself has an internal 60s timeout — if the user dismisses or
+			// never engages, pickAndPersist returns null and we keep the
+			// auto-detected mode.
 			emit("first run: pick a soly mode (soly · mode)");
 			try {
-				// Cast: session_start gives ExtensionContext (subset of
-				// ExtensionCommandContext). pickAndPersist only uses ui.custom.
 				const persisted = await pickAndPersist(ctx as never, "repo-default");
 				if (persisted) {
 					chrome.data.solyMode = persisted.mode;
 					chrome.data.plansDir = persisted.plansDir;
 					emit(`mode saved → ${persisted.filePath}`);
 				} else {
-					emit("mode picker dismissed — soly will keep auto-detecting", "warning");
+					emit("mode picker dismissed / timed out — using auto-detected mode", "warning");
 				}
 			} catch (e) {
 				emit(`mode picker failed: ${e instanceof Error ? e.message : String(e)}`, "warning");
+			}
+		} else if (modeResolved.source === "auto-detect" && modeResolved.mode === "phases") {
+			// Existing phase-mode project, no config yet. Pin the auto-detected
+			// choice to repo-default so the team default is committed and the
+			// picker doesn't pop up on every session_start. No UI disruption.
+			try {
+				const result = writeModeConfig("repo-default", ctx.cwd, {
+					mode: "phases",
+					plansDir: modeResolved.plansDir,
+				});
+				emit(`mode auto-pinned to phases → ${result.path}`);
+			} catch (e) {
+				emit(`could not auto-pin mode: ${e instanceof Error ? e.message : String(e)}`, "warning");
 			}
 		}
 
@@ -763,10 +779,15 @@ export default function solyExtension(pi: ExtensionAPI) {
 		}
 		lastRulesTokens = totalRulesTokens;
 
-		// 2. Project state section
-		if (state.exists) {
-			const section = buildProjectStateSection(state);
-			if (section) sections.push(section);
+		// 2. Project state section — phases mode only. In plans mode we omit
+		// STATE.md/ROADMAP.md entirely (no shared state files), and inject a
+		// plan-workflow hint instead. See mode/system-prompt.ts for the
+		// mode-conditional sections; we use buildModeAwareSections here so
+		// the active mode drives what the LLM sees.
+		const modeSections = buildModeAwareSections(ctx.cwd, chrome.data.solyMode);
+		if (modeSections.projectState) sections.push(modeSections.projectState);
+		if (modeSections.planWorkflow && chrome.data.solyMode === "plans") {
+			sections.push(modeSections.planWorkflow);
 		}
 
 		// 2.5. Cross-extension integrations: dynamically mention only the

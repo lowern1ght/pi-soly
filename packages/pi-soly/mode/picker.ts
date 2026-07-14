@@ -117,13 +117,26 @@ export async function showModePicker(
 	});
 }
 
+/** Wrap a promise with a timeout. Resolves to the fallback on timeout
+ *  instead of hanging session_start indefinitely. */
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+	return Promise.race([
+		promise,
+		new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+	]);
+}
+
 /** Show the picker AND persist the choice to .agents/soly.config.json.
- *  Returns the path written, or null if the user cancelled. */
+ *  Returns the path written, or null if the user cancelled or the picker
+ *  timed out (default 60s — feels like an eternity for a one-question picker
+ *  but covers real users who walked away from the terminal). */
 export async function pickAndPersist(
 	ctx: ExtensionCommandContext,
 	layer: "repo-default" | "user-repo" | "user-global" = "repo-default",
+	opts: { timeoutMs?: number } = {},
 ): Promise<{ mode: SolyMode; plansDir: string; filePath: string } | null> {
-	const choice = await showModePicker(ctx);
+	const timeoutMs = opts.timeoutMs ?? 60_000;
+	const choice = await withTimeout(showModePicker(ctx), timeoutMs, null);
 	if (!choice) return null;
 	const result = writeModeConfig(layer, ctx.cwd, choice);
 	return { mode: choice.mode, plansDir: choice.plansDir, filePath: result.path };

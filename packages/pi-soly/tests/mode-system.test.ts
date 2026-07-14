@@ -205,3 +205,48 @@ describe("defaultPlansDir", () => {
 		expect(defaultPlansDir("phases")).toBe(".agents/plans");
 	});
 });
+
+describe("resolveMode — picker semantics (v3.0.0)", () => {
+	let cwd: string;
+	let home: string;
+
+	beforeEach(() => {
+		cwd = fs.mkdtempSync(path.join(os.tmpdir(), "soly-pick-"));
+		home = fs.mkdtempSync(path.join(os.tmpdir(), "soly-pick-home-"));
+		fs.mkdirSync(path.join(home, ".pi"), { recursive: true });
+		fs.mkdirSync(path.join(cwd, ".agents"), { recursive: true });
+	});
+
+	test("phases detected (STATE.md) + no config → needsPicker false (silently pin)", () => {
+		fs.writeFileSync(path.join(cwd, ".agents", "STATE.md"), "# State\n");
+		const r = resolveMode(cwd, { homeDir: home });
+		expect(r.mode).toBe("phases");
+		expect(r.source).toBe("auto-detect");
+		expect(r.needsPicker).toBe(false);
+	});
+
+	test("phases detected (ROADMAP.md) + no config → needsPicker false", () => {
+		fs.writeFileSync(path.join(cwd, ".agents", "ROADMAP.md"), "# Roadmap\n");
+		const r = resolveMode(cwd, { homeDir: home });
+		expect(r.mode).toBe("phases");
+		expect(r.needsPicker).toBe(false);
+	});
+
+	test("plans detected (empty repo) + no config → needsPicker true", () => {
+		const r = resolveMode(cwd, { homeDir: home });
+		expect(r.mode).toBe("plans");
+		expect(r.needsPicker).toBe(true);
+	});
+
+	test("existing config always wins over picker", () => {
+		fs.writeFileSync(path.join(cwd, ".agents", "STATE.md"), "# State\n");
+		fs.writeFileSync(
+			path.join(cwd, ".agents", "soly.config.json"),
+			JSON.stringify({ version: MODE_CONFIG_VERSION, mode: "plans" }),
+		);
+		const r = resolveMode(cwd, { homeDir: home });
+		expect(r.mode).toBe("plans"); // config wins, even though auto-detect would say phases
+		expect(r.source).toBe("repo-default");
+		expect(r.needsPicker).toBe(false);
+	});
+});

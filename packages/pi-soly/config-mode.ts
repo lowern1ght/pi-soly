@@ -194,16 +194,28 @@ export function resolveMode(cwd: string, opts: { homeDir?: string } = {}): Resol
 		};
 	}
 
-	// 4. Auto-detect fallback
+	// 4. Auto-detect fallback.
+	//
+	// Picker semantics (v3.0.0):
+	//   - auto-detected "phases" (STATE.md / ROADMAP.md exists) — confident,
+	//     no picker. Callers should silently write this to .agents/soly.config.json
+	//     so the next session doesn't re-detect (and so the team default is
+	//     pinned in version control). Picking through UI for an existing
+	//     phase-mode project is friction.
+	//   - auto-detected "plans" (no state files) — empty repo / new project.
+	//     Show the picker so the user can opt into phases mode from day one.
+	//   - auto-detected "plans" but the repo has plans (existing plans-mode
+	//     project) — picker is unhelpful, just default to plans silently.
 	const detected = autoDetectMode(cwd);
+	const hasStateFiles = fs.existsSync(path.join(cwd, ".agents", "STATE.md"))
+		|| fs.existsSync(path.join(cwd, ".agents", "ROADMAP.md"));
+	const needsPicker = detected === "plans" && !hasStateFiles;
 	return {
 		mode: detected,
 		plansDir: defaultPlansDir(detected),
 		source: "auto-detect",
 		warnings,
-		// Picker is needed when we had no config at all — user must opt in explicitly
-		// (saving the choice then promotes auto-detect → repo-default).
-		needsPicker: true,
+		needsPicker,
 	};
 }
 
