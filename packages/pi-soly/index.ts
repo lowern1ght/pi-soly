@@ -65,6 +65,8 @@ import { registerTools } from "./tools.ts";
 import { registerWorkflows } from "./workflows/index.ts";
 import { readGitContext, buildGitSection, type GitContext } from "./git.ts";
 import { startHotReload, type HotReloadHandle } from "./hotreload.ts";
+import { resolveMode, type SolyMode } from "./config-mode.ts";
+import { pickAndPersist } from "./mode/picker.ts";
 import { registerQuotaProvider } from "./quota/registry.ts";
 import { minimaxProvider } from "./quota/minimax.ts";
 import { startQuotaPoller, type QuotaPoller } from "./quota/poller.ts";
@@ -469,6 +471,36 @@ export default function solyExtension(pi: ExtensionAPI) {
 		// Project state — soly owns .agents/ at the project root
 		state.solyDir = solyDirFor(ctx.cwd);
 		refreshState();
+
+		// Mode system (v3.0.0): resolve plans vs phases. Auto-detects on
+		// first run; honors user-global / user-repo / repo-default layers.
+		// The result lives on `chrome.data.solyMode` and `chrome.data.plansDir`
+		// so it's reachable from every component (footer, system prompt,
+		// command handlers) without re-reading the chain.
+		const modeResolved = resolveMode(ctx.cwd, { homeDir: os.homedir() });
+		chrome.data.solyMode = modeResolved.mode;
+		chrome.data.plansDir = modeResolved.plansDir;
+		for (const w of modeResolved.warnings) {
+			emit(`soly mode: ${w}`, "warning");
+		}
+		if (modeResolved.needsPicker) {
+			// First run — show the picker, persist the choice, then re-resolve.
+			emit("first run: pick a soly mode (soly · mode)");
+			try {
+				// Cast: session_start gives ExtensionContext (subset of
+				// ExtensionCommandContext). pickAndPersist only uses ui.custom.
+				const persisted = await pickAndPersist(ctx as never, "repo-default");
+				if (persisted) {
+					chrome.data.solyMode = persisted.mode;
+					chrome.data.plansDir = persisted.plansDir;
+					emit(`mode saved → ${persisted.filePath}`);
+				} else {
+					emit("mode picker dismissed — soly will keep auto-detecting", "warning");
+				}
+			} catch (e) {
+				emit(`mode picker failed: ${e instanceof Error ? e.message : String(e)}`, "warning");
+			}
+		}
 
 		// Config: per-project overrides global overrides defaults
 		const cfgResult = loadConfig(ctx.cwd);

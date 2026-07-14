@@ -64,6 +64,8 @@
     "hotreload.ts",
     "built-in-rules",
     "quota",
+    "config-mode.ts",
+    "mode",
     ".assets"
   ],
   "keywords": [

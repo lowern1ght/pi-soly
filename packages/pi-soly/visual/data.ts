@@ -10,6 +10,8 @@
 // =============================================================================
 
 /** Live values the chrome renders from. All optional/nullable → segment hidden. */
+import type { SolyMode } from "../config-mode.ts";
+
 export type ChromeData = {
 	/** Current working directory. */
 	cwd: string;
@@ -55,6 +57,14 @@ export type ChromeData = {
 	/** Raw ms until the quota window resets, or null. Used by the footer to
 	 *  color the time yellow when < 30 minutes remain. */
 	quotaResetsMs: number | null;
+	/** Soly mode for the current repo (plans vs phases). Set in session_start
+	 *  by the mode resolver. Drives system-prompt section selection and
+	 *  command gating. */
+	solyMode: SolyMode;
+	/** Plans dir for the current mode (resolved at session_start). In plans
+	 *  mode this is where new plans live; in phases mode it's the shared
+	 *  .agents/phases/ dir. */
+	plansDir: string;
 };
 
 /** A fresh ChromeData with everything empty/idle. */
@@ -79,5 +89,7 @@ export function emptyChromeData(): ChromeData {
 		quotaPercent: null,
 		quotaResetsLabel: null,
 		quotaResetsMs: null,
+		solyMode: "plans",
+		plansDir: ".pi/plans",
 	};
 }
