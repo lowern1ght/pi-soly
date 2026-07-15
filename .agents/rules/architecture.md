@@ -78,7 +78,7 @@ Changes to system prompt format should:
 Each piece of state should live in **one place**. If the same data is in `STATE.md`, `ROADMAP.md`, and a config file, you have a bug waiting to happen.
 
 ```
-✓ Good: rules/ in .soly/rules/ is canonical, soly_read returns cached parse
+✓ Good: rules/ in .soly/rules/ is canonical, soly-read returns cached parse
 ✓ Good: .soly/STATE.md is canonical, all status queries derive from it
 ❌ Bad: rules in both .soly/rules/ and ~/.pi/agent/rules/ — sync breaks
 ```

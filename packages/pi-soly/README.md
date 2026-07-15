@@ -114,7 +114,7 @@ matching file paths). `always: true` rules load every turn. See the
 ![ask_pro picker](./packages/pi-soly/.assets/ask-pro.png)
 
 The `ask_pro` multi-question picker is built into the extension — the
-LLM uses it (not the LLM-driven `soly_ask_user`) for `discuss` flow
+LLM uses it (not the LLM-driven `soly-ask-user`) for `discuss` flow
 when the config flag `agent.preferAskPro: true` is set. Single-pick
 options get a ⭐ recommended default, multi-select supports
 `min/max` bounds, every options question has a free-text "Other…"
@@ -160,7 +160,7 @@ the interactive config editor that drives everything else.
                       │  │  • session_start  → load state       │  │
                       │  │  • agent_start   → inject rules      │  │
    /sly  ────────────►│  │  • slash commands /sly, /rules, ... │  │
-   soly new ────────► │  │  • soly_workflow tool  (LLM-side)   │  │
+   soly new ────────► │  │  • soly-workflow tool  (LLM-side)   │  │
                       │  │  • built-in rules  (soly/*)          │  │
                       │  │  • visual chrome (top bar, footer)   │  │
                       │  └────────────────────────────────────┘  │
@@ -191,7 +191,7 @@ For event names and the full dependency list, see
 | **2.1.3** | `ask_pro` read-only summary view before submit |
 | **2.1.2** | Info / warning notifications silenced — only errors fire |
 | **2.1.1** | Goal-aware verification at end of execute |
-| **2.0.x → 2.1.0** | `soly_workflow` first-party tool; `soly migrate` verb; `~/.agents/` global config |
+| **2.0.x → 2.1.0** | `soly-workflow` first-party tool; `soly migrate` verb; `~/.agents/` global config |
 
 Full history: [CHANGELOG.md](./CHANGELOG.md).
 

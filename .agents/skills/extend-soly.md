@@ -31,7 +31,7 @@ packages/pi-soly/
 
 ### 2. Add the feature
 
-Example: adding a new tool `soly_my_thing`:
+Example: adding a new tool `soly-my-thing`:
 
 ```ts
 // packages/pi-soly/tools.ts
@@ -40,7 +40,7 @@ export function registerMyThingTools(
   getState: () => SolyState,
 ): void {
   pi.registerTool({
-    name: "soly_my_thing",
+    name: "soly-my-thing",
     label: "My Thing",
     description: "Does the thing. Use when...",
     parameters: Type.Object({
@@ -128,7 +128,7 @@ Follow `rules/commits.md`:
 
 ```bash
 git add packages/pi-soly/tools.ts packages/pi-soly/index.ts packages/pi-soly/tools.test.ts
-git commit -m "feat: add soly_my_thing tool for doing the thing"
+git commit -m "feat: add soly-my-thing tool for doing the thing"
 ```
 
 Then see `release.md` for how to publish.

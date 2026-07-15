@@ -61,14 +61,14 @@ plugin** (removed in 2.0.0); nothing breaks when that plugin changes.
 1. **Let the model propose and run it (preferred).** soly injects a "suggested
    next step" into the system prompt every turn. Just say what you want in
    plain language ("let's plan this", "go", "start executing", "wrap it up")
-   and the model calls the `soly_workflow` tool for you — you never have to
+   and the model calls the `soly-workflow` tool for you — you never have to
    memorize a verb.
 2. **Type the verb yourself.** `soly plan <slug>`, `soly execute <slug>`, etc.
    still work as plain-text input (a fallback for power users).
 
 `soly discuss` is always interactive in the main session. `soly verify` is a
 stateful self-review loop you start by typing `soly verify` (it's not a
-`soly_workflow` action).
+`soly-workflow` action).
 
 ## File structure
 
@@ -223,21 +223,21 @@ Once production commits exist, returning without a committed `SUMMARY.md` is an 
 
 | Tool | Purpose |
 |---|---|
-| `soly_workflow(action, target?)` | Drive the lifecycle inline: `new` / `discuss` / `plan` / `execute` / `done`. Call it on the user's natural-language intent instead of making them type `soly <verb>`. Returns the workflow instruction to follow in this session |
-| `soly_read(artifact, phase, taskId)` | Read soly artifacts: STATE, plan, context, research, ROADMAP, requirements, project, milestone, task |
-| `soly_log_decision(decision, rationale, phase)` | Append to STATE.md Decisions table |
-| `soly_list_phases()` | List all phases with plan counts, C/R markers |
-| `soly_list_tasks()` | List all tasks across features (kind, status, priority, deps) |
-| `soly_todos(paths, limit)` | Scan working tree for TODO/FIXME/HACK/XXX/NOTE |
-| `soly_env()` | Detect runtime (package manager, runtimes, services, scripts) |
-| `soly_snippet(path, offset, limit)` | Read bounded line range with line numbers |
-| `soly_doc_search(query, limit)` | Search .md/.html under cwd (prioritizes intent docs) |
-| `soly_scratchpad(limit)` | Recent conversation recap (one line per turn) |
+| `soly-workflow(action, target?)` | Drive the lifecycle inline: `new` / `discuss` / `plan` / `execute` / `done`. Call it on the user's natural-language intent instead of making them type `soly <verb>`. Returns the workflow instruction to follow in this session |
+| `soly-read(artifact, phase, taskId)` | Read soly artifacts: STATE, plan, context, research, ROADMAP, requirements, project, milestone, task |
+| `soly-log-decision(decision, rationale, phase)` | Append to STATE.md Decisions table |
+| `soly-list-phases()` | List all phases with plan counts, C/R markers |
+| `soly-list-tasks()` | List all tasks across features (kind, status, priority, deps) |
+| `soly-todos(paths, limit)` | Scan working tree for TODO/FIXME/HACK/XXX/NOTE |
+| `soly-env()` | Detect runtime (package manager, runtimes, services, scripts) |
+| `soly-snippet(path, offset, limit)` | Read bounded line range with line numbers |
+| `soly-doc-search(query, limit)` | Search .md/.html under cwd (prioritizes intent docs) |
+| `soly-scratchpad(limit)` | Recent conversation recap (one line per turn) |
 | `ask_pro(questions)` | Multi-question picker (tabbed, single/multi-select, ⭐, `preview` w/ code highlight, `allowOther`, `freeText`, `minSelect`/`maxSelect`, `s` to skip, notes) — preferred for structured input |
 | `decision_deck(options)` | Full-screen TUI deck — one card per option with a highlighted code snippet + pros/cons. For design/architecture forks where the choice hinges on the concrete code shape |
 | `html_artifact(title, html, id?, assets?)` | Render HTML (full doc or body fragment) and serve it from a per-session browser gallery SPA (sidebar + iframe + filter + live updates, one stable URL) — soly's "artifacts". `id` updates in place; `assets` writes sibling files. For visual output: example galleries, comparisons, diagrams |
 | `soly_save_discuss_checkpoint(...)` · `soly_finish_discuss(...)` | Save / finalize a `soly discuss` session (writes CONTEXT.md) |
-| `soly_ask_user(...)` | Single-question picker — **deprecated**, prefer `ask_pro` |
+| `soly-ask-user(...)` | Single-question picker — **deprecated**, prefer `ask_pro` |
 
 ### Visual & interaction tools — when to reach for each
 
@@ -302,12 +302,12 @@ If `/execute` complains about illegal partial state:
 
 ## When in doubt
 
-Call `soly_read(artifact: "state")` and `soly_read(artifact: "roadmap")` first. The system prompt has the layers, but `soly_read` gives you full content. Then check `soly_doc_search` for any other relevant docs.
+Call `soly-read(artifact: "state")` and `soly-read(artifact: "roadmap")` first. The system prompt has the layers, but `soly-read` gives you full content. Then check `soly-doc-search` for any other relevant docs.
 
 ## Don'ts
 
 - ❌ Edit `.agents/rules/` files you didn't write — those are project invariants
 - ❌ Skip the SUMMARY — illegal partial state
-- ❌ Reach for a `subagent(...)` tool — soly runs inline, in this session. There is no soly subagent and no dependency on pi-subagents (removed in 2.0.0). Use `soly_workflow` (or the plain `soly <verb>` text) instead.
+- ❌ Reach for a `subagent(...)` tool — soly runs inline, in this session. There is no soly subagent and no dependency on pi-subagents (removed in 2.0.0). Use `soly-workflow` (or the plain `soly <verb>` text) instead.
 - ❌ Edit `.agents/phases/*/PLAN.md` after `status: in_progress` — create a new plan
 - ❌ Put intent docs anywhere other than `.agents/docs/`

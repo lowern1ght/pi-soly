@@ -52,7 +52,7 @@ Before analyzing, **read**:
 - The user's complaint (what specifically bothers them — extract the
   concrete behavior, not the emotion)
 - The code the agent wrote (the file(s) that triggered the complaint) —
-  use `read` / `soly_snippet`
+  use `read` / `soly-snippet`
 - The conversation context (what was the agent trying to do?)
 
 **Extract the pattern.** "переделай god switch по-другому" is about a
@@ -67,9 +67,9 @@ have prevented this?**
 ### Step 2 — Check existing rules (dedup)
 
 Before proposing, **read existing rules** to avoid duplication:
-- Use `soly_doc_search` with keywords from the complaint
+- Use `soly-doc-search` with keywords from the complaint
 - Or `/rules list` to see all rule files
-- Or `soly_snippet` on `.agents/rules/*.md` files
+- Or `soly-snippet` on `.agents/rules/*.md` files
 
 If a rule already covers this but the agent ignored it:
 - The rule may be too vague → propose **strengthening** it (edit, not new)

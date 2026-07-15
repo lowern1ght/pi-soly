@@ -57,7 +57,7 @@ plans.
 
 1. **STATE.md merge conflicts** when two plans complete simultaneously
    against `main`. Acceptable for v1 (last-write-wins); document.
-2. **`soly_status` regressions** — STATE.md shape change may break status
+2. **`soly-status` regressions** — STATE.md shape change may break status
    rendering. Mitigate: W4 writes through a single helper used by both
    `soly new` and `soly done`; existing tests cover status.
 3. **`soly-framework` skill load** — descriptions in tool list reference

@@ -22,7 +22,7 @@ packages/pi-soly/
 ├── index.ts              # main entry — solyExtension(pi)
 ├── core.ts               # types, loaders (rules/docs/intent), builders
 ├── commands.ts           # /rules /docs /soly /artifacts /soly-migrate /soly-init /why /rulewizard
-├── tools.ts              # soly_read, soly_log_decision, soly_list_phases
+├── tools.ts              # soly-read, soly-log-decision, soly-list-phases
 ├── notification.ts       # Box widget for framed messages
 ├── notifications-log.ts  # JSONL append to .soly/notifications.log
 ├── nudge.ts              # soft behavioral hint (pre-action gate)
@@ -116,7 +116,7 @@ Each section is independently skippable, cheap to compute, and cached where poss
                             tools + commands
 ```
 
-The LLM never reads files directly — it goes through `soly_read` tool which respects intent docs and rules.
+The LLM never reads files directly — it goes through `soly-read` tool which respects intent docs and rules.
 
 ## Vendoring
 
