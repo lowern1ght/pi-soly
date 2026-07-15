@@ -22,6 +22,7 @@ import { detectEnv, type EnvSummary } from "./env.ts";
 import type { SolyConfig } from "./config.ts";
 import { buildDocIndex, searchDocs, readSnippet, stripHtml } from "./docs.ts";
 import { buildScratchpad, SCRATCHPAD_LIMITS } from "./scratchpad.ts";
+import { renderSolyCall, callDetail } from "./visual/tool-render.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -64,6 +65,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 	pi.registerTool({
 		name: "soly_read",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_read", callDetail("soly_read", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly read",
 		description:
 			"Read a .agents/ artifact (state, plan, context, research, roadmap, requirements, project, milestone, task). `phase` targets a specific phase (default: current); `taskId` for the task artifact. Returns the file text.",
@@ -187,6 +192,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 	pi.registerTool({
 		name: "soly_log_decision",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_log_decision", callDetail("soly_log_decision", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly log decision",
 		description:
 			"Append a one-line decision + rationale to the Decisions table in .agents/STATE.md (creates it if missing). For meaningful choices: scope cuts, library picks, trade-offs. `phase` defaults to current.",
@@ -272,6 +281,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 	pi.registerTool({
 		name: "soly_list_tasks",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_list_tasks", callDetail("soly_list_tasks", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly list tasks",
 		description:
 			"List all tasks across features (kind, status, priority, deps). Use before `soly execute <task-id>` / `--all`.",
@@ -298,6 +311,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 	pi.registerTool({
 		name: "soly_list_phases",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_list_phases", callDetail("soly_list_phases", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly list phases",
 		description:
 			"List phases with plan count, C/R (context/research) markers, and current-position marker (→). Use before `soly plan <N>` / `execute <N>`.",
@@ -327,6 +344,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 	pi.registerTool({
 		name: "soly_todos",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_todos", callDetail("soly_todos", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly todos",
 		description:
 			"Scan the tree for TODO/FIXME/HACK/XXX/NOTE comments, grouped by file (common source extensions; excludes node_modules/.git/dist/build/.agents). Needs ripgrep on PATH. `paths` overrides root, `limit` caps (default 200).",
@@ -459,6 +480,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 	pi.registerTool({
 		name: "soly_env",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_env", callDetail("soly_env", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly env",
 		description:
 			"Detect the project's environment as a one-screen summary: package manager, runtimes, key deps, scripts, services (from compose), and tooling flags (ts/tests/docker/ci). Answers 'what test runner / package manager / is docker used'.",
@@ -497,6 +522,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 	pi.registerTool({
 		name: "soly_snippet",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_snippet", callDetail("soly_snippet", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly snippet",
 		description:
 			"Read a bounded line range from a file with line numbers — a specific function/section without the whole file. `offset` 0-indexed, `limit` default 100 (cap 500). For .html, `format=\"stripped\"` removes tags.",
@@ -567,6 +596,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 	pi.registerTool({
 		name: "soly_doc_search",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_doc_search", callDetail("soly_doc_search", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly doc search",
 		description:
 			"Search .md/.html under cwd for a query (intent docs prioritized, hits tagged [intent]/[phase-intent]/[project]). Use to find docs before loading one with soly_snippet. `limit` default 10 (cap 50).",
@@ -625,6 +658,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 	pi.registerTool({
 		name: "soly_scratchpad",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_scratchpad", callDetail("soly_scratchpad", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly scratchpad",
 		description:
 			"Compact recap of the recent conversation (one line per turn). Use to recover context after a break or brief a sibling subagent. `limit` default 20 user-turns (cap 50).",
@@ -682,6 +719,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 	pi.registerTool({
 		name: "soly_ask_user",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_ask_user", callDetail("soly_ask_user", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly ask user",
 		description:
 			"DEPRECATED — prefer `ask_pro` (multi-question picker). Fallback only. Asks one multiple-choice question via pi's picker; option #1 is the recommended answer (⭐ prefix + a `rationale`). `allowOther` adds a custom-text 'Other…'. Returns the chosen text (or custom string); Esc → cancelled.",
@@ -816,6 +857,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 	pi.registerTool({
 		name: "soly_finish_discuss",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_finish_discuss", callDetail("soly_finish_discuss", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly finish discuss",
 		description:
 			"Finalize a `soly discuss <N>` session: write `<phase>-CONTEXT.md` with all decisions and delete the checkpoint. Call AFTER all gray-area questions are answered — not for partial progress (use soly_save_discuss_checkpoint for that).",
@@ -1000,6 +1045,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 	pi.registerTool({
 		name: "soly_save_discuss_checkpoint",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_save_discuss_checkpoint", callDetail("soly_save_discuss_checkpoint", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly save discuss checkpoint",
 		description:
 			"Save a partial-progress checkpoint for `soly discuss <N>` (call after each decision so a quit doesn't lose progress; the next `soly discuss <N>` resumes from it). When done, call `soly_finish_discuss`.",

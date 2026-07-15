@@ -29,6 +29,7 @@ import {
 } from "./registry.ts";
 import { writeModeConfig, resolveMode, type SolyMode } from "../config-mode.ts";
 import type { SolyConfig } from "../config.ts";
+import { renderSolyCall, callDetail } from "../visual/tool-render.ts";
 
 export interface SettingsToolsDeps {
 	/** Active resolved SolyConfig (for solyConfig-layer reads). */
@@ -48,6 +49,10 @@ export function registerSettingsTools(pi: ExtensionAPI, deps: SettingsToolsDeps)
 	// ---- soly_config (read) ----
 	pi.registerTool({
 		name: "soly_config",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_config", callDetail("soly_config", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly config",
 		description:
 			"Read soly settings. Actions: get (current value + source layer), list (all keys + values), explain (allowed values + sensitivity + default), diff (current vs defaults). " +
@@ -142,6 +147,10 @@ export function registerSettingsTools(pi: ExtensionAPI, deps: SettingsToolsDeps)
 
 	pi.registerTool({
 		name: "soly_settings_set",
+		renderShell: "self",
+		renderCall(args, theme, context) {
+			return renderSolyCall(theme, "soly_settings_set", callDetail("soly_settings_set", args as Record<string, unknown>), context.lastComponent);
+		},
 		label: "soly settings set",
 		description:
 			"Change soly settings. Pass one or more keys in `changes`. Structural changes (mode, chrome.enabled, artifacts.server, editor.command) require user confirmation. " +

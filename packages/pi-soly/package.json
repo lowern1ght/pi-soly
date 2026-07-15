@@ -68,6 +68,7 @@
     "mode",
     "settings",
     "util-shell.ts",
+    "visual",
     ".assets"
   ],
   "keywords": [
