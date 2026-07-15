@@ -95,7 +95,7 @@ export function createChrome(getConfig: () => ChromeConfig): Chrome {
 			},
 			workingWidth(),
 		);
-		try { working.ui.setWorkingMessage(message + (data.recentEvent ? `\n    ${data.recentEventLevel === "error" ? "└─ ✗" : data.recentEventLevel === "warning" ? "└─ ⚠" : "└─"} ${data.recentEvent}` : "")); } catch { /* session may have ended */ }
+		try { working.ui.setWorkingMessage(message + (data.recentEvent ? `\n  ${data.recentEventLevel === "error" ? "└─ ✗" : data.recentEventLevel === "warning" ? "└─ ⚠" : "└─"} ${data.recentEvent}` : "")); } catch { /* session may have ended */ }
 	};
 
 	const clearWorking = (): void => {

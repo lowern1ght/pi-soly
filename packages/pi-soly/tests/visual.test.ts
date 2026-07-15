@@ -106,16 +106,18 @@ describe("segments.fitParts", () => {
 });
 
 describe("working.buildWorkingMessage", () => {
-	test("full telemetry line", () => {
+	test("full working message with rotating verb", () => {
 		const msg = buildWorkingMessage(
 			{ label: "Working", elapsedMs: 8000, inputTokens: 12_400, outputTokens: 1200 },
 			120,
 		);
 		expect(msg.includes("Working")).toBe(true);
 		expect(msg.includes("8s")).toBe(true);
-		expect(msg.includes("↑12k")).toBe(true);
-		expect(msg.includes("↓1.2k")).toBe(true);
-		expect(msg.includes("150 tok/s")).toBe(true);
+		// v2.6.2: token telemetry removed, replaced with rotating verb
+		expect(msg.includes("↑")).toBe(false);
+		expect(msg.includes("↓")).toBe(false);
+		expect(msg.includes("tok/s")).toBe(false);
+		expect(msg.includes("…")).toBe(true);
 	});
 
 	test("drops fields on a narrow terminal", () => {
@@ -126,9 +128,11 @@ describe("working.buildWorkingMessage", () => {
 		expect(msg).toBe("Working · 8s");
 	});
 
-	test("omits rate before the first second / output", () => {
+	test("shows elapsed + verb at t=0", () => {
 		const msg = buildWorkingMessage({ label: "Working", elapsedMs: 0, inputTokens: 0, outputTokens: 0 }, 120);
-		expect(msg).toBe("Working · 0s");
+		expect(msg.includes("Working")).toBe(true);
+		expect(msg.includes("0s")).toBe(true);
+		expect(msg.includes("…")).toBe(true);
 	});
 });
 
