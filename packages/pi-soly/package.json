@@ -66,6 +66,7 @@
     "quota",
     "config-mode.ts",
     "mode",
+    "util-shell.ts",
     ".assets"
   ],
   "keywords": [

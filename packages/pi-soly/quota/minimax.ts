@@ -49,13 +49,32 @@ type MinimaxQuotaResponse = {
  *  can't spawn directly without a shell). */
 const IS_WIN = process.platform === "win32";
 
+/** Strip common ANSI/OSC escape sequences (CSI + OSC) from a string.
+ *  Idempotent — safe to apply to already-clean output. Used to defang
+ *  pollution from Windows shells that inject their title sequence into
+ *  subprocess pipes (e.g. `]0;C:\WINDOWS\system32\cmd.exe` from cmd.exe when
+ *  `shell: true` is enabled). */
+function stripAnsiShellNoise(s: string): string {
+	return s
+		// OSC: ESC ] ... BEL  (or ESC ] ... ESC \)
+		.replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, "")
+		// CSI: ESC [ ... letter  (covers colors, cursor moves, mode changes)
+		.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
+		// Bare CR
+		.replace(/\r/g, "");
+}
+
 /** Run mmx and capture stdout. Resolves to null on any failure
  *  (mmx missing, non-zero exit, timeout, bad JSON). Never throws.
  *
  *  On Windows, npm-global CLIs are `.cmd` shims (e.g. `mmx.cmd`). Node's
  *  `execFile` spawns the executable directly without a shell, so it can't
  *  resolve `mmx` → `mmx.cmd` and fails with ENOENT. `shell: true` lets the
- *  shell do that resolution. Safe here: args are fixed (no user input). */
+ *  shell do that resolution. Safe here: args are fixed (no user input).
+ *
+ *  Side note: when shell=true the wrapping cmd.exe sometimes emits its
+ *  title sequence (`]0;...\x07`) into the pipe. We strip ANSI/OSC noise
+ *  before returning so it never reaches the JSON parser or the chrome. */
 function runMmx(args: string[], timeoutMs: number): Promise<string | null> {
 	return new Promise((resolve) => {
 		const opts = {
@@ -63,10 +82,11 @@ function runMmx(args: string[], timeoutMs: number): Promise<string | null> {
 			timeout: timeoutMs,
 			maxBuffer: 1024 * 1024,
 			shell: IS_WIN, // resolve .cmd shims on Windows
+			windowsHide: true, // give cmd.exe its own hidden console
 		};
 		execFile("mmx", args, opts, (err, stdout) => {
 			if (err) resolve(null);
-			else resolve(stdout ?? "");
+			else resolve(stripAnsiShellNoise(stdout ?? ""));
 		});
 	});
 }
