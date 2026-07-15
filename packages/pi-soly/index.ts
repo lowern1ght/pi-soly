@@ -62,6 +62,7 @@ import { detectToolHints, buildToolHintSection } from "./tool-hints.ts";
 import { notifyNudge, notifyDeprecation } from "./notification.ts";
 import { registerCommands, type CommandUI } from "./commands.ts";
 import { registerTools } from "./tools.ts";
+import { registerSettingsTools } from "./settings/tools.ts";
 import { registerWorkflows } from "./workflows/index.ts";
 import { readGitContext, buildGitSection, type GitContext } from "./git.ts";
 import { startHotReload, type HotReloadHandle } from "./hotreload.ts";
@@ -408,6 +409,15 @@ export default function solyExtension(pi: ExtensionAPI) {
 		getState: () => state,
 		refreshState: () => refreshState(),
 		getConfig: getActiveConfig,
+	});
+
+	registerSettingsTools(pi, {
+		getConfig: getActiveConfig,
+		getMode: () => ({ mode: chrome.data.solyMode, plansDir: chrome.data.plansDir }),
+		reloadConfig: () => {
+			const cfgResult = loadConfig(sessionCwd);
+			activeConfig = cfgResult.config;
+		},
 	});
 
 	registerWorkflows(pi, {
