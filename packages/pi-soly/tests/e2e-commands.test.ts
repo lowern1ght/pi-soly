@@ -119,6 +119,7 @@ function makeMockDeps(cwd: string) {
 		}),
 		getIntentDocs: () => [],
 		recordEvent: () => {},
+		getMode: () => "phases" as const,
 	};
 }
 

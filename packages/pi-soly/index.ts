@@ -403,6 +403,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 		// The route goes through the chrome so the sub-line auto-clears on
 		// the next agent_start.
 		recordEvent: (text, level) => chrome.emit(text, level),
+		getMode: () => chrome.data.solyMode,
 	});
 
 	registerTools(pi, {

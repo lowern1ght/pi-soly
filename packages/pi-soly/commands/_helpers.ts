@@ -43,6 +43,8 @@ export interface CommandsDeps {
 	/** Record a soly event (any level). Everything goes through the
 	 *  Working sub-line — no popups at all. */
 	recordEvent: (text: string, level?: "info" | "warning" | "error") => void;
+	/** Current soly mode (plans/phases). Used for command gating. */
+	getMode: () => "plans" | "phases";
 }
 
 /** Open a focused list modal (overlay) for the given grouped items. */

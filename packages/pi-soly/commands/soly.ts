@@ -25,10 +25,10 @@ import { initSolyProject } from "../init.js";
 import { parseSolyCommand, type SolyCommand, type WorkflowVerb } from "../workflows/parser.ts";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
-type SolyDeps = Pick<CommandsDeps, "getState" | "getConfig" | "reloadConfig" | "updateStatus" | "refreshState" | "recordEvent">;
+type SolyDeps = Pick<CommandsDeps, "getState" | "getConfig" | "reloadConfig" | "updateStatus" | "refreshState" | "recordEvent" | "getMode">;
 
 export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
-	const { getState, getConfig, reloadConfig, updateStatus, refreshState, recordEvent } = deps;
+	const { getState, getConfig, reloadConfig, updateStatus, refreshState, recordEvent, getMode } = deps;
 
 	const solyBody = async (args: string, ctx: ExtensionCommandContext): Promise<void> => {
 			const ui: CommandUI = {
@@ -483,11 +483,35 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 				},
 			};
 
+			// Subcommand mode map: which mode each subcommand belongs to.
+			// 'both' = visible in any mode. Not listed = defaults to 'both'.
+			const SUBCOMMAND_MODE: Record<string, "plans" | "phases" | "both"> = {
+				// plans-only
+				new: "plans", execute: "plans", discuss: "plans", done: "plans",
+				// phases-only
+				plan: "phases", context: "phases", research: "phases", progress: "phases",
+				phases: "phases", tasks: "phases", task: "phases", features: "phases",
+				milestone: "phases", migrate: "phases", where: "phases",
+				// both (explicit)
+				config: "both", state: "both", roadmap: "both", reload: "both",
+				settings: "both", status: "both", inspect: "both", manage: "both",
+				position: "both",
+			};
+
+			const currentMode = getMode();
+
+			/** Check if a subcommand is allowed in the current mode. */
+			const isAllowed = (name: string): boolean => {
+				const m = SUBCOMMAND_MODE[name] ?? "both";
+				return m === "both" || m === currentMode;
+			};
+
 			const solyGroups = (): ListGroup[] =>
 				SOLY_GROUP_ORDER.map((gid) => {
 					const def = SOLY_GROUPS[gid]!;
 					const items: ListItem[] = [];
-					for (const name of def.items) {
+				for (const name of def.items) {
+					if (!isAllowed(name)) continue;
 						const spec = (subcommands as Record<string, { description: string; run: (parts: string[]) => unknown }>)[name];
 						if (!spec) continue;
 						items.push({
@@ -538,6 +562,18 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 			if (!(subcommands as Record<string, unknown>)[sub]) {
 				recordEvent(`soly: unknown subcommand '${sub}'`, "error");
 				return openMenu();
+			}
+
+			// Mode gate: if the subcommand doesn't belong to the current mode,
+			// emit a helpful error instead of running it.
+			if (!isAllowed(sub)) {
+				const target = SUBCOMMAND_MODE[sub] ?? "both";
+				recordEvent(
+					`soly: '${sub}' is only available in ${target} mode (current: ${currentMode}). ` +
+					`Switch modes via /soly settings or edit .agents/soly.config.json.`,
+					"error",
+				);
+				return;
 			}
 
 			await (subcommands as Record<string, { run: (parts: string[]) => Promise<unknown> | unknown }>)[sub]!.run(parts);
