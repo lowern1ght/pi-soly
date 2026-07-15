@@ -597,7 +597,7 @@ ${
 	hasAskPro
 		? `**PREFERRED PICKER: \`ask_pro\` (from the \`pi-ask\` extension)** is available in this session.
 
-This is a multi-question tabbed picker — one call shows all your questions as tabs, the user navigates with Tab/arrows and picks with 1-N. It returns all answers in one shot. This is much better UX than N separate \`soly_ask_user\` calls.
+This is a multi-question tabbed picker — one call shows all your questions as tabs, the user navigates with Tab/arrows and picks with 1-N. It returns all answers in one shot. This is much better UX than N separate \`soly-ask-user\` calls.
 
 **Pattern:**
 \`\`\`
@@ -619,12 +619,12 @@ ask_pro({
 - If the user cancels, you get \`{cancelled: true}\` — treat that as "deferred, ask differently" or just end the discuss.
 - After getting answers, call \`soly_finish_discuss\` to write the canonical CONTEXT.md.
 
-If \`ask_pro\` is not available (rare — would mean the user uninstalled the \`pi-ask\` extension), fall back to \`soly_ask_user\` (one call per question, see the fallback section below).`
-		: `**PICKER: \`soly_ask_user\`** is the available multi-choice picker in this session.
+If \`ask_pro\` is not available (rare — would mean the user uninstalled the \`pi-ask\` extension), fall back to \`soly-ask-user\` (one call per question, see the fallback section below).`
+		: `**PICKER: \`soly-ask-user\`** is the available multi-choice picker in this session.
 
 **Pattern (one call per question, one at a time):**
 \`\`\`
-soly_ask_user({
+soly-ask-user({
   title: "Q1: <category>",
   question: "<one short sentence>",
   options: [
@@ -637,11 +637,11 @@ soly_ask_user({
 \`\`\`
 
 - Always include a recommended answer (⭐ first option) with 1-sentence rationale.
-- After each answer, briefly acknowledge ("OK, locking X. Next:") and call \`soly_ask_user\` for the next question. **Do NOT dump all questions at once.**
+- After each answer, briefly acknowledge ("OK, locking X. Next:") and call \`soly-ask-user\` for the next question. **Do NOT dump all questions at once.**
 - Never include "skip" / "you decide" as a default option. If a question is too hard, include a real option like \`"Defer — discuss in a future phase"\`.
-- Note: \`soly_ask_user\` does NOT support \`allowOther\` (no text input). For questions that might need a custom answer, include a "Other (describe)" option that says the user can type a free-text answer in their next chat message.
+- Note: \`soly-ask-user\` does NOT support \`allowOther\` (no text input). For questions that might need a custom answer, include a "Other (describe)" option that says the user can type a free-text answer in their next chat message.
 
-**Tip:** the separate \`pi-ask\` extension provides a better UX (multi-question tabbed picker, \`allowOther\` text input). If it's not installed, \`soly_ask_user\` is the fallback.`
+**Tip:** the separate \`pi-ask\` extension provides a better UX (multi-question tabbed picker, \`allowOther\` text input). If it's not installed, \`soly-ask-user\` is the fallback.`
 }
 
 ---
@@ -674,7 +674,7 @@ soly_ask_user({
 ---
 
 **Available tools for this flow:**
-- ${hasAskPro ? "`ask_pro` — multi-question tabbed picker (PREFERRED)" : "`soly_ask_user` — single-question picker (fallback)"}
+- ${hasAskPro ? "`ask_pro` — multi-question tabbed picker (PREFERRED)" : "`soly-ask-user` — single-question picker (fallback)"}
 - \`soly_save_discuss_checkpoint\` — save partial progress (use after each answer)
 - \`soly_finish_discuss\` — finalize: writes CONTEXT.md, deletes checkpoint
 - \`soly_read\`, \`soly_snippet\`, \`soly_doc_search\` — read .agents/ artifacts as needed (intent docs are already in your system prompt)
@@ -687,7 +687,7 @@ ${workflow ? "```\n" + workflow.slice(0, 1500) + "\n[...truncated, see .pi/agent
 ---
 
 **Hard rules:**
-- **One picker call** (ask_pro) **or N calls** (soly_ask_user) — never dump all questions as text in your reply.
+- **One picker call** (ask_pro) **or N calls** (soly-ask-user) — never dump all questions as text in your reply.
 - Always include a recommended answer (⭐ first option) with 1-sentence rationale.
 - Use \`soly_save_discuss_checkpoint\` after each answer (so resume works).
 - Use \`soly_finish_discuss\` to finalize — don't just say "done".

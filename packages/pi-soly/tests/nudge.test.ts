@@ -218,9 +218,9 @@ describe("buildNudgeSection — workflow routing (point 4)", () => {
 	test("suggests the soly lifecycle when a project exists and the task is non-trivial", () => {
 		const s = buildNudgeSection(nonTrivial, { hasProject: true });
 		expect(s.includes("Route project work through the soly plan workflow")).toBe(true);
-		// The lifecycle now routes through the soly_workflow tool, on the user's
+		// The lifecycle now routes through the soly-workflow tool, on the user's
 		// natural-language intent — not by making them type verbs.
-		expect(s.includes("soly_workflow")).toBe(true);
+		expect(s.includes("soly-workflow")).toBe(true);
 		expect(s.includes("Read the user's intent")).toBe(true);
 		expect(s.includes("soly verify")).toBe(true); // verify stays a text verb
 	});
@@ -228,8 +228,8 @@ describe("buildNudgeSection — workflow routing (point 4)", () => {
 	test("instructs LLM to study the repo before scaffolding or fleshing out a plan", () => {
 		const s = buildNudgeSection(nonTrivial, { hasProject: true });
 		expect(s.includes("STUDY THE REPO")).toBe(true);
-		expect(s.includes("soly_snippet")).toBe(true);
-		expect(s.includes("soly_doc_search")).toBe(true);
+		expect(s.includes("soly-snippet")).toBe(true);
+		expect(s.includes("soly-doc-search")).toBe(true);
 	});
 
 	test("embeds the actual defaultBranchPrefix in the workflow point", () => {
@@ -327,9 +327,9 @@ describe("buildSuggestionSection (proactive next step)", () => {
 		expect(buildSuggestionSection({ ...base, hasProject: false })).toBe("");
 	});
 
-	test("always teaches the model to call soly_workflow on loose intent", () => {
+	test("always teaches the model to call soly-workflow on loose intent", () => {
 		const s = buildSuggestionSection(base);
-		expect(s).toContain("soly_workflow");
+		expect(s).toContain("soly-workflow");
 		expect(s).toContain("You propose; the user confirms; you run it.");
 		// No dependency on the external `subagent(...)` tool.
 		expect(s).not.toContain("subagent(");

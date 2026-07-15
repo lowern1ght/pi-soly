@@ -68,16 +68,16 @@ describe("buildDiscussTransform — pi-ask integration", () => {
 		expect(result.transformedText).toContain("`ask_pro`");
 		expect(result.transformedText).toContain("allowOther");
 		// The fallback path is mentioned too, but as a note
-		expect(result.transformedText).toMatch(/fall back to .soly_ask_user/);
+		expect(result.transformedText).toMatch(/fall back to .soly-ask-user/);
 	});
 
-	test("when hasAskPro=false, prompt falls back to soly_ask_user", () => {
+	test("when hasAskPro=false, prompt falls back to soly-ask-user", () => {
 		const cmd = { verb: "discuss" as const, args: ["5"], raw: "soly discuss 5" };
 		const result = buildDiscussTransform(cmd, state, { hasAskPro: false });
 		expect(result.handled).toBe(true);
-		// Mentions soly_ask_user as the primary picker
-		expect(result.transformedText).toContain("PICKER: `soly_ask_user`");
-		expect(result.transformedText).toContain("soly_ask_user");
+		// Mentions soly-ask-user as the primary picker
+		expect(result.transformedText).toContain("PICKER: `soly-ask-user`");
+		expect(result.transformedText).toContain("soly-ask-user");
 		// Mentions pi-ask as a tip
 		expect(result.transformedText).toMatch(/pi-ask.*extension/);
 		// ask_pro should NOT be presented as the preferred picker
@@ -88,6 +88,6 @@ describe("buildDiscussTransform — pi-ask integration", () => {
 		const cmd = { verb: "discuss" as const, args: ["5"], raw: "soly discuss 5" };
 		const result = buildDiscussTransform(cmd, state);
 		expect(result.handled).toBe(true);
-		expect(result.transformedText).toContain("PICKER: `soly_ask_user`");
+		expect(result.transformedText).toContain("PICKER: `soly-ask-user`");
 	});
 });

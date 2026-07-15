@@ -67,9 +67,9 @@ export function renderSolyResult(
 /** Format args for the call line. Returns a short string like `get "mode"`. */
 export function callDetail(toolName: string, args: Record<string, unknown>): string {
 	switch (toolName) {
-		case "soly_config":
+		case "soly-config":
 			return `${args.action ?? "?"}${args.key ? ` "${args.key}"` : ""}`;
-		case "soly_settings_set": {
+		case "soly-settings-set": {
 			const changes = args.changes as Record<string, unknown> | undefined;
 			if (!changes) return "?";
 			const keys = Object.keys(changes);
@@ -78,25 +78,25 @@ export function callDetail(toolName: string, args: Record<string, unknown>): str
 			}
 			return `${keys.length} changes`;
 		}
-		case "soly_doc_search":
+		case "soly-doc-search":
 			return `"${args.query ?? ""}"${args.limit ? ` (limit ${args.limit})` : ""}`;
-		case "soly_snippet": {
+		case "soly-snippet": {
 			const p = String(args.path ?? "");
 			const off = args.offset ? `:${args.offset}` : "";
 			const lim = args.limit ? `-${args.limit}` : "";
 			return `${p}${off}${lim}`;
 		}
-		case "soly_read": {
+		case "soly-read": {
 			const a = String(args.artifact ?? "");
 			return `${a}${args.phase ? ` · phase ${args.phase}` : ""}`;
 		}
-		case "soly_log_decision": {
+		case "soly-log-decision": {
 			const d = String(args.decision ?? "");
 			return d.length > 60 ? `${d.slice(0, 57)}…` : d;
 		}
-		case "soly_list_tasks":
+		case "soly-list-tasks":
 			return "";
-		case "soly_list_phases":
+		case "soly-list-phases":
 			return "";
 		default:
 			return "";

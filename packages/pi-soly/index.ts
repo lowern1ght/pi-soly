@@ -5,14 +5,14 @@
 // Loads .agents/rules/ and .agents/ project state into the agent's system
 // prompt, and registers:
 //   - slash commands  /rules /soly /rulewizard /why
-//   - LLM tools       soly_read soly_log_decision soly_list_phases
+//   - LLM tools       soly-read soly-log-decision soly_list_phases
 //   - input hooks     nudge (soft UI hint) + workflow verbs ("soly ...")
 //
 // All heavy logic lives in submodules:
 //   - core.ts        data types, loaders, builders
 //   - nudge.ts       behavioral nudge (pre-action gate + subagent preference)
 //   - commands.ts    /rules /soly /rulewizard /why
-//   - tools.ts       soly_read soly_log_decision soly_list_phases
+//   - tools.ts       soly-read soly-log-decision soly_list_phases
 //   - workflows/     soly execute / pause / compact (plain-text input only)
 //
 // To add a new workflow verb: edit workflows/parser.ts + workflows/<verb>.ts,
@@ -848,7 +848,7 @@ export default function solyExtension(pi: ExtensionAPI) {
 		);
 
 		// 7.05 Proactive "suggested next step" — always on when a project exists.
-		// Lets the model OFFER the next workflow action and call `soly_workflow`
+		// Lets the model OFFER the next workflow action and call `soly-workflow`
 		// itself, so the user never has to remember a verb.
 		if (state.exists) {
 			const suggestion = buildSuggestionSection(computeWorkflowSituation());

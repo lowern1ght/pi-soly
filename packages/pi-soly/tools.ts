@@ -3,9 +3,9 @@
 // =============================================================================
 //
 // Registers three tools the LLM can call:
-//   - soly_read         — read any .agents/ artifact (state/plan/roadmap/...)
-//   - soly_log_decision — append a row to STATE.md Decisions table
-//   - soly_list_phases  — list all phases with markers
+//   - soly-read         — read any .agents/ artifact (state/plan/roadmap/...)
+//   - soly-log-decision — append a row to STATE.md Decisions table
+//   - soly-list-phases  — list all phases with markers
 //
 // All paths are relative to <cwd>/.agents/ (the soly layout — NOT .planning/).
 // =============================================================================
@@ -36,7 +36,7 @@ export interface ToolsDeps {
 export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	const { getState, refreshState, getConfig } = deps;
 
-	// Simple in-memory cache for file reads (soly_read, soly_snippet).
+	// Simple in-memory cache for file reads (soly-read, soly-snippet).
 	// Key: absolute path. Value: { content, mtimeMs }.
 	// Invalidated when file mtime changes (cheap stat) or after 30s TTL.
 	const readCache = new Map<string, { content: string; mtimeMs: number; ts: number }>();
@@ -64,10 +64,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	}
 
 	pi.registerTool({
-		name: "soly_read",
+		name: "soly-read",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_read", callDetail("soly_read", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-read", callDetail("soly-read", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly read",
 		description:
@@ -125,7 +125,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 				if (!taskId) {
 					return {
 						content: [
-							{ type: "text", text: "soly_read: task artifact requires taskId parameter" },
+							{ type: "text", text: "soly-read: task artifact requires taskId parameter" },
 						],
 						details: { error: "missing_task_id" },
 					};
@@ -191,10 +191,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	});
 
 	pi.registerTool({
-		name: "soly_log_decision",
+		name: "soly-log-decision",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_log_decision", callDetail("soly_log_decision", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-log-decision", callDetail("soly-log-decision", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly log decision",
 		description:
@@ -280,10 +280,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	});
 
 	pi.registerTool({
-		name: "soly_list_tasks",
+		name: "soly-list-tasks",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_list_tasks", callDetail("soly_list_tasks", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-list-tasks", callDetail("soly-list-tasks", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly list tasks",
 		description:
@@ -310,10 +310,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	});
 
 	pi.registerTool({
-		name: "soly_list_phases",
+		name: "soly-list-phases",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_list_phases", callDetail("soly_list_phases", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-list-phases", callDetail("soly-list-phases", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly list phases",
 		description:
@@ -343,10 +343,10 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	});
 
 	pi.registerTool({
-		name: "soly_todos",
+		name: "soly-todos",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_todos", callDetail("soly_todos", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-todos", callDetail("soly-todos", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly todos",
 		description:
@@ -420,7 +420,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 						{
 							type: "text",
 							text:
-								`soly_todos: no matches found (or \`rg\` is not on PATH — install ripgrep for full functionality).`,
+								`soly-todos: no matches found (or \`rg\` is not on PATH — install ripgrep for full functionality).`,
 						},
 					],
 					details: { count: 0, hint: "install ripgrep" },
@@ -446,7 +446,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 
 			const out: string[] = [];
 			out.push(
-				`soly_todos: ${matches.length} match(es) in ${byFile.size} file(s) — ${tagSummary}`,
+				`soly-todos: ${matches.length} match(es) in ${byFile.size} file(s) — ${tagSummary}`,
 			);
 			out.push("");
 			for (const [file, list] of [...byFile.entries()].sort()) {
@@ -475,14 +475,14 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	});
 
 	// ============================================================================
-	// soly_env — project environment summary
+	// soly-env — project environment summary
 	// ============================================================================
 
 	pi.registerTool({
-		name: "soly_env",
+		name: "soly-env",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_env", callDetail("soly_env", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-env", callDetail("soly-env", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly env",
 		description:
@@ -517,14 +517,14 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	});
 
 	// ============================================================================
-	// soly_snippet — bounded file read with line numbers
+	// soly-snippet — bounded file read with line numbers
 	// ============================================================================
 
 	pi.registerTool({
-		name: "soly_snippet",
+		name: "soly-snippet",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_snippet", callDetail("soly_snippet", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-snippet", callDetail("soly-snippet", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly snippet",
 		description:
@@ -552,7 +552,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 			if (!result) {
 				return {
 					content: [
-						{ type: "text", text: `soly_snippet: file not found: ${requested}` },
+						{ type: "text", text: `soly-snippet: file not found: ${requested}` },
 					],
 					details: { error: "not_found" },
 				};
@@ -591,18 +591,18 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	});
 
 	// ============================================================================
-	// soly_doc_search — search .md index for relevant docs
+	// soly-doc-search — search .md index for relevant docs
 	// ============================================================================
 
 	pi.registerTool({
-		name: "soly_doc_search",
+		name: "soly-doc-search",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_doc_search", callDetail("soly_doc_search", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-doc-search", callDetail("soly-doc-search", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly doc search",
 		description:
-			"Search .md/.html under cwd for a query (intent docs prioritized, hits tagged [intent]/[phase-intent]/[project]). Use to find docs before loading one with soly_snippet. `limit` default 10 (cap 50).",
+			"Search .md/.html under cwd for a query (intent docs prioritized, hits tagged [intent]/[phase-intent]/[project]). Use to find docs before loading one with soly-snippet. `limit` default 10 (cap 50).",
 		parameters: Type.Object({
 			query: Type.String({ description: "Search query (substring, case-insensitive)." }),
 			limit: Type.Optional(
@@ -619,7 +619,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 					content: [
 						{
 							type: "text",
-							text: `soly_doc_search: no matches for "${params.query}" in ${index.length} indexed .md/.html file(s).`,
+							text: `soly-doc-search: no matches for "${params.query}" in ${index.length} indexed .md/.html file(s).`,
 						},
 					],
 					details: { count: 0, indexed: index.length },
@@ -627,7 +627,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 			}
 
 			const out: string[] = [];
-			out.push(`soly_doc_search: ${hits.length} hit(s) for "${params.query}" (${index.length} files indexed):`);
+			out.push(`soly-doc-search: ${hits.length} hit(s) for "${params.query}" (${index.length} files indexed):`);
 			out.push("");
 			for (const h of hits) {
 				const tag =
@@ -644,7 +644,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 				}
 				out.push("");
 			}
-			out.push("Use soly_snippet(path=\"<relpath>\", offset=N, limit=M) to load a specific range.");
+			out.push("Use soly-snippet(path=\"<relpath>\", offset=N, limit=M) to load a specific range.");
 			return {
 				content: [{ type: "text", text: out.join("\n") }],
 				details: { count: hits.length, indexed: index.length },
@@ -653,14 +653,14 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	});
 
 	// ============================================================================
-	// soly_scratchpad — recent conversation summary
+	// soly-scratchpad — recent conversation summary
 	// ============================================================================
 
 	pi.registerTool({
-		name: "soly_scratchpad",
+		name: "soly-scratchpad",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_scratchpad", callDetail("soly_scratchpad", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-scratchpad", callDetail("soly-scratchpad", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly scratchpad",
 		description:
@@ -685,7 +685,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 					content: [
 						{
 							type: "text",
-							text: `soly_scratchpad: no prior conversation (this is the first turn).`,
+							text: `soly-scratchpad: no prior conversation (this is the first turn).`,
 						},
 					],
 					details: { count: 0 },
@@ -693,7 +693,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 			}
 
 			const out: string[] = [];
-			out.push(`soly_scratchpad: ${pad.turnCount} user-turn(s), ${pad.entries.length} message(s) total:`);
+			out.push(`soly-scratchpad: ${pad.turnCount} user-turn(s), ${pad.entries.length} message(s) total:`);
 			out.push("");
 			for (const e of pad.entries) {
 				const prefix = e.role === "user" ? "U" : e.role === "assistant" ? "A" : "T";
@@ -714,14 +714,14 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	});
 
 	// ============================================================================
-	// soly_ask_user — multiple-choice picker (for `soly discuss` interactive flow)
+	// soly-ask-user — multiple-choice picker (for `soly discuss` interactive flow)
 	// ============================================================================
 
 	pi.registerTool({
-		name: "soly_ask_user",
+		name: "soly-ask-user",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_ask_user", callDetail("soly_ask_user", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-ask-user", callDetail("soly-ask-user", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly ask user",
 		description:
@@ -745,7 +745,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 					content: [
 						{
 							type: "text",
-							text: "soly_ask_user requires a UI-capable session (TUI or RPC mode). Run `soly discuss <N>` from the interactive pi TUI.",
+							text: "soly-ask-user requires a UI-capable session (TUI or RPC mode). Run `soly discuss <N>` from the interactive pi TUI.",
 						},
 					],
 					details: { error: "no_ui", mode: ctx.mode },
@@ -754,7 +754,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 			if (params.options.length < 2) {
 				return {
 					content: [
-						{ type: "text", text: "soly_ask_user: need at least 2 options" },
+						{ type: "text", text: "soly-ask-user: need at least 2 options" },
 					],
 					details: { error: "too_few_options" },
 				};
@@ -764,7 +764,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 					content: [
 						{
 							type: "text",
-							text: "soly_ask_user: 2-4 options recommended (>4 hurts the picker UX)",
+							text: "soly-ask-user: 2-4 options recommended (>4 hurts the picker UX)",
 						},
 					],
 					details: { error: "too_many_options" },
@@ -852,18 +852,18 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	});
 
 	// ============================================================================
-	// soly_finish_discuss — finalize a phase discussion (writes CONTEXT.md)
+	// soly-finish-discuss — finalize a phase discussion (writes CONTEXT.md)
 	// ============================================================================
 
 	pi.registerTool({
-		name: "soly_finish_discuss",
+		name: "soly-finish-discuss",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_finish_discuss", callDetail("soly_finish_discuss", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-finish-discuss", callDetail("soly-finish-discuss", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly finish discuss",
 		description:
-			"Finalize a `soly discuss <N>` session: write `<phase>-CONTEXT.md` with all decisions and delete the checkpoint. Call AFTER all gray-area questions are answered — not for partial progress (use soly_save_discuss_checkpoint for that).",
+			"Finalize a `soly discuss <N>` session: write `<phase>-CONTEXT.md` with all decisions and delete the checkpoint. Call AFTER all gray-area questions are answered — not for partial progress (use soly-save-discuss-checkpoint for that).",
 		parameters: Type.Object({
 			phase_number: Type.Number({ description: "Phase number being discussed." }),
 			domain: Type.String({
@@ -900,7 +900,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 			const solyDir = solyDirFor(ctx.cwd);
 			if (!fs.existsSync(solyDir)) {
 				return {
-					content: [{ type: "text", text: "soly_finish_discuss: no .agents/ in cwd" }],
+					content: [{ type: "text", text: "soly-finish-discuss: no .agents/ in cwd" }],
 					details: { error: "no_soly" },
 				};
 			}
@@ -922,7 +922,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 					content: [
 						{
 							type: "text",
-							text: `soly_finish_discuss: phase ${phaseNum} not found in .agents/phases/`,
+							text: `soly-finish-discuss: phase ${phaseNum} not found in .agents/phases/`,
 						},
 					],
 					details: { error: "no_phase", phase: phaseNum },
@@ -964,7 +964,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 					for (const d of list) {
 						lines.push(`- **Decision:** ${d.choice}`);
 						lines.push(`  **Rationale:** ${d.rationale ?? "user discretion"}`);
-						lines.push(`  **Source:** soly discuss ${phaseNum} (soly_finish_discuss)`);
+						lines.push(`  **Source:** soly discuss ${phaseNum} (soly-finish-discuss)`);
 					}
 				}
 				lines.push("</decisions>");
@@ -1040,18 +1040,18 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 	});
 
 	// ============================================================================
-	// soly_save_discuss_checkpoint — partial progress, for resume after a quit
+	// soly-save-discuss-checkpoint — partial progress, for resume after a quit
 	// ============================================================================
 
 	pi.registerTool({
-		name: "soly_save_discuss_checkpoint",
+		name: "soly-save-discuss-checkpoint",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_save_discuss_checkpoint", callDetail("soly_save_discuss_checkpoint", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-save-discuss-checkpoint", callDetail("soly-save-discuss-checkpoint", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly save discuss checkpoint",
 		description:
-			"Save a partial-progress checkpoint for `soly discuss <N>` (call after each decision so a quit doesn't lose progress; the next `soly discuss <N>` resumes from it). When done, call `soly_finish_discuss`.",
+			"Save a partial-progress checkpoint for `soly discuss <N>` (call after each decision so a quit doesn't lose progress; the next `soly discuss <N>` resumes from it). When done, call `soly-finish-discuss`.",
 		parameters: Type.Object({
 			phase_number: Type.Number({ description: "Phase number being discussed." }),
 			decisions: Type.Array(
@@ -1074,7 +1074,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 			const phasesRoot = path.join(solyDir, "phases");
 			if (!fs.existsSync(phasesRoot)) {
 				return {
-					content: [{ type: "text", text: "soly_save_discuss_checkpoint: no .agents/phases/ in cwd" }],
+					content: [{ type: "text", text: "soly-save-discuss-checkpoint: no .agents/phases/ in cwd" }],
 					details: { error: "no_phases" },
 				};
 			}
@@ -1093,7 +1093,7 @@ export function registerTools(pi: ExtensionAPI, deps: ToolsDeps): void {
 			if (!phaseDir) {
 				return {
 					content: [
-						{ type: "text", text: `soly_save_discuss_checkpoint: phase ${phaseNum} not found` },
+						{ type: "text", text: `soly-save-discuss-checkpoint: phase ${phaseNum} not found` },
 					],
 					details: { error: "no_phase", phase: phaseNum },
 				};

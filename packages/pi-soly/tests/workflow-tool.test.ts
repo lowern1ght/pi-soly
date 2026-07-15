@@ -1,5 +1,5 @@
 // =============================================================================
-// tests/workflow-tool.test.ts — the first-party `soly_workflow` LLM tool
+// tests/workflow-tool.test.ts — the first-party `soly-workflow` LLM tool
 // =============================================================================
 //
 // The tool lets the model drive the soly lifecycle itself (no external
@@ -70,7 +70,7 @@ function makeTool(tmp: string) {
 	let def: ToolDef | null = null;
 	const pi = {
 		registerTool: (d: ToolDef) => {
-			if (d.name === "soly_workflow") def = d;
+			if (d.name === "soly-workflow") def = d;
 		},
 	} as unknown as Parameters<typeof registerWorkflowTool>[0];
 	registerWorkflowTool(pi, {
@@ -89,7 +89,7 @@ function makeTool(tmp: string) {
 	return { def: def!, ctx, captured };
 }
 
-describe("soly_workflow tool", () => {
+describe("soly-workflow tool", () => {
 	let tmp: string;
 	beforeEach(() => {
 		tmp = initRepo();
@@ -98,9 +98,9 @@ describe("soly_workflow tool", () => {
 		fs.rmSync(tmp, { recursive: true, force: true });
 	});
 
-	test("registers a tool named soly_workflow with the lifecycle actions", () => {
+	test("registers a tool named soly-workflow with the lifecycle actions", () => {
 		const { def } = makeTool(tmp);
-		expect(def.name).toBe("soly_workflow");
+		expect(def.name).toBe("soly-workflow");
 		expect([...WORKFLOW_ACTIONS]).toEqual(["new", "discuss", "plan", "execute", "done"]);
 	});
 

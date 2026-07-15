@@ -48,10 +48,10 @@ export function registerSettingsTools(pi: ExtensionAPI, deps: SettingsToolsDeps)
 
 	// ---- soly_config (read) ----
 	pi.registerTool({
-		name: "soly_config",
+		name: "soly-config",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_config", callDetail("soly_config", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-config", callDetail("soly-config", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly config",
 		description:
@@ -146,10 +146,10 @@ export function registerSettingsTools(pi: ExtensionAPI, deps: SettingsToolsDeps)
 	);
 
 	pi.registerTool({
-		name: "soly_settings_set",
+		name: "soly-settings-set",
 		renderShell: "self",
 		renderCall(args, theme, context) {
-			return renderSolyCall(theme, "soly_settings_set", callDetail("soly_settings_set", args as Record<string, unknown>), context.lastComponent);
+			return renderSolyCall(theme, "soly-settings-set", callDetail("soly-settings-set", args as Record<string, unknown>), context.lastComponent);
 		},
 		label: "soly settings set",
 		description:

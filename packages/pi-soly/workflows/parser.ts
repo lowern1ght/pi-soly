@@ -10,7 +10,7 @@
 //   - The extension intercepts via the `input` event (no slash-command needed)
 //   - The handler transforms the input into a detailed LLM instruction the
 //     model follows INLINE, in this session (the same instruction the
-//     `soly_workflow` tool returns). No external subagent plugin.
+//     `soly-workflow` tool returns). No external subagent plugin.
 //
 // This module is pure parsing — no I/O, no extension state. Trivial to unit
 // test in isolation.

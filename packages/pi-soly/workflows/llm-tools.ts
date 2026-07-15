@@ -80,7 +80,7 @@ function dispatch(
 
 export function registerWorkflowTool(pi: ExtensionAPI, deps: WorkflowToolDeps): void {
 	pi.registerTool({
-		name: "soly_workflow",
+		name: "soly-workflow",
 		label: "soly workflow",
 		description:
 			"Drive the soly plan lifecycle in THIS session (no subagent needed). Call this when the user expresses intent to plan or ship work — even loosely (\"let's plan this\", \"go\", \"start executing\", \"wrap it up\"). Actions: `new` (scaffold a plan branch + stub PLAN.md), `discuss` (interactive scoping via ask_pro), `plan` (flesh out PLAN.md), `execute` (implement the plan inline), `done` (commit + push + draft PR). `target` is the plan slug / `<prefix>/<slug>` / phase number / task id (required for new/done; optional for the phase-based forms). The result is the full workflow instruction — follow it inline; do not delegate. (For the `verify` self-review loop, tell the user to type `soly verify` — it's a stateful loop, not a one-shot action.)",

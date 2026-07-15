@@ -7,7 +7,7 @@
 // B3: soly log <non-numeric> warns instead of silently falling back
 // B4: plain "soly" (no verb) → help picker
 // B5: soly plan --new-task auto-mkdirs the feature dir
-// B6: soly_ask_user supports allowOther in its schema
+// B6: soly-ask-user supports allowOther in its schema
 // =============================================================================
 
 /// <reference types="bun-types" />
@@ -294,10 +294,10 @@ describe("B5: buildPlanTransform auto-mkdirs feature for --new-task", () => {
 });
 
 // ---------------------------------------------------------------------------
-// B6: soly_ask_user schema accepts allowOther
+// B6: soly-ask-user schema accepts allowOther
 // ---------------------------------------------------------------------------
 
-describe("B6: soly_ask_user schema accepts allowOther", () => {
+describe("B6: soly-ask-user schema accepts allowOther", () => {
 	// We can't directly call the tool here (it needs pi context), but we
 	// can verify the schema accepts the parameter by importing and inspecting.
 	test("allowOther is an optional boolean in the schema", async () => {

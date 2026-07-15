@@ -111,7 +111,7 @@ describe("smoke: extension entry point", () => {
 			},
 		);
 		solyExtension(mockPi as never);
-		// Should have called pi.registerTool (for soly_read, soly_log_decision, etc.)
+		// Should have called pi.registerTool (for soly-read, soly-log-decision, etc.)
 		expect(calls.filter((c) => c === "registerTool").length).toBeGreaterThan(0);
 	});
 });
