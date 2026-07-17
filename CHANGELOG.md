@@ -4,6 +4,41 @@ All notable changes to the monorepo are documented here.
 
 ## [Unreleased]
 
+### Fixed (pi-keyrouter 0.5.0)
+- **`pi-keyrouter` crashed on every turn — `ctx.modelRegistry.authStorage` is
+  undefined on current pi-coding-agent releases.** `ModelRegistry` used to
+  expose a real `authStorage` field with a `setRuntimeApiKey()` runtime
+  override (confirmed still present in `0.78.1`), but later releases
+  (confirmed: `0.80.10`) turned `ModelRegistry` into a synchronous
+  compatibility facade over an internal `ModelRuntime` with no
+  extension-reachable override at all. Three call sites in `index.ts`
+  (bootstrap, round-robin, and 429/401 failover) called
+  `ctx.modelRegistry.authStorage.setRuntimeApiKey(...)` unconditionally,
+  throwing `Cannot read properties of undefined (reading
+  'setRuntimeApiKey')` on every single turn — non-fatal (the extension
+  runner catches and logs it), but key rotation silently never worked.
+  Full investigation: `docs/fix-authstorage-runtime-key-override.md`.
+- **Fix: `applyKey()` now tries the native override first, falls back to an
+  environment-variable override.** On builds where
+  `ctx.modelRegistry.authStorage.setRuntimeApiKey` exists, it's used as
+  before (still the more correct, higher-priority mechanism). On builds
+  where it doesn't, pi-keyrouter now sets the resolved provider's API-key
+  environment variable (e.g. `NVIDIA_API_KEY`) instead, which pi-ai's own
+  credential resolver reads fresh on every request — no caching, so a
+  rotation takes effect on the very next retry. This keeps the same
+  install working across the SDK version range instead of crashing on
+  newer releases.
+  **Setup requirement:** the env-var fallback is priority-3 in pi-ai's
+  resolver — a stored credential in `auth.json` always wins first. Any
+  provider rotated by pi-keyrouter must have no entry in `auth.json`, or
+  every override is silently ignored. Documented in `config.ts` and
+  `README.md`.
+- Added `tests/index.test.ts` — exercises `before_agent_start`,
+  `message_end` (429 and 401 rotation), and `/keyrouter status` against a
+  realistic `ctx` for both the legacy (`authStorage` present) and current
+  (`authStorage` absent) `ModelRegistry` shapes, so this class of bug can't
+  ship silently again.
+
 ## [2.3.0] — 2026-07-05
 
 ### Changed

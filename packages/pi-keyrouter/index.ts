@@ -1,30 +1,50 @@
 // =============================================================================
-// index.ts — pi-keyrouter extension entry point (native setRuntimeApiKey)
+// index.ts — pi-keyrouter extension entry point
 // =============================================================================
 //
-// HOW IT WORKS (native integration, no fetch hacks):
+// HOW IT WORKS:
 //
 // 1. pi makes a request with the current API key
 // 2. Provider returns 429 (rate-limited) or 401/403 (unauthorized)
-// 3. `after_provider_response` event fires with the HTTP status
-// 4. We call ctx.modelRegistry.authStorage.setRuntimeApiKey(provider, nextKey)
+// 3. `message_end` fires with the error; we pick the next available key
+// 4. We apply it via applyKey() — see below — then return
 // 5. pi's BUILT-IN retry logic kicks in → next attempt uses the new key
 // 6. Repeat until a key succeeds or we exhaust our key pool
 //
-// This is the native integration point documented in the SDK:
-//   "API key resolution priority:
-//    1. Runtime overrides (via setRuntimeApiKey, not persisted)
-//    2. Stored credentials in auth.json
-//    3. Environment variables
-//    4. Fallback resolver"
+// APPLYING A KEY — two mechanisms, tried in this order (see applyKey()):
 //
-// We only touch priority #1 (runtime override). auth.json is never modified.
-// On session end, runtime overrides vanish (not persisted) — clean slate
-// for next session, which is exactly what we want for 429 rate limits.
+//   1. ctx.modelRegistry.authStorage.setRuntimeApiKey(provider, key)
+//      A genuine runtime override, checked BEFORE auth.json by pi-ai's own
+//      credential resolver. Present on `ModelRegistry` in some
+//      pi-coding-agent releases (confirmed: 0.78.1).
+//
+//   2. process.env[<PROVIDER>_API_KEY] = key
+//      Fallback for releases where `ModelRegistry` no longer exposes
+//      `authStorage` to extensions at all (confirmed: 0.80.10 turned
+//      `ModelRegistry` into a synchronous compatibility facade over an
+//      internal `ModelRuntime`, with nothing extension-reachable that
+//      mutates a stored override). pi-ai's env-var credential resolver
+//      re-reads `process.env` on every call — no caching — so this takes
+//      effect on the very next attempt in the same process. Extensions run
+//      in-process with pi-coding-agent (no worker/vm sandbox), so a plain
+//      assignment here is visible immediately.
+//
+//      IMPORTANT: mechanism 2 is priority-3 in pi-ai's resolver (a stored
+//      credential in auth.json always wins first). A provider rotated by
+//      pi-keyrouter must therefore have NO entry in auth.json, or every
+//      override this extension makes is silently ignored. See README.md.
+//
+// We try mechanism 1 first on every call (a free correctness upgrade on
+// builds that still support it — the override there properly outranks
+// auth.json) and fall back to mechanism 2 only when it's absent, so this
+// extension keeps working across the pi-coding-agent version range instead
+// of being pinned to one internal SDK shape. Full investigation, including
+// which published SDK versions expose which shape:
+//   docs/fix-authstorage-runtime-key-override.md
 //
 // Usage:
 //   pi install npm:pi-keyrouter
-//   # create ~/.pi/keyrouter.json with your provider keys
+//   # create ~/.pi/keyrouter.json with your provider keys (see README)
 //   /reload
 
 import type { ExtensionAPI, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
@@ -51,8 +71,62 @@ const UNAUTHORIZED_RE = /\b40[13]\b|unauthorized|forbidden/i;
 
 interface ProviderRuntime {
 	keys: KeyState[];
-	/** Index of the key currently set via setRuntimeApiKey. -1 = none set yet. */
+	/** Index of the key currently applied via applyKey(). -1 = none set yet. */
 	currentIndex: number;
+}
+
+/**
+ * `ctx.modelRegistry` is deliberately typed `unknown` at every call site in
+ * this file rather than pi-coding-agent's own ambient `ModelRegistry` type.
+ * Across SDK releases that class has gone from exposing a real `authStorage`
+ * field to a facade that has none at all — and trusting the ambient type's
+ * optimism (a non-optional `authStorage`) is exactly how the original crash
+ * shipped. `applyKey()` below feature-detects the shape at runtime instead,
+ * which is correct on both. Full investigation:
+ * docs/fix-authstorage-runtime-key-override.md
+ */
+
+/**
+ * Apply a key for a provider using the best mechanism available on the
+ * running pi-coding-agent build. See the header comment for the two
+ * mechanisms and their priority/compatibility trade-offs. `modelRegistry`
+ * is `ctx.modelRegistry`, untyped on purpose — see note above.
+ */
+function applyKey(modelRegistry: unknown, providerName: string, key: string): void {
+	const authStorage = (modelRegistry as { authStorage?: unknown } | null | undefined)?.authStorage;
+	const setRuntimeApiKey = (authStorage as { setRuntimeApiKey?: unknown } | null | undefined)?.setRuntimeApiKey;
+	if (typeof setRuntimeApiKey === "function") {
+		(setRuntimeApiKey as (provider: string, key: string) => void)(providerName, key);
+		return;
+	}
+	process.env[envVarFor(providerName)] = key;
+}
+
+/**
+ * Provider id → env var name, matching pi-ai's own provider definitions
+ * (verified against @earendil-works/pi-ai's published `providers/*.js`,
+ * e.g. `nvidia.js: envApiKeyAuth("NVIDIA API key", ["NVIDIA_API_KEY"])`).
+ * Known providers use their real var name; unknown providers fall back to
+ * the `${NAME}_API_KEY` convention pi-ai uses for most providers.
+ * `moonshotai` is the one confirmed exception to that convention (its var
+ * is `MOONSHOT_API_KEY`, not `MOONSHOTAI_API_KEY`).
+ */
+function envVarFor(providerName: string): string {
+	const known: Record<string, string> = {
+		nvidia: "NVIDIA_API_KEY",
+		zai: "ZAI_API_KEY",
+		openrouter: "OPENROUTER_API_KEY",
+		groq: "GROQ_API_KEY",
+		mistral: "MISTRAL_API_KEY",
+		minimax: "MINIMAX_API_KEY",
+		moonshotai: "MOONSHOT_API_KEY",
+		fireworks: "FIREWORKS_API_KEY",
+		together: "TOGETHER_API_KEY",
+		xai: "XAI_API_KEY",
+		openai: "OPENAI_API_KEY",
+		anthropic: "ANTHROPIC_API_KEY",
+	};
+	return known[providerName] ?? `${providerName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_API_KEY`;
 }
 
 export default function keyRouterExtension(pi: ExtensionAPI): void {
@@ -63,8 +137,8 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 
 	/**
 	 * Get-or-create the runtime for a provider. Keyed by the RESOLVED
-	 * name (the authStorage id, e.g. "zai"), but populated from the
-	 * provider config passed in directly (avoids name-mismatch bugs).
+	 * name (the canonical provider id, e.g. "zai"), but populated from
+	 * the provider config passed in directly (avoids name-mismatch bugs).
 	 */
 	function ensureRuntime(
 		resolvedName: string,
@@ -88,7 +162,7 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 	async function activate(ctx: {
 		cwd: string;
 		ui: ExtensionUIContext;
-		modelRegistry: { authStorage: { setRuntimeApiKey: (p: string, k: string) => void } };
+		modelRegistry: unknown;
 	}): Promise<void> {
 		// Load config once (reload clears it)
 		if (!config) {
@@ -97,21 +171,13 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 		if (config.providers.length === 0) return;
 		uiCtx = ctx.ui;
 
-		const authStorage = ctx.modelRegistry.authStorage;
 		let newlyBootstrapped = 0;
 		for (const p of config.providers) {
 			const resolvedName = resolveProviderName(p.name);
 			// Skip providers we've already bootstrapped
 			if (runtimes.has(resolvedName)) continue;
-			if (bootstrap(resolvedName, p)) {
-				const rt = runtimes.get(resolvedName);
-				if (rt && rt.currentIndex >= 0) {
-					const key = rt.keys[rt.currentIndex];
-					if (key) {
-						authStorage.setRuntimeApiKey(resolvedName, key.value);
-						newlyBootstrapped++;
-					}
-				}
+			if (bootstrap(resolvedName, p, ctx.modelRegistry)) {
+				newlyBootstrapped++;
 			}
 		}
 		// Only notify on first activation (when we bootstrapped at least one)
@@ -124,10 +190,14 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 		}
 	}
 
-	/** Set the initial key for a provider on first use. */
+	/**
+	 * Set the initial key for a provider on first use, applying it
+	 * immediately via applyKey(). Returns true iff a key was applied.
+	 */
 	function bootstrap(
 		resolvedName: string,
 		providerCfg: { keys: ReadonlyArray<{ name: string; value: string }> },
+		modelRegistry: unknown,
 	): boolean {
 		const rt = ensureRuntime(resolvedName, providerCfg);
 		if (rt.currentIndex >= 0) return true; // already bootstrapped
@@ -135,8 +205,7 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 		if (idx < 0) return false;
 		const key = rt.keys[idx];
 		if (!key) return false;
-		// We can't call setRuntimeApiKey here (no ctx), but we mark the index
-		// so the first after_provider_response knows where we are.
+		applyKey(modelRegistry, resolvedName, key.value);
 		rt.currentIndex = idx;
 		return true;
 	}
@@ -236,9 +305,8 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 		}
 		if (!reason) return; // not a rotatable error
 
-		const authStorage = ctx.modelRegistry.authStorage;
 		const rotated = rotate(providerName, reason, status, (key) => {
-			authStorage.setRuntimeApiKey(providerName, key);
+			applyKey(ctx.modelRegistry, providerName, key);
 		});
 
 		if (!rotated) {
@@ -308,9 +376,11 @@ export default function keyRouterExtension(pi: ExtensionAPI): void {
 }
 
 /**
- * Resolve the internal provider name that authStorage uses.
- * The keyrouter config uses display names like "z-ai" but authStorage
- * uses the canonical provider id like "zai". We try a few mappings.
+ * Resolve the canonical provider id that pi-ai and applyKey() use.
+ * The keyrouter config uses display names like "z-ai" but the canonical
+ * id is "zai". We try a few mappings; anything else passes through as-is
+ * (which is correct for providers whose canonical id equals their common
+ * name, e.g. "nvidia", "groq", "mistral").
  */
 function resolveProviderName(displayName: string): string {
 	const lower = displayName.toLowerCase();

@@ -2,7 +2,7 @@
 
 **API key rotation for [pi-coding-agent](https://github.com/nicobailon/pi-coding-agent).**
 
-Multiple keys per provider · automatic 429/401 fallback · native integration.
+Multiple keys per provider · automatic 429/401 fallback · no fetch hacks.
 
 ```bash
 pi install npm:pi-keyrouter
@@ -10,7 +10,9 @@ pi install npm:pi-keyrouter
 /reload
 ```
 
-When your model returns 429 (rate-limited) or 401 (unauthorized), the next key is set via pi's native `authStorage.setRuntimeApiKey()`. pi's built-in retry then uses the new key automatically.
+When your model returns 429 (rate-limited) or 401 (unauthorized), pi-keyrouter applies the next key using the best mechanism available on your installed pi-coding-agent build (see [How it works](#-how-it-works)). pi's built-in retry then uses the new key automatically.
+
+> ⚠️ **Setup requirement:** a provider you want rotated must have **no entry in `~/.pi/agent/auth.json`**. See [Setup requirement](#️-setup-requirement) below — skipping this is the #1 cause of "rotation configured but nothing happens."
 
 ---
 
@@ -39,44 +41,46 @@ Add your provider config to `~/.pi/keyrouter.json`:
 }
 ```
 
-`/reload` — extension wraps `globalThis.fetch` and rotates on 429/401.
+`/reload` picks up the config and starts rotating on 429/401.
 
 ---
 
-## 🎯 How it works (native integration)
+## 🎯 How it works
 
-This extension uses pi's **native API key resolution** — no fetch hacks, no header manipulation.
+pi-keyrouter listens for provider errors on `message_end` and, on a rotatable failure, applies the next key in the pool using **one of two mechanisms**, tried in this order:
 
-From the [pi SDK docs](https://github.com/nicobailon/pi-coding-agent):
+1. **Native runtime override** — `ctx.modelRegistry.authStorage.setRuntimeApiKey(provider, key)`. A genuine priority-1 override, checked by pi-ai's credential resolver *before* `auth.json`. Present on `ModelRegistry` in some pi-coding-agent releases (confirmed working: `0.78.1`).
+2. **Environment variable** — `process.env.<PROVIDER>_API_KEY = key` (e.g. `NVIDIA_API_KEY`, `ZAI_API_KEY`). Fallback for releases where `ModelRegistry` no longer exposes `authStorage` to extensions at all (confirmed: `0.80.10` turned `ModelRegistry` into a compatibility facade with no extension-reachable override). pi-ai reads `process.env` fresh on every request — no caching — so this takes effect on the very next retry, in the same process.
 
-> API key resolution priority (handled by AuthStorage):
-> 1. **Runtime overrides (via `setRuntimeApiKey`, not persisted)** ← we use this
-> 2. Stored credentials in `auth.json`
-> 3. Environment variables
-> 4. Fallback resolver
+pi-keyrouter tries mechanism 1 first on every call and only falls back to mechanism 2 when it's unavailable, so the same install keeps working whether or not your pi-coding-agent build still exposes the native override. See [`docs/fix-authstorage-runtime-key-override.md`](../../docs/fix-authstorage-runtime-key-override.md) at the repo root for the full investigation, including exactly which published SDK versions expose which shape.
 
 Flow:
 
-1. **session_start** — extension loads config, calls `authStorage.setRuntimeApiKey(provider, firstKey)` for each managed provider. Runtime override takes priority over auth.json.
-2. **Request** — pi makes the HTTP call with the runtime-overridden key.
-3. **after_provider_response (429/401/403)** — extension fires, calls `setRuntimeApiKey(provider, nextKey)`.
-4. **pi's built-in retry** — pi's retry logic (the "Retrying 3/3" you see in the UI) makes the next attempt, which now picks up the new runtime key.
-5. **Success or exhaustion** — if all keys fail, runtime override is cleared and pi surfaces the real error.
+1. **session_start / before_agent_start** — extension loads config and applies the first key for each managed provider.
+2. **Request** — pi makes the HTTP call with the applied key.
+3. **message_end (error, 429/401/403)** — extension fires, applies the next key.
+4. **pi's built-in retry** — pi's retry logic (the "Retrying 3/3" you see in the UI) makes the next attempt, which now picks up the new key.
+5. **Success or exhaustion** — if all keys fail, pi-keyrouter stops rotating for that request and pi surfaces the real error.
+
+### ⚠️ Setup requirement
+
+**A provider being rotated must have NO stored credential in `~/.pi/agent/auth.json`.** This only matters when mechanism 2 (env var) is in effect, but since which mechanism your build uses isn't something you control from config, treat it as a hard requirement for every provider you list in `keyrouter.json`.
+
+Why: pi-ai's credential resolver checks a stored `auth.json` credential *before* the environment variable — unconditionally. If a key exists there, it always wins, and every override pi-keyrouter makes is silently ignored: **no error, no rotation, keys just never switch.** Remove that provider's entry from `auth.json` (or never add one) before configuring it here.
 
 ### Why not fetch wrapping?
 
-An earlier version wrapped `globalThis.fetch`. It didn't work because the OpenAI SDK (used by pi-ai for z.ai and others) captures the `fetch` reference at client creation time, before extensions load. The SDK kept calling the original fetch, ignoring the wrapper.
-
-The native `setRuntimeApiKey` approach is cleaner: pi owns the HTTP layer, we only swap the key between attempts. No monkey-patching, no timing issues.
+An earlier version wrapped `globalThis.fetch`. It didn't work because the OpenAI SDK (used by pi-ai for z.ai and others) captures the `fetch` reference at client creation time, before extensions load. The SDK kept calling the original fetch, ignoring the wrapper. Both mechanisms above avoid this: pi owns the HTTP layer, we only change which key it picks up for the next attempt.
 
 ### What gets rotated
 
 | Status | Action |
 |---|---|
 | 200 | Key marked OK |
-| 429 | Current key marked `rate-limited` (cooldown), `setRuntimeApiKey(nextKey)` |
-| 401 / 403 | Current key marked `unauthorized` (cooldown), `setRuntimeApiKey(nextKey)` |
-| All keys exhausted | Runtime override cleared, pi surfaces real error |
+| 429 | Current key marked `rate-limited` (cooldown), next key applied |
+| 401 / 403 | Current key marked `unauthorized` (cooldown), next key applied |
+| 529 / "overloaded" | Provider-wide cooldown on **all** keys — not a per-key failure, no rotation |
+| All keys exhausted | pi-keyrouter stops intercepting; pi surfaces the real error |
 
 ---
 
@@ -90,21 +94,19 @@ The `/keyrouter` command shows live state:
 
 ```
 🔑 keyrouter: active
-  z-ai (current: backup)
-    • primary  uses=12 fails=2 status=rate-limited ⏱ 47s
-    • backup   uses=2  fails=0 status=ok
+  zai (current: backup)
+    • primary  uses=0 fails=2 status=rate-limited (cooldown)
+    → backup   uses=0 fails=0 status=untried
 ```
 
 Subcommands:
 
 - `/keyrouter status` — show snapshot (default)
-- `/keyrouter enable` — re-activate (if disabled)
-- `/keyrouter disable` — restore original fetch, stop rotating
-- `/keyrouter reload` — re-read config
+- `/keyrouter reload` — re-read `~/.pi/keyrouter.json` and reset all provider runtimes
 
-Every key switch notifies the user with a Box widget:
+Every key rotation notifies the user with a box widget:
 
-> 🔑 keyrouter: z-ai — primary → backup (HTTP 429, attempt 1)
+> 🔑 keyrouter: zai — primary → backup (HTTP 429, attempt 1)
 
 ---
 
@@ -124,8 +126,10 @@ your real keys).
 {
   "providers": [
     {
-      "name": "display-name",          // for logs (any string)
-      "match": ["api.z.ai", "z.ai"],   // URL substrings (case-insensitive)
+      "name": "z-ai",                  // display name (for logs) — resolved to
+                                        // the canonical provider id internally
+      "match": ["api.z.ai", "z.ai"],   // reserved for future URL-based matching;
+                                        // not currently read by the extension
       "keys": [
         { "name": "primary", "value": "key-1..." },
         { "name": "backup",  "value": "key-2..." }
@@ -136,6 +140,8 @@ your real keys).
   "cooldownMs": 60000      // how long a bad key stays marked bad (1 min default)
 }
 ```
+
+> See [Setup requirement](#️-setup-requirement) above — remove `name`'s provider from `auth.json` before relying on rotation.
 
 ### Multi-provider
 
@@ -148,7 +154,7 @@ your real keys).
 }
 ```
 
-Each provider rotates independently. Cross-provider URLs are not intercepted.
+Each provider rotates independently.
 
 ---
 
@@ -165,7 +171,7 @@ API keys live in plain text in `keyrouter.json`. **Don't commit it.** Options:
 ## 🛠 Development
 
 ```bash
-bun test          # 33 tests
+bun test          # unit + integration tests
 bun run typecheck # tsc --noEmit
 ```
 
@@ -173,14 +179,16 @@ Monorepo layout:
 
 ```
 packages/pi-keyrouter/
-├── index.ts          — extension entry point (native setRuntimeApiKey)
+├── index.ts          — extension entry point (dual-path key application)
 ├── rotation.ts       — pure key-pick logic
 ├── config.ts         — config loader
+├── notification.ts   — box-widget notifications
 ├── types.ts          — shared types
 └── tests/
     ├── rotation.test.ts              — pure logic
     ├── provider-resolution.test.ts   — provider name mapping
     ├── config.test.ts                — config loader
+    ├── index.test.ts                 — event handlers against a realistic ctx
     └── smoke.test.ts                 — load-time smoke test
 ```
 

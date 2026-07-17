@@ -26,6 +26,18 @@
 //   "cooldownMs": 60000,
 //   "overloadedCooldownMs": 30000
 // }
+//
+// SETUP REQUIREMENT — read before configuring a provider:
+//
+// On pi-coding-agent builds where the extension-reachable runtime-override
+// API is unavailable (see index.ts's header comment for which builds and
+// why), pi-keyrouter falls back to setting the provider's environment
+// variable (e.g. NVIDIA_API_KEY). That mechanism is priority-3 in pi-ai's
+// own credential resolver — a stored credential in `auth.json` always wins
+// first, unconditionally. If a provider listed here also has an entry in
+// `auth.json`, that stored key is used on every request and every override
+// pi-keyrouter makes is silently ignored — no error, rotation just never
+// happens. Any provider you want rotated MUST have no entry in auth.json.
 
 import * as fs from "node:fs";
 import * as os from "node:os";
