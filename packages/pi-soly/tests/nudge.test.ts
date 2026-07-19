@@ -233,12 +233,12 @@ describe("buildNudgeSection — workflow routing (point 4)", () => {
 	});
 
 	test("embeds the actual defaultBranchPrefix in the workflow point", () => {
-		const s = buildNudgeSection(nonTrivial, {
-			hasProject: true,
-			defaultBranchPrefix: "feature",
-		});
-		expect(s.includes("Branches look like `feature/<slug>`")).toBe(true);
-		expect(s.includes('project default is **`"feature"`**')).toBe(true);
+		// v3.0.0: defaultBranchPrefix removed from config. The nudge now
+		// tells the LLM to ask the user via ask_pro instead of embedding
+		// the prefix in the hint. We verify the hint mentions ask_pro + branches.
+		const s = buildNudgeSection(nonTrivial, { hasProject: true });
+		expect(s.includes("ask_pro")).toBe(true);
+		expect(s.includes("Branch naming")).toBe(true);
 	});
 
 	test("instructs LLM to gap-hunt the plan before coding (corporate reviewer)", () => {

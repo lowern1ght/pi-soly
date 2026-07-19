@@ -62,10 +62,10 @@ function dispatch(
 	const state = deps.getState();
 	switch (action) {
 		case "new":
-			return buildNewTransform(cmd, state, ui, cwd, deps.getConfig().plan.defaultBranchPrefix);
+			return buildNewTransform(cmd, state, ui, cwd, "");
 		case "done":
 			return buildDoneTransform(cmd, state, ui, cwd, {
-				defaultBranchPrefix: deps.getConfig().plan.defaultBranchPrefix,
+				defaultBranchPrefix: "",
 			});
 		case "plan":
 			return buildPlanTransform(cmd, state);

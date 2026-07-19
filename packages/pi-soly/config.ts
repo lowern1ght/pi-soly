@@ -114,18 +114,8 @@ export interface SolyConfig {
 		 *  0 = keep forever. */
 		retentionDays: number;
 	};
-	plan: {
-		/** Optional branch prefix prepended when the user runs `soly new <slug>`
-		 *  without an explicit `<prefix>/<slug>` form. Common values:
-		 *    "feature"   → branches like `feature/statistic-preparation`
-		 *    "fix"       → branches like `fix/login-redirect`
-		 *    "" (default)→ no prefix; branch = slug verbatim.
-		 *  Per-project only (set in `.agents/soly.json`). User-supplied
-		 *  `<prefix>/<slug>` always wins over this default.
-		 *  Plan dir is always `.agents/plans/<prefix>-<slug>` (flattened)
-		 *  so the on-disk layout stays one-deep. */
-		defaultBranchPrefix: string;
-	};
+	// Note: `plan.defaultBranchPrefix` was removed in v3.0.0.
+	// Branch prefix is now LLM-asked via ask_pro (see mode/branch-prompt.ts).
 }
 
 export const DEFAULT_CONFIG: SolyConfig = {
@@ -187,9 +177,6 @@ export const DEFAULT_CONFIG: SolyConfig = {
 		server: true,
 		theme: "",
 		retentionDays: 7,
-	},
-	plan: {
-		defaultBranchPrefix: "", // "" = no prefix; branch = slug verbatim
 	},
 };
 
@@ -261,17 +248,7 @@ function deepMerge(base: SolyConfig, over: RawConfig): SolyConfig {
 	if (over.editor && typeof over.editor.command === "string") {
 		merged.editor.command = over.editor.command;
 	}
-	if (over.plan && typeof over.plan.defaultBranchPrefix === "string") {
-		// Sanitize: lowercase, then allow only kebab-case chars (no
-		// slashes/dots/spaces). Empty string is allowed and means
-		// "no prefix". We do NOT warn on slash/uppercase — the user
-		// probably meant a different prefix shape; silently normalizing
-		// keeps configs from being rejected for cosmetic reasons.
-		const lowercased = over.plan.defaultBranchPrefix.toLowerCase();
-		const sanitized = lowercased.replace(/[^a-z0-9-]/g, "");
-		const collapsed = sanitized.replace(/-+/g, "-").replace(/^-|-$/g, "");
-		merged.plan.defaultBranchPrefix = collapsed;
-	}
+
 	if (over.chrome) {
 		if (typeof over.chrome.enabled === "boolean") merged.chrome.enabled = over.chrome.enabled;
 		if (typeof over.chrome.ascii === "boolean") merged.chrome.ascii = over.chrome.ascii;

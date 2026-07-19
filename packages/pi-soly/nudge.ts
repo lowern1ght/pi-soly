@@ -165,7 +165,7 @@ export function buildNudgeSection(
 	opts: {
 		hasProject?: boolean;
 		confirmBeforeCode?: boolean | ConfirmLevel;
-		defaultBranchPrefix?: string;
+		// (defaultBranchPrefix removed in v3.0.0 — LLM asks user via ask_pro)
 	} = {},
 ): string {
 	// Always-on rules (cheap to add, high signal):
@@ -197,7 +197,7 @@ export function buildNudgeSection(
 	// model toward the workflow lifecycle instead of ad-hoc edits. This block
 	// also tells the model it may *itself* scaffold a new plan after asking the
 	// user — the user explicitly opted into this in 1.16.0.
-	const prefix = opts.defaultBranchPrefix ?? "";
+	const prefix = ""; // v3.0.0: always empty — LLM asks user
 	const branchLine = prefix
 		? `Branches look like \`${prefix}/<slug>\` (the project default is **\`"${prefix}"\`**). Plan dir: \`.agents/plans/${prefix}-<slug>/\`.`
 		: `Branches look like \`<slug>\` (no project default prefix is set). Plan dir: \`.agents/plans/<slug>/\`.`;

@@ -104,12 +104,12 @@ export function registerSolyCommand(pi: ExtensionAPI, deps: SolyDeps): void {
 				}
 				switch (verb) {
 					case "new": {
-						const r = buildNewTransform(cmd, state, ui, ctx.cwd, getConfig().plan.defaultBranchPrefix);
+						const r = buildNewTransform(cmd, state, ui, ctx.cwd, "");
 						if (r.handled && r.transformedText) recordEvent(r.transformedText);
 						return;
 					}
 					case "done": {
-						const r = buildDoneTransform(cmd, state, ui, ctx.cwd, { defaultBranchPrefix: getConfig().plan.defaultBranchPrefix });
+						const r = buildDoneTransform(cmd, state, ui, ctx.cwd, { defaultBranchPrefix: "" });
 						if (r.handled && r.transformedText) recordEvent(r.transformedText);
 						return;
 					}

@@ -138,7 +138,7 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 				state,
 				ctx.ui,
 				ctx.cwd,
-				getConfig().plan.defaultBranchPrefix,
+				"",
 			);
 			if (!result.handled || !result.transformedText) return;
 			// Direct execution (the workflow already called ui.notify). The
@@ -149,7 +149,7 @@ export function registerWorkflows(pi: ExtensionAPI, deps: WorkflowsDeps): void {
 
 		if (cmd.verb === "done") {
 			const result = buildDoneTransform(cmd, state, ctx.ui, ctx.cwd, {
-				defaultBranchPrefix: getConfig().plan.defaultBranchPrefix,
+				defaultBranchPrefix: "",
 			});
 			if (!result.handled || !result.transformedText) return;
 			// Direct execution — workflow already called ui.notify. The
